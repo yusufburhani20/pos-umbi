@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executive Dashboard - Toko Umbi Jaya</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+  <link rel="stylesheet" href="/src/owner.css">
+</head>
+<body class="executive-body">
+  <div id="executiveApp">
+    <!-- Top Executive Navigation Bar -->
+    <header class="exec-header">
+      <div class="header-inner">
+        <div class="exec-brand">
+          <div class="brand-avatar">🥔</div>
+          <div class="brand-info">
+            <div class="brand-title-wrap">
+              <span class="store-name">Toko Umbi Jaya</span>
+              <span class="badge-role">👑 Executive Owner</span>
+            </div>
+            <p class="store-subtext">Sistem Pemantauan Toko, Margin Komoditas & Audit Anti-Kecolongan</p>
+          </div>
+        </div>
+
+        <div class="exec-header-actions">
+          <div class="status-live-pill">
+            <span class="pulse-indicator"></span>
+            <div class="header-datetime-wrap">
+              <span class="live-daydate" id="ownerDayDate">Memuat tanggal...</span>
+              <span class="live-clock-time" id="liveClockText">00:00:00 WIB</span>
+            </div>
+          </div>
+
+          <button class="btn-refresh-pill" id="btnRefreshData" title="Segarkan Data Real-time">
+            <span class="icon">🔄</span> Segarkan
+          </button>
+
+          <button class="btn-pos-shortcut" id="btnBackToPos">
+            <span class="icon">🖥️</span> Layar Kasir POS
+          </button>
+
+          <button class="btn-exec-logout" id="btnOwnerLogout" title="Keluar Sesi">
+            🚪
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sub-Navbar / Tabs -->
+    <nav class="exec-subnav">
+      <div class="subnav-inner">
+        <div class="tab-pill-group">
+          <button class="tab-pill active" data-tab="tab-cashflow">
+            <span class="tab-emoji">📊</span>
+            <span>Ringkasan & Cashflow</span>
+          </button>
+          <button class="tab-pill" data-tab="tab-reports">
+            <span class="tab-emoji">📈</span>
+            <span>Laporan & Ekspor</span>
+          </button>
+          <button class="tab-pill" data-tab="tab-debts">
+            <span class="tab-emoji">📒</span>
+            <span>Buku Piutang & Kasbon</span>
+            <span class="pill-count alert" id="debtCountBadge" style="display:none;">0</span>
+          </button>
+          <button class="tab-pill" data-tab="tab-products">
+            <span class="tab-emoji">🏷️</span>
+            <span>Katalog & Margin Laba</span>
+            <span class="pill-count" id="productCountBadge">0</span>
+          </button>
+          <button class="tab-pill" data-tab="tab-audit">
+            <span class="tab-emoji">📋</span>
+            <span>Audit Trail & Aktivitas</span>
+            <span class="pill-count alert" id="auditCountBadge">0</span>
+          </button>
+          <button class="tab-pill" data-tab="tab-cashiers">
+            <span class="tab-emoji">👥</span>
+            <span>Kelola Kasir & PIN</span>
+            <span class="pill-count" id="cashierCountBadge">0</span>
+          </button>
+          <button class="tab-pill" data-tab="tab-settings">
+            <span class="tab-emoji">⚙️</span>
+            <span>Identitas Toko & Struk</span>
+          </button>
+        </div>
+
+        <div class="header-stats-quick">
+          <span class="quick-label">Kasir Bertugas:</span>
+          <strong class="quick-value" id="quickCashierName">Memuat...</strong>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="exec-workspace">
+      <!-- ===================================================================
+           TAB 1: CASHFLOW & ANTI-FRAUD INTELLIGENCE
+           =================================================================== -->
+      <section class="exec-section active" id="tab-cashflow">
+        <!-- 4 Premium KPI Metric Cards -->
+        <div class="kpi-grid-modern">
+          <!-- Card 1: Cash in Drawer -->
+          <div class="kpi-card-v2 kpi-emerald">
+            <div class="kpi-v2-top">
+              <span class="kpi-v2-label">Uang Tunai di Laci Kasir (Fisik)</span>
+              <span class="kpi-badge-icon">💵</span>
+            </div>
+            <div class="kpi-v2-main" id="kpiCashDrawer">Rp 0</div>
+            <div class="kpi-v2-sub">
+              <span class="sub-dot green"></span>
+              <span id="kpiDrawerStatus">Modal + Penjualan Tunai</span>
+            </div>
+          </div>
+
+          <!-- Card 2: Total Omset -->
+          <div class="kpi-card-v2 kpi-indigo">
+            <div class="kpi-v2-top">
+              <span class="kpi-v2-label">Total Omset Penjualan Hari Ini</span>
+              <span class="kpi-badge-icon">📈</span>
+            </div>
+            <div class="kpi-v2-main" id="kpiRevenueToday">Rp 0</div>
+            <div class="kpi-v2-sub">
+              <span id="kpiOrdersCount">0 Nota Selesai</span>
+            </div>
+          </div>
+
+          <!-- Card 3: Non-Cash QRIS / Transfer -->
+          <div class="kpi-card-v2 kpi-blue">
+            <div class="kpi-v2-top">
+              <span class="kpi-v2-label">Uang Non-Tunai (QRIS & Transfer)</span>
+              <span class="kpi-badge-icon">📱</span>
+            </div>
+            <div class="kpi-v2-main" id="kpiNonCash">Rp 0</div>
+            <div class="kpi-v2-sub">
+              <span>Langsung ke Rekening Bank Toko</span>
+            </div>
+          </div>
+
+          <!-- Card 4: Void & Pembatalan -->
+          <div class="kpi-card-v2 kpi-rose">
+            <div class="kpi-v2-top">
+              <span class="kpi-v2-label">Transaksi Dibatalkan</span>
+              <span class="kpi-badge-icon">🛑</span>
+            </div>
+            <div class="kpi-v2-main" id="kpiVoidAmount">Rp 0</div>
+            <div class="kpi-v2-sub text-danger" id="kpiVoidCount">
+              0 Transaksi dibatalkan
+            </div>
+          </div>
+        </div>
+
+        <!-- Radar Peringatan Stok Menipis & Kulakan -->
+        <div class="exec-card low-stock-radar-card" id="radarLowStock" style="display:none;">
+          <div class="exec-card-head">
+            <div class="head-left">
+              <span class="stock-pulse-indicator" id="lowStockIndicatorDot"></span>
+              <div>
+                <h2 class="exec-card-title">⚠️ Radar Peringatan Stok Menipis & Perlu Kulakan</h2>
+                <p class="exec-card-subtitle">Komoditas yang berada di bawah ambang batas minimum stok toko. Segera lakukan kulakan agar operasional penjualan lancar.</p>
+              </div>
+            </div>
+            <div class="head-right">
+              <span class="stock-summary-badge" id="lowStockSummaryBadge">0 Komoditas Perlu Restock</span>
+            </div>
+          </div>
+          <div class="low-stock-items-grid" id="lowStockItemsList">
+            <!-- Populated via owner.js -->
+          </div>
+        </div>
+
+        <!-- Anti-Fraud Anomaly Radar Card -->
+        <div class="exec-card fraud-radar-card">
+          <div class="exec-card-head">
+            <div class="head-left">
+              <span class="radar-indicator-dot" id="radarIndicatorDot"></span>
+              <div>
+                <h2 class="exec-card-title">Deteksi Anomali Penjualan (Anti-Manipulasi Harga)</h2>
+                <p class="exec-card-subtitle">Mencegah kasir menjual dengan harga eceran mahal tapi diinput harga grosir murah untuk mengantongi selisih uang.</p>
+              </div>
+            </div>
+            <div class="head-right">
+              <span class="risk-badge normal" id="anomalyStatusBadge">🟢 RISIKO RENDAH</span>
+            </div>
+          </div>
+
+          <div class="radar-meter-section">
+            <div class="meter-labels">
+              <div class="meter-col">
+                <span class="legend-color-box retail"></span>
+                <span class="meter-name">Penjualan Eceran:</span>
+                <strong class="meter-percent" id="txtRetailRatio">0%</strong>
+              </div>
+              <div class="meter-col">
+                <span class="legend-color-box reseller"></span>
+                <span class="meter-name">Penjualan Grosir/Reseller:</span>
+                <strong class="meter-percent text-blue" id="txtResellerRatio">0%</strong>
+              </div>
+            </div>
+
+            <div class="meter-track-multi">
+              <div class="meter-fill-retail" id="anomalyProgressFill" style="width: 50%;"></div>
+            </div>
+
+            <div class="meter-insight-box" id="anomalyExplanation">
+              <p>Memuat analisis anomali toko...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Columns: Shift Reconciliation & Waste Log -->
+        <div class="exec-two-columns">
+          <!-- Left: Shift History & Cash Shortages -->
+          <div class="exec-card">
+            <div class="exec-card-head compact">
+              <div>
+                <h3 class="exec-card-title">Rekonsiliasi Tutup Kasir (Blind Drop)</h3>
+                <p class="exec-card-subtitle">Mencocokkan uang fisik yang disetor kasir dengan saldo sistem.</p>
+              </div>
+            </div>
+
+            <div class="exec-list-group" id="shiftListContainer">
+              <div class="loading-placeholder">Memuat data shift...</div>
+            </div>
+          </div>
+
+          <!-- Right: Waste & Spoilage Log -->
+          <div class="exec-card">
+            <div class="exec-card-head compact">
+              <div>
+                <h3 class="exec-card-title">Barang Susut & Busuk Hari Ini</h3>
+                <p class="exec-card-subtitle">Catatan pemotongan stok umbi yang rusak/berjamur.</p>
+              </div>
+            </div>
+
+            <div class="exec-list-group" id="wasteListContainer">
+              <div class="loading-placeholder">Belum ada catatan barang susut hari ini.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB: LAPORAN PENJUALAN & EKSPOR DATA (SALES & PROFIT REPORT)
+           =================================================================== -->
+      <section class="exec-section" id="tab-reports" style="display:none;">
+        <div class="exec-card full-width">
+          <!-- Controls Header & Date Filter -->
+          <div class="exec-card-head wrap">
+            <div class="head-left">
+              <div>
+                <h2 class="exec-card-title">Laporan Rekapitulasi Penjualan & Laba Bersih</h2>
+                <p class="exec-card-subtitle">Analisis omzet toko, margin laba kotor per komoditas, performa kasir, dan ekspor data pembukuan.</p>
+              </div>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="header-action-buttons">
+              <button class="btn-action-emerald" id="btnExportCSV">
+                <span class="btn-icon">📥</span> Ekspor Excel (.CSV)
+              </button>
+              <button class="btn-action-primary" id="btnPrintReportPDF">
+                <span class="btn-icon">🖨️</span> Cetak Rekap (PDF)
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter Bar: Quick Preset Chips & Custom Date Picker -->
+          <div class="report-filter-bar">
+            <div class="preset-filter-group" id="reportPresetGroup">
+              <span class="filter-group-lbl">Periode:</span>
+              <button class="btn-period-chip active" data-period="today">Hari Ini</button>
+              <button class="btn-period-chip" data-period="yesterday">Kemarin</button>
+              <button class="btn-period-chip" data-period="7days">7 Hari Terakhir</button>
+              <button class="btn-period-chip" data-period="this_month">Bulan Ini</button>
+              <button class="btn-period-chip" data-period="last_month">Bulan Lalu</button>
+            </div>
+
+            <div class="custom-date-inputs">
+              <div class="date-input-wrap">
+                <label>Dari:</label>
+                <input type="date" id="repStartDate" class="input-date">
+              </div>
+              <div class="date-input-wrap">
+                <label>Sampai:</label>
+                <input type="date" id="repEndDate" class="input-date">
+              </div>
+              <div class="date-input-wrap">
+                <label>Metode:</label>
+                <select id="repPaymentFilter" class="select-filter">
+                  <option value="all">Semua Pembayaran</option>
+                  <option value="cash">💵 Tunai (Cash)</option>
+                  <option value="qris">📱 QRIS</option>
+                  <option value="transfer">🏦 Transfer Bank</option>
+                </select>
+              </div>
+              <button class="btn-filter-apply" id="btnApplyReportFilter">🔍 Tampilkan</button>
+            </div>
+          </div>
+
+          <!-- 4 Executive KPI Cards -->
+          <div class="kpi-grid-modern" style="margin-top: 18px;">
+            <!-- Card 1: Total Revenue -->
+            <div class="kpi-card-v2 kpi-emerald">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Total Omzet Penjualan</span>
+                <span class="kpi-badge-icon">💰</span>
+              </div>
+              <div class="kpi-v2-main" id="repKpiRevenue">Rp 0</div>
+              <div class="kpi-v2-sub">
+                <span id="repKpiOrdersCount">0 Nota Selesai</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Gross Profit -->
+            <div class="kpi-card-v2 kpi-blue">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Estimasi Keuntungan (Laba Kotor)</span>
+                <span class="kpi-badge-icon">📈</span>
+              </div>
+              <div class="kpi-v2-main" id="repKpiProfit">Rp 0</div>
+              <div class="kpi-v2-sub text-success font-bold">
+                <span id="repKpiMargin">Margin 0% dari Omzet</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Total COGS (HPP / Modal) -->
+            <div class="kpi-card-v2 kpi-amber">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Total Modal Kulakan (HPP)</span>
+                <span class="kpi-badge-icon">📦</span>
+              </div>
+              <div class="kpi-v2-main" id="repKpiCogs">Rp 0</div>
+              <div class="kpi-v2-sub">
+                <span id="repKpiKgSold">0.00 kg Komoditas Terjual</span>
+              </div>
+            </div>
+
+            <!-- Card 4: Susut & Pembatalan -->
+            <div class="kpi-card-v2 kpi-rose">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Barang Susut & Dibatalkan</span>
+                <span class="kpi-badge-icon">📉</span>
+              </div>
+              <div class="kpi-v2-main" id="repKpiLoss">Rp 0</div>
+              <div class="kpi-v2-sub text-danger">
+                <span id="repKpiLossDetail">0 kg busuk • 0 nota batal</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary Grid: Top Products Ranking & Payment Breakdown -->
+          <div class="report-secondary-grid">
+            <!-- Left: Top Products -->
+            <div class="report-subcard">
+              <div class="subcard-header">
+                <h3>🏆 Komoditas Paling Laris & Menguntungkan</h3>
+                <span class="subcard-tag">Ranking Penjualan</span>
+              </div>
+              <div class="table-responsive-clean">
+                <table class="report-table">
+                  <thead>
+                    <tr>
+                      <th>Komoditas</th>
+                      <th class="text-right">Kuantiti</th>
+                      <th class="text-right">Omzet</th>
+                      <th class="text-right">Laba Kotor</th>
+                    </tr>
+                  </thead>
+                  <tbody id="repTopProductsBody">
+                    <tr><td colspan="4" class="text-center">Memuat data komoditas...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right: Payment Methods Breakdown -->
+            <div class="report-subcard">
+              <div class="subcard-header">
+                <h3>💳 Arus Pembayaran Diterima</h3>
+                <span class="subcard-tag">Metode Pembayaran</span>
+              </div>
+              <div class="payment-method-bars">
+                <div class="pay-stat-row">
+                  <div class="pay-stat-info">
+                    <span class="pay-stat-icon">💵</span>
+                    <span class="pay-stat-name">Tunai (Cash di Laci)</span>
+                  </div>
+                  <strong class="pay-stat-val" id="repPayCash">Rp 0</strong>
+                </div>
+                <div class="pay-stat-row">
+                  <div class="pay-stat-info">
+                    <span class="pay-stat-icon">📱</span>
+                    <span class="pay-stat-name">QRIS Dompet Digital</span>
+                  </div>
+                  <strong class="pay-stat-val" id="repPayQris">Rp 0</strong>
+                </div>
+                <div class="pay-stat-row">
+                  <div class="pay-stat-info">
+                    <span class="pay-stat-icon">🏦</span>
+                    <span class="pay-stat-name">Transfer Bank</span>
+                  </div>
+                  <strong class="pay-stat-val" id="repPayTransfer">Rp 0</strong>
+                </div>
+                <div class="pay-stat-divider"></div>
+                <div class="pay-stat-row total-highlight">
+                  <span class="font-bold">Rata-rata Belanja per Nota:</span>
+                  <span class="font-bold text-primary" id="repAvgBasket">Rp 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Orders List -->
+          <div class="report-subcard full-width" style="margin-top: 18px;">
+            <div class="subcard-header">
+              <h3>📋 Rincian Transaksi Penjualan pada Periode Ini</h3>
+              <span class="subcard-tag" id="repOrdersCountBadge">0 Transaksi</span>
+            </div>
+            <div class="table-responsive-clean">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>No. Nota</th>
+                    <th>Waktu</th>
+                    <th>Kasir</th>
+                    <th>Pembeli</th>
+                    <th>Metode</th>
+                    <th class="text-right">Total Belanja</th>
+                    <th class="text-right">Modal (HPP)</th>
+                    <th class="text-right">Laba Kotor</th>
+                    <th class="text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="repOrdersTableBody">
+                  <tr><td colspan="9" class="text-center">Memuat daftar transaksi...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+
+            <!-- ===================================================================
+           TAB: BUKU PIUTANG & KASBON (TEMPO MANAGEMENT)
+           =================================================================== -->
+      <section class="exec-section" id="tab-debts" style="display:none;">
+        <div class="exec-card full-width">
+          <!-- Controls Header -->
+          <div class="exec-card-head wrap">
+            <div class="head-left">
+              <div>
+                <h2 class="exec-card-title">Buku Piutang & Penjualan Tempo</h2>
+                <p class="exec-card-subtitle">Pantau sisa kasbon warung & reseller, tanggal jatuh tempo, dan pencatatan cicilan/pelunasan.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Executive KPI Cards -->
+          <div class="kpi-grid-modern" style="margin-top: 14px;">
+            <!-- Card 1: Total Sisa Piutang -->
+            <div class="kpi-card-v2 kpi-rose">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Total Sisa Piutang Toko</span>
+                <span class="kpi-badge-icon">⚠️</span>
+              </div>
+              <div class="kpi-v2-main text-danger" id="kpiTotalOutstanding">Rp 0</div>
+              <div class="kpi-v2-sub">
+                <span>Dari seluruh transaksi tempo aktif</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Lewat Jatuh Tempo -->
+            <div class="kpi-card-v2 kpi-amber">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Lewat Jatuh Tempo (Menunggak)</span>
+                <span class="kpi-badge-icon">🚨</span>
+              </div>
+              <div class="kpi-v2-main text-amber" id="kpiTotalOverdue">Rp 0</div>
+              <div class="kpi-v2-sub font-bold" id="badgeOverdueAlert" style="color: #dc2626; display: none;">
+                Perlu penagihan segera
+              </div>
+            </div>
+
+            <!-- Card 3: Pelanggan Aktif Tempo -->
+            <div class="kpi-card-v2 kpi-blue">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Pelanggan Aktif Kasbon</span>
+                <span class="kpi-badge-icon">👥</span>
+              </div>
+              <div class="kpi-v2-main" id="kpiTotalDebtors">0 Orang</div>
+              <div class="kpi-v2-sub">
+                <span>Warung & Reseller Terdaftar</span>
+              </div>
+            </div>
+
+            <!-- Card 4: Total Kasbon Ditagih -->
+            <div class="kpi-card-v2 kpi-emerald">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Total Kasbon Berhasil Ditagih</span>
+                <span class="kpi-badge-icon">💰</span>
+              </div>
+              <div class="kpi-v2-main text-success" id="kpiTotalPaidDebts">Rp 0</div>
+              <div class="kpi-v2-sub text-success font-bold">
+                <span>Uang tunai & transfer masuk</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter Bar -->
+          <div class="report-filter-bar" style="margin-top: 18px;">
+            <div class="preset-filter-group" id="debtPresetGroup">
+              <span class="filter-group-lbl">Status:</span>
+              <button class="btn-period-chip active" data-debt-status="all">Semua Kasbon</button>
+              <button class="btn-period-chip" data-debt-status="unpaid">⚠️ Belum Lunas</button>
+              <button class="btn-period-chip" data-debt-status="overdue">🚨 Lewat Jatuh Tempo</button>
+              <button class="btn-period-chip" data-debt-status="paid">✅ Lunas</button>
+            </div>
+
+            <div class="custom-date-inputs">
+              <div class="date-input-wrap" style="flex: 1;">
+                <input type="text" id="searchOwnerDebt" class="input-date" placeholder="🔍 Cari nama warung, telepon, atau no nota..." style="width: 280px; text-align: left;">
+              </div>
+              <button class="btn-filter-apply" id="btnRefreshOwnerDebts">🔄 Segarkan</button>
+            </div>
+          </div>
+
+          <!-- Debts Table -->
+          <div class="table-card" style="margin-top: 16px;">
+            <div class="table-responsive">
+              <table class="report-table" id="ownerDebtsTable">
+                <thead>
+                  <tr>
+                    <th>No. Nota & Tgl</th>
+                    <th>Pelanggan</th>
+                    <th class="text-right">Total Kasbon</th>
+                    <th class="text-right">Sudah Dibayar</th>
+                    <th class="text-right">Sisa Hutang</th>
+                    <th class="text-center">Jatuh Tempo</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="ownerDebtsTableBody">
+                  <tr>
+                    <td colspan="8" class="text-center" style="padding: 30px;">Memuat data buku piutang...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 2: KOMODITAS & MARGIN LABA (REDESIGNED LUXURY CARDS)
+           =================================================================== -->
+      <section class="exec-section" id="tab-products" style="display:none;">
+        <div class="exec-card">
+          <!-- Controls Header -->
+          <div class="exec-card-head wrap">
+            <div class="search-filter-pack">
+              <div class="search-box-v2">
+                <span class="s-icon">🔍</span>
+                <input type="text" id="ownerSearchProd" placeholder="Cari komoditas (Kentang, Ubi, Bawang...)...">
+              </div>
+
+              <div class="category-chips" id="ownerCategoryChips">
+                <button class="chip-item active" data-cat="">Semua</button>
+                <button class="chip-item" data-cat="umbi">🥔 Umbi</button>
+                <button class="chip-item" data-cat="bumbu">🧅 Bumbu</button>
+                <button class="chip-item" data-cat="sayur">🥕 Sayur</button>
+                <button class="chip-item" data-cat="palawija">🥜 Palawija</button>
+                <button class="chip-item chip-alert" data-cat="low_stock" id="chipLowStock">⚠️ Perlu Kulakan (<span id="ownerLowStockChipCount">0</span>)</button>
+              </div>
+            </div>
+
+            <div class="header-action-buttons">
+              <button class="btn-action-primary" id="btnAddNewProduct">
+                <span class="btn-icon">✨</span> Tambah Komoditas
+              </button>
+              <button class="btn-action-emerald" id="btnRestockHeader">
+                <span class="btn-icon">📦</span> Kulakan / Masuk Stok
+              </button>
+            </div>
+          </div>
+
+          <!-- Product Grid Cards (Replaced Cramped Table) -->
+          <div class="products-card-container" id="productsCardsGrid">
+            <div class="loading-placeholder">Memuat daftar komoditas...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 3: AUDIT TRAIL TIMELINE (CLEAN HUMAN-READABLE LOGS)
+           =================================================================== -->
+      <section class="exec-section" id="tab-audit" style="display:none;">
+        <div class="exec-card">
+          <div class="exec-card-head">
+            <div>
+              <h2 class="exec-card-title">Aktivitas & Log Keamanan Toko (Audit Trail)</h2>
+              <p class="exec-card-subtitle">Setiap peristiwa penting terekam otomatis dalam kalimat yang mudah dipahami.</p>
+            </div>
+            <div class="audit-actions">
+              <div class="filter-audit-wrap">
+                <select id="auditFilterType" class="select-audit-filter">
+                  <option value="ALL">Semua Aktivitas</option>
+                  <option value="VOID">Hanya Pembatalan Transaksi</option>
+                  <option value="SHORTAGE">Hanya Selisih Kasir</option>
+                  <option value="RESTOCK">Hanya Kulakan Stok</option>
+                  <option value="CASHIER">Aktivitas Kasir & PIN</option>
+                </select>
+              </div>
+              <button class="btn-refresh-pill" id="btnRefreshAudit">
+                🔄 Segarkan Log
+              </button>
+            </div>
+          </div>
+
+          <!-- Visual Activity Timeline -->
+          <div class="audit-timeline-container" id="auditTimelineContainer">
+            <div class="loading-placeholder">Memuat rekaman log aktivitas...</div>
+          </div>
+        </div>
+      </section>
+    
+      <!-- ===================================================================
+           TAB 4: KELOLA KASIR & PIN (CASHIER MANAGEMENT & SECURITY)
+           =================================================================== -->
+      <section class="exec-section" id="tab-cashiers" style="display:none;">
+        <div class="exec-card">
+          <!-- Controls Header -->
+          <div class="exec-card-head wrap">
+            <div class="head-left">
+              <div>
+                <h2 class="exec-card-title">Manajemen Akun Kasir & Hak Akses</h2>
+                <p class="exec-card-subtitle">Atur akun kasir toko, reset PIN jika kasir lupa kode akses, atau aktifkan/nonaktifkan status akun.</p>
+              </div>
+            </div>
+
+            <div class="header-action-buttons">
+              <button class="btn-action-primary" id="btnAddNewCashier">
+                <span class="btn-icon">👤+</span> Tambah Kasir Baru
+              </button>
+            </div>
+          </div>
+
+          <!-- Cashiers Grid Cards -->
+          <div class="cashier-cards-container" id="cashierCardsGrid">
+            <div class="loading-placeholder">Memuat data akun kasir...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 7: PENGATURAN IDENTITAS TOKO & FOOTER STRUK
+           =================================================================== -->
+      <section class="exec-section" id="tab-settings" style="display:none;">
+        <div class="settings-workspace-grid">
+          <!-- Left Column: Settings Form -->
+          <div class="settings-form-column">
+            <!-- Card 1: Store Identity & Receipt Customization -->
+            <div class="exec-card settings-card">
+              <div class="exec-card-head">
+                <div class="head-left">
+                  <span class="settings-icon-badge">🏪</span>
+                  <div>
+                    <h2 class="exec-card-title">Identitas Toko & Kustomisasi Struk Thermal</h2>
+                    <p class="exec-card-subtitle">Atur nama toko, alamat kios pasar, kontak resmi, dan catatan kaki pada struk belanja.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-form-body">
+                <div class="form-group">
+                  <label class="field-label">Nama Toko / Usaha:</label>
+                  <input type="text" id="setStoreName" class="input-modern font-bold" placeholder="Misal: TOKO UMBI JAYA">
+                  <small class="field-hint">Akan tampil di kop atas struk dan dashboard kasir.</small>
+                </div>
+
+                <div class="form-group">
+                  <label class="field-label">Slogan / Kategori Komoditas:</label>
+                  <input type="text" id="setStoreTagline" class="input-modern" placeholder="Misal: Pusat Umbi, Bawang & Komoditas Pasar">
+                  <small class="field-hint">Keterangan spesialisasi usaha di bawah nama toko.</small>
+                </div>
+
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label class="field-label">Alamat Kios / Toko Pasar:</label>
+                    <input type="text" id="setStoreAddress" class="input-modern" placeholder="Misal: Pasar Induk Kramat Jati, Blok B No. 12-14">
+                  </div>
+                  <div class="form-group">
+                    <label class="field-label">Nomor Telepon / WhatsApp Toko:</label>
+                    <input type="text" id="setStorePhone" class="input-modern font-mono" placeholder="Misal: 0812-3456-7890">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="field-label">Catatan Kaki Struk Kasir (*Footer Receipt*):</label>
+                  <textarea id="setReceiptFooter" rows="3" class="input-modern textarea-modern" placeholder="Pesan terima kasih atau kebijakan toko (enter untuk baris baru)"></textarea>
+                  <small class="field-hint">Teks ini dicetak di bagian paling bawah setiap struk belanja pelanggan.</small>
+                </div>
+
+                <div class="settings-form-actions">
+                  <button class="btn-save-settings" id="btnSaveStoreSettings">
+                    💾 Simpan Identitas & Struk Toko
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Security & Owner PIN -->
+            <div class="exec-card settings-card security-card">
+              <div class="exec-card-head">
+                <div class="head-left">
+                  <span class="settings-icon-badge amber">🔒</span>
+                  <div>
+                    <h2 class="exec-card-title">Keamanan Akun Owner (Ganti PIN)</h2>
+                    <p class="exec-card-subtitle">Perbarui PIN keamanan login Owner agar akun selalu terlindungi.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-form-body">
+                <div class="form-grid-3" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+                  <div class="form-group">
+                    <label class="field-label">PIN Lama Saat Ini:</label>
+                    <input type="password" id="setOldOwnerPin" maxlength="6" inputmode="numeric" class="input-modern font-mono" placeholder="4-6 digit">
+                  </div>
+                  <div class="form-group">
+                    <label class="field-label">PIN Baru:</label>
+                    <input type="password" id="setNewOwnerPin" maxlength="6" inputmode="numeric" class="input-modern font-mono" placeholder="4-6 digit">
+                  </div>
+                  <div class="form-group">
+                    <label class="field-label">Konfirmasi PIN Baru:</label>
+                    <input type="password" id="setConfirmOwnerPin" maxlength="6" inputmode="numeric" class="input-modern font-mono" placeholder="Ulangi PIN baru">
+                  </div>
+                </div>
+
+                <div class="settings-form-actions">
+                  <button class="btn-update-pin" id="btnChangeOwnerPin">
+                    🔒 Perbarui PIN Owner
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Live Interactive Thermal Receipt Preview -->
+          <div class="settings-preview-column">
+            <div class="exec-card receipt-preview-card">
+              <div class="exec-card-head compact">
+                <div>
+                  <h3 class="exec-card-title">🖨️ Pratinjau Struk Thermal (Live Preview)</h3>
+                  <p class="exec-card-subtitle">Simulasi tampilan struk cetak kasir yang otomatis update mengikuti ketikan Anda.</p>
+                </div>
+              </div>
+
+              <div class="receipt-paper-wrapper">
+                <div class="receipt-paper-simulation" id="liveReceiptPreview">
+                  <!-- Rendered dynamically via owner.js -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: Tambah Komoditas Baru -->
+  <div class="modal-backdrop" id="modalNewProduct" style="display:none;">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge blue">✨</span>
+          <div>
+            <h2>Tambah Komoditas Baru</h2>
+            <p class="modal-subtitle">Daftarkan produk baru ke etalase toko dan sistem POS kasir.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalNewProduct">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid-2">
+          <div class="form-group flex-2">
+            <label class="field-label">Nama Komoditas:</label>
+            <input type="text" id="inpProdName" placeholder="Contoh: Talas Bogor Super" class="input-modern">
+          </div>
+          <div class="form-group flex-1">
+            <label class="field-label">Pilih Icon Komoditas:</label>
+            <select id="inpProdEmoji" class="input-modern select-emoji">
+              <option value="🥔" selected>🥔 Kentang</option>
+              <option value="🍠">🍠 Ubi / Singkong</option>
+              <option value="🧅">🧅 Bawang Merah / Bombai</option>
+              <option value="🧄">🧄 Bawang Putih</option>
+              <option value="🥕">🥕 Wortel</option>
+              <option value="🥜">🥜 Kacang Tanah</option>
+              <option value="🌽">🌽 Jagung</option>
+              <option value="🌶️">🌶️ Cabai / Lombok</option>
+              <option value="🍅">🍅 Tomat</option>
+              <option value="🥒">🥒 Mentimun</option>
+              <option value="🌿">🌿 Jahe / Kencur / Rempah</option>
+              <option value="🥬">🥬 Sayuran Hijau</option>
+              <option value="🍄">🍄 Jamur</option>
+              <option value="📦">📦 Karungan / Kemasan</option>
+              <option value="🌾">🌾 Beras / Hasil Bumi</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="field-label">Kategori Komoditas:</label>
+            <select id="inpProdCategory" class="input-modern">
+              <option value="umbi">🥔 Umbi-umbian</option>
+              <option value="bumbu">🧅 Bumbu Pasar</option>
+              <option value="sayur">🥕 Sayuran</option>
+              <option value="palawija">🥜 Palawija</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="field-label">Satuan Timbangan:</label>
+            <select id="inpProdUnit" class="input-modern">
+              <option value="kg">Kilogram (kg)</option>
+              <option value="karung">Karung (Sak)</option>
+              <option value="ikat">Ikat</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Pricing Tier Box -->
+        <div class="modal-pricing-box">
+          <div class="box-head">
+            <span class="box-tag">SKEMA HARGA BERTINGKAT</span>
+            <small class="box-hint">Kasir biasa DIBLOKIR dari melihat harga modal</small>
+          </div>
+
+          <div class="form-group">
+            <label class="field-label">Harga Modal / Kulakan (Rp):</label>
+            <input type="text" inputmode="numeric" id="inpProdCost" class="input-modern font-mono" placeholder="Misal: 10.000 atau 10rb">
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="field-label">Harga Eceran (Rp):</label>
+              <input type="text" inputmode="numeric" id="inpProdRetail" class="input-modern font-mono" placeholder="Misal: 15.000 atau 15rb">
+            </div>
+            <div class="form-group">
+              <label class="field-label">Harga Grosir / Reseller (Rp):</label>
+              <input type="text" inputmode="numeric" id="inpProdReseller" class="input-modern font-mono highlight-green" placeholder="Misal: 12.500 atau 12.5k">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-3" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="field-label">Minimal Grosir (Kg):</label>
+            <input type="number" id="inpProdMinQty" value="10" step="1" class="input-modern">
+          </div>
+          <div class="form-group">
+            <label class="field-label">Stok Awal (Kg):</label>
+            <input type="number" id="inpProdStock" value="50" step="1" class="input-modern">
+          </div>
+          <div class="form-group">
+            <label class="field-label">Batas Peringatan (Kg):</label>
+            <input type="number" id="inpProdMinAlert" value="15" step="1" class="input-modern" placeholder="Default 15 kg">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-footer-secondary" id="btnCancelModalNewProduct">Batal</button>
+        <button class="btn-footer-primary" id="btnSaveModalNewProduct">Simpan Komoditas ke Katalog</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Tambah Stok / Kulakan -->
+  <div class="modal-backdrop" id="modalRestock" style="display:none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge emerald">📦</span>
+          <div>
+            <h2>Kulakan / Tambah Stok</h2>
+            <p class="modal-subtitle">Tambah stok barang masuk dari petani / pasar.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalRestock">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="field-label">Pilih Komoditas:</label>
+          <select id="inpRestockProductSelect" class="input-modern"></select>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Stok Saat Ini:</label>
+          <input type="text" id="inpRestockCurrentStock" readonly class="input-modern readonly">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Jumlah Berat Masuk (Kg):</label>
+          <input type="number" id="inpRestockQty" class="input-modern font-mono large-focus" step="0.5" min="0.5" placeholder="Contoh: 100">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Harga Modal/Kulakan Baru (Rp/kg - Opsional):</label>
+          <input type="text" inputmode="numeric" id="inpRestockCost" class="input-modern font-mono" placeholder="Kosongkan jika modal tetap (atau misal 12.000)">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Catatan Supplier / Asal Karung:</label>
+          <input type="text" id="inpRestockNotes" class="input-modern" placeholder="Misal: Kiriman 2 karung Petani Garut">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-footer-secondary" id="btnCancelModalRestock">Batal</button>
+        <button class="btn-footer-emerald" id="btnSaveModalRestock">Simpan & Tambah Stok</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Edit Harga Komoditas -->
+  <div class="modal-backdrop" id="modalEditPrice" style="display:none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge amber">✏️</span>
+          <div>
+            <h2>Edit Harga & Ambang Grosir</h2>
+            <p class="modal-subtitle">Ubah harga modal dan harga jual komoditas.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalEditPrice">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editPriceProdId">
+        <div class="form-group">
+          <label class="field-label">Komoditas:</label>
+          <input type="text" id="editPriceProdName" readonly class="input-modern readonly font-bold">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Harga Modal / Kulakan (Rp):</label>
+          <input type="text" inputmode="numeric" id="editPriceCost" class="input-modern font-mono">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Harga Eceran (Rp):</label>
+          <input type="text" inputmode="numeric" id="editPriceRetail" class="input-modern font-mono">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Harga Grosir / Reseller (Rp):</label>
+          <input type="text" inputmode="numeric" id="editPriceReseller" class="input-modern font-mono highlight-green">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Minimal Kuantiti Grosir (Kg):</label>
+          <input type="number" id="editPriceMinQty" step="0.5" class="input-modern">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Batas Minimum Peringatan Stok / Alert (Kg):</label>
+          <input type="number" id="editPriceMinAlert" step="1" class="input-modern font-mono" placeholder="Default 15 kg">
+          <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">Jika stok komoditas di bawah angka ini, radar peringatan akan aktif.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-footer-secondary" id="btnCancelModalEditPrice">Batal</button>
+        <button class="btn-footer-primary" id="btnSaveModalEditPrice">Simpan Perubahan Harga</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  
+  <!-- MODAL: Tambah Kasir Baru -->
+  <div class="modal-backdrop" id="modalAddCashier" style="display:none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge blue">👤</span>
+          <div>
+            <h2>Tambah Kasir Baru</h2>
+            <p class="modal-subtitle">Daftarkan akun kasir baru untuk bertugas di toko.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalAddCashier">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="field-label">Nama Lengkap Kasir:</label>
+          <input type="text" id="inpCashierName" class="input-modern" placeholder="Contoh: Budi Santoso" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Username (Untuk Login / Catatan Shift):</label>
+          <input type="text" id="inpCashierUsername" class="input-modern font-mono" placeholder="Contoh: budi / kasir2" autocomplete="off">
+          <small class="field-hint">Hanya huruf kecil dan angka tanpa spasi.</small>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Role / Peran Pengguna:</label>
+          <select id="inpCashierRole" class="input-modern">
+            <option value="cashier" selected>👤 Kasir Toko (Otoritas Terbatas)</option>
+            <option value="owner">👑 Owner / Pemilik (Akses Penuh)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="field-label">PIN Login Awal (4 - 6 Digit Angka):</label>
+          <input type="password" id="inpCashierPin" class="input-modern font-mono" maxlength="6" placeholder="Misal: 112233" autocomplete="new-password">
+          <small class="field-hint">Gunakan angka yang mudah diingat kasir bersangkutan.</small>
+        </div>
+
+        <div class="security-notice-box">
+          <div class="sec-notice-head">
+            <span class="sec-icon">🛡️</span>
+            <strong>Protokol Keamanan Kasir Toko</strong>
+          </div>
+          <ul class="sec-notice-list">
+            <li>Kasir <strong>DIBLOKIR</strong> melihat saldo kas sebenarnya di laci (Blind Drop saat tutup kasir).</li>
+            <li>Kasir <strong>TIDAK BISA</strong> membatalkan nota tanpa izin & PIN Owner.</li>
+            <li>Kasir <strong>TIDAK BISA</strong> melihat harga modal atau margin keuntungan toko.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-footer-secondary" id="btnCancelModalAddCashier">Batal</button>
+        <button class="btn-footer-primary" id="btnSaveModalAddCashier">Daftarkan Akun Kasir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Reset PIN Kasir -->
+  <div class="modal-backdrop" id="modalResetPin" style="display:none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge amber">🔑</span>
+          <div>
+            <h2>Ganti / Reset PIN Kasir</h2>
+            <p class="modal-subtitle">Atur ulang kode PIN akses kasir jika lupa atau ganti shift.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalResetPin">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="resetPinUserId">
+        <div class="form-group">
+          <label class="field-label">Nama Kasir:</label>
+          <input type="text" id="resetPinUserName" readonly class="input-modern readonly font-bold">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Username:</label>
+          <input type="text" id="resetPinUserUsername" readonly class="input-modern readonly font-mono">
+        </div>
+        <div class="form-group">
+          <label class="field-label">PIN Baru (4 - 6 Digit Angka):</label>
+          <input type="password" id="resetPinNewPin" class="input-modern font-mono" maxlength="6" placeholder="Masukkan 4-6 digit angka baru" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Konfirmasi PIN Baru:</label>
+          <input type="password" id="resetPinConfirmPin" class="input-modern font-mono" maxlength="6" placeholder="Ulangi 4-6 digit PIN baru" autocomplete="new-password">
+        </div>
+        <div class="hint-box-amber">
+          <span>⚠️</span>
+          <span>PIN baru akan langsung berlaku untuk login kasir dan membuka shift berikutnya.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-footer-secondary" id="btnCancelModalResetPin">Batal</button>
+        <button class="btn-footer-primary" id="btnSaveModalResetPin">Simpan PIN Baru</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script type="module" src="/src/owner.js"></script>
+
+  <!-- MODAL: Cetak Laporan Penjualan (Print / PDF Preview) -->
+  <div class="modal-backdrop" id="modalPrintReport" style="display:none;">
+    <div class="modal-dialog modal-lg print-dialog">
+      <div class="modal-header no-print">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge blue">🖨️</span>
+          <div>
+            <h2>Pratinjau Cetak Laporan Penjualan</h2>
+            <p class="modal-subtitle">Format cetak standar resmi siap print atau simpan sebagai PDF.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalPrintReport">✕</button>
+      </div>
+
+      <div class="modal-body print-modal-body" id="printReportContainer">
+        <!-- Printable Document Area -->
+        <div class="printable-document">
+          <div class="print-header">
+            <h1 class="print-store-name">TOKO UMBI JAYA</h1>
+            <p class="print-store-tag">Pusat Grosir & Eceran Umbi, Bawang, Sayur & Komoditas Hasil Bumi</p>
+            <div class="print-divider"></div>
+            <h2 class="print-doc-title">LAPORAN REKAPITULASI PENJUALAN & LABA KOTOR</h2>
+            <p class="print-period-text" id="printPeriodText">Periode: 15/10/2026 s/d 15/10/2026</p>
+          </div>
+
+          <!-- Print Summary Table -->
+          <table class="print-summary-table">
+            <tr>
+              <td class="lbl">Total Omzet Penjualan:</td>
+              <td class="val highlight" id="printTotalRevenue">Rp 0</td>
+              <td class="lbl">Total Modal (HPP):</td>
+              <td class="val" id="printTotalCogs">Rp 0</td>
+            </tr>
+            <tr>
+              <td class="lbl">Total Laba Kotor (Profit):</td>
+              <td class="val highlight-green" id="printGrossProfit">Rp 0</td>
+              <td class="lbl">Margin Keuntungan:</td>
+              <td class="val" id="printMargin">0%</td>
+            </tr>
+            <tr>
+              <td class="lbl">Jumlah Nota Transaksi:</td>
+              <td class="val" id="printTotalOrders">0 Nota</td>
+              <td class="lbl">Total Komoditas Terjual:</td>
+              <td class="val" id="printTotalKg">0.00 kg</td>
+            </tr>
+            <tr>
+              <td class="lbl">Tunai (Cash):</td>
+              <td class="val" id="printCash">Rp 0</td>
+              <td class="lbl">QRIS & Transfer:</td>
+              <td class="val" id="printNonCash">Rp 0</td>
+            </tr>
+            <tr>
+              <td class="lbl">Nota Dibatalkan (Void):</td>
+              <td class="val text-danger" id="printVoid">0 Nota (Rp 0)</td>
+              <td class="lbl">Kerugian Barang Susut:</td>
+              <td class="val text-danger" id="printWaste">0 kg (Rp 0)</td>
+            </tr>
+          </table>
+
+          <!-- Print Top Products Table -->
+          <div class="print-section-title">KOMODITAS TERLARIS PADA PERIODE INI</div>
+          <table class="print-detail-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Nama Komoditas</th>
+                <th class="text-right">Kg Terjual</th>
+                <th class="text-right">Total Omzet</th>
+                <th class="text-right">Total Modal</th>
+                <th class="text-right">Laba Kotor</th>
+              </tr>
+            </thead>
+            <tbody id="printTopProductsBody">
+              <tr><td colspan="6" class="text-center">-</td></tr>
+            </tbody>
+          </table>
+
+          <!-- Print Detailed Orders Table -->
+          <div class="print-section-title">RINCIAN NOTA TRANSAKSI</div>
+          <table class="print-detail-table">
+            <thead>
+              <tr>
+                <th>No. Nota</th>
+                <th>Waktu</th>
+                <th>Kasir</th>
+                <th>Pembeli</th>
+                <th>Metode</th>
+                <th class="text-right">Total Belanja</th>
+                <th class="text-right">Laba Kotor</th>
+                <th class="text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody id="printOrdersBody">
+              <tr><td colspan="8" class="text-center">-</td></tr>
+            </tbody>
+          </table>
+
+          <!-- Signatures -->
+          <div class="print-signature-grid">
+            <div class="sig-box">
+              <p>Dibuat Oleh (Kasir / Petugas):</p>
+              <div class="sig-space"></div>
+              <p class="sig-name">( ........................................ )</p>
+            </div>
+            <div class="sig-box">
+              <p>Mengetahui (Owner Toko):</p>
+              <div class="sig-space"></div>
+              <p class="sig-name">( Pak Haji / Owner )</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer no-print">
+        <button class="btn-secondary" id="btnCancelModalPrintReport">Tutup Pratinjau</button>
+        <button class="btn-primary" id="btnExecutePrint">🖨️ Cetak Dokumen / Simpan PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Catat Pembayaran Piutang (Owner) -->
+  <div class="modal-backdrop" id="modalOwnerPayDebt" style="display:none; z-index: 10005;">
+    <div class="modal-dialog modal-md" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge emerald" style="font-size: 24px; padding: 8px 12px; background: rgba(16, 185, 129, 0.2); border-radius: 10px;">💵</span>
+          <div>
+            <h2>Catat Pembayaran Kasbon</h2>
+            <p class="modal-subtitle" id="ownerPayDebtSubtitle">Pelanggan</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseOwnerPayDebt">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bill-summary-banner" style="margin-bottom: 14px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 16px; text-align: center;">
+          <span class="banner-label" style="display: block; font-size: 12px; color: #cbd5e1;">Sisa Hutang Saat Ini:</span>
+          <span class="banner-amount text-amber" id="ownerPayDebtRemainingText" style="font-size: 24px; font-weight: 800; color: #f59e0b;">Rp 0</span>
+        </div>
+
+        <div class="debt-pay-mode-chips" style="display: flex; gap: 8px; margin-bottom: 14px;">
+          <button class="btn-choice-chip active" id="btnOwnerPayFull" type="button" style="flex: 1; padding: 8px; border-radius: 6px; font-weight: 600; cursor: pointer; background: #10b981; color: #fff; border: none;">✅ Lunasi Semua</button>
+          <button class="btn-choice-chip" id="btnOwnerPayPartial" type="button" style="flex: 1; padding: 8px; border-radius: 6px; font-weight: 600; cursor: pointer; background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15);">🪙 Bayar Cicilan</button>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="field-label" style="font-size: 12px; color: #cbd5e1; display: block; margin-bottom: 4px;">Nominal Pembayaran Diterima (Rp):</label>
+          <input type="text" inputmode="numeric" id="ownerPayAmountInput" class="input-huge font-mono" placeholder="Rp 0" style="width: 100%; height: 46px; font-size: 20px; font-weight: 700; text-align: right; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; color: #34d399; padding: 0 14px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="field-label" style="font-size: 12px; color: #cbd5e1; display: block; margin-bottom: 4px;">Metode Pembayaran:</label>
+          <select id="ownerPayMethodSelect" class="input-modern" style="width: 100%; height: 40px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; padding: 0 10px;">
+            <option value="cash">💵 Uang Tunai (Cash)</option>
+            <option value="transfer" selected>🏦 Transfer Bank (BCA/Mandiri/BRI)</option>
+            <option value="qris">📱 QRIS</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 6px;">
+          <label class="field-label" style="font-size: 12px; color: #cbd5e1; display: block; margin-bottom: 4px;">Catatan Pembayaran (Opsional):</label>
+          <input type="text" id="ownerPayNotesInput" class="input-modern" placeholder="Misal: Transfer M-Banking / Titip Supir" style="width: 100%; height: 38px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; padding: 0 10px;">
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
+        <button class="btn-secondary" id="btnCancelOwnerPayDebt" style="padding: 8px 18px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; cursor: pointer;">Batal</button>
+        <button class="btn-primary" id="btnSubmitOwnerPayDebt" style="padding: 8px 20px; border-radius: 8px; background: #10b981; border: none; color: #fff; font-weight: 700; cursor: pointer;">Simpan Pembayaran</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Rincian Piutang & Riwayat Pembayaran (Owner) -->
+  <div class="modal-backdrop" id="modalOwnerDebtDetail" style="display:none; z-index: 10004;">
+    <div class="modal-dialog modal-md" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge amber" style="font-size: 24px; padding: 8px 12px; background: rgba(245, 158, 11, 0.2); border-radius: 10px;">📋</span>
+          <div>
+            <h2>Riwayat Pembayaran Kasbon</h2>
+            <p class="modal-subtitle" id="debtDetailSubtitle">Rincian cicilan dan pelunasan</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseDebtDetail">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="debt-info-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div style="background: rgba(255,255,255,0.05); padding: 10px 14px; border-radius: 8px;">
+            <div style="font-size: 11px; color: #94a3b8;">Total Kasbon:</div>
+            <strong id="detailTotalKasbon" style="font-size: 16px; color: #f8fafc;">Rp 0</strong>
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.1); padding: 10px 14px; border-radius: 8px;">
+            <div style="font-size: 11px; color: #f59e0b;">Sisa Belum Dibayar:</div>
+            <strong id="detailRemainingKasbon" style="font-size: 16px; color: #f59e0b;">Rp 0</strong>
+          </div>
+        </div>
+
+        <h4 style="font-size: 13px; color: #cbd5e1; margin-bottom: 8px;">Riwayat Cicilan / Pelunasan:</h4>
+        <div class="table-responsive" style="max-height: 220px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.06); color: #94a3b8; text-align: left;">
+                <th style="padding: 8px 10px;">Waktu</th>
+                <th style="padding: 8px 10px; text-align: right;">Nominal</th>
+                <th style="padding: 8px 10px;">Metode</th>
+                <th style="padding: 8px 10px;">Penerima</th>
+                <th style="padding: 8px 10px;">Catatan</th>
+              </tr>
+            </thead>
+            <tbody id="debtDetailPaymentsBody">
+              <tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">Belum ada cicilan.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
+        <button class="btn-secondary" id="btnCloseDebtDetailFooter" style="padding: 8px 18px; border-radius: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; cursor: pointer;">Tutup</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
