@@ -10,7 +10,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
-        owner: resolve(import.meta.dirname, 'owner.html')
+        owner: resolve(import.meta.dirname, 'owner.html'),
+        cashier: resolve(import.meta.dirname, 'cashier.html')
       }
     }
   }

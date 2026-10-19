@@ -6192,12 +6192,10 @@ async function handleDeleteCashierExpense(id) {
 
 // -----------------------------------------------------------------------------
 // CASHIER DASHBOARD & DAILY BALANCING (REKONSILIASI KAS HARIAN)
+// Halaman Penuh Mandiri Khusus Kasir (/cashier.html)
 // -----------------------------------------------------------------------------
 async function openCashierDashboard() {
-  if (el.modalCashierDashboard) {
-    el.modalCashierDashboard.style.display = 'flex';
-  }
-  await refreshCashierDashboardData();
+  window.location.href = '/cashier.html';
 }
 
 async function refreshCashierDashboardData() {

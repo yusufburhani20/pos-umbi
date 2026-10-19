@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-touch-fullscreen" content="yes">
+  <title>Kassa POS - Dashboard Kasir & Rekonsiliasi Kas Harian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+  <link rel="stylesheet" href="/src/owner.css">
+  <link rel="manifest" href="/manifest.webmanifest?v=kassa2">
+  <meta name="theme-color" content="#064e3b">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-kassa-192.png?v=2">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-kassa-512.png?v=2">
+  <link rel="icon" type="image/svg+xml" href="/icon-kassa.svg?v=2">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-kassa-192.png?v=2">
+  <link rel="apple-touch-icon" sizes="512x512" href="/icon-kassa-512.png?v=2">
+  <style>
+    body.cashier-body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cashier-header {
+      background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
+      color: #ffffff;
+      padding: 12px 24px;
+      border-bottom: 2px solid #eab308;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .cashier-header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .cashier-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn-back-pos {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13.5px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-back-pos:hover {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: #ffffff;
+      transform: translateX(-2px);
+    }
+
+    .cashier-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cashier-brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin: 0;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+    }
+
+    .cashier-brand-sub {
+      font-size: 12px;
+      color: #a7f3d0;
+      margin: 2px 0 0;
+    }
+
+    .cashier-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .shift-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1.5px solid #10b981;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .shift-status-badge .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.15); }
+    }
+
+    .cashier-main-container {
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 20px 24px 80px;
+      box-sizing: border-box;
+      flex: 1;
+    }
+
+    .kpi-row-4col {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .c-kpi-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .c-kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.08);
+    }
+
+    .c-kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .c-kpi-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .c-kpi-val {
+      font-size: 22px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      display: block;
+      margin: 4px 0 2px;
+    }
+
+    .c-kpi-sub {
+      font-size: 12px;
+    }
+
+    .formula-banner {
+      background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
+      color: #ffffff;
+      border-radius: 14px;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      border: 1.5px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .formula-left-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #a7f3d0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .formula-math-text {
+      font-size: 13.5px;
+      color: #f1f5f9;
+      margin-top: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1.5;
+    }
+
+    .formula-right-val {
+      text-align: right;
+    }
+
+    .formula-right-label {
+      font-size: 11.5px;
+      color: #6ee7b7;
+      text-transform: uppercase;
+      font-weight: 700;
+      display: block;
+    }
+
+    .formula-total-number {
+      font-size: 30px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #34d399;
+      font-weight: 900;
+    }
+
+    .two-col-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .section-card {
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .section-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1.5px solid #f1f5f9;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-card-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-card-desc {
+      font-size: 12px;
+      color: #64748b;
+      margin: 2px 0 0;
+    }
+
+    .denom-table {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .denom-row-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #f1f5f9;
+      transition: background 0.15s ease;
+    }
+
+    .denom-row-item:hover {
+      background: #f1f5f9;
+    }
+
+    .denom-lbl {
+      width: 110px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .denom-input-ctrl {
+      width: 75px;
+      height: 38px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: #0f172a;
+      transition: all 0.15s ease;
+    }
+
+    .denom-input-ctrl:focus {
+      border-color: #10b981;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+      background: #ffffff;
+    }
+
+    .denom-subtotal-val {
+      flex: 1;
+      text-align: right;
+      font-size: 14px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      color: #0f172a;
+    }
+
+    .physical-total-box {
+      margin-top: 14px;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .physical-total-box strong {
+      font-size: 22px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #38bdf8;
+      font-weight: 900;
+    }
+
+    .variance-card {
+      margin-top: 14px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    .variance-card.balanced {
+      background: #ecfdf5;
+      border: 2px solid #a7f3d0;
+    }
+
+    .variance-card.shortage {
+      background: #fef2f2;
+      border: 2px solid #fecaca;
+    }
+
+    .variance-card.surplus {
+      background: #fffbeb;
+      border: 2px solid #fde68a;
+    }
+
+    .sticky-action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border-top: 1.5px solid #e2e8f0;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+      z-index: 99;
+    }
+
+    .sticky-inner {
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .btn-action-lg {
+      height: 44px;
+      padding: 0 20px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-action-lg:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 992px) {
+      .kpi-row-4col {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .two-col-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .kpi-row-4col {
+        grid-template-columns: 1fr;
+      }
+      .cashier-header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body class="cashier-body">
+
+  <!-- Header -->
+  <header class="cashier-header">
+    <div class="cashier-header-inner">
+      <div class="cashier-header-left">
+        <a href="/" class="btn-back-pos" title="Kembali ke Layar Kasir / Penjualan Utama">
+          <span>←</span>
+          <span>Kembali ke Kasir</span>
+        </a>
+
+        <div class="cashier-brand">
+          <div>
+            <h1 class="cashier-brand-title" id="pageStoreName">PD. HASIL BUMI RAYA 1</h1>
+            <p class="cashier-brand-sub" id="pageShiftSubtitle">Dashboard Kasir & Rekonsiliasi Kas Harian</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cashier-header-actions">
+        <div class="shift-status-badge" id="badgeShiftStatus">
+          <span class="dot"></span>
+          <span id="badgeShiftText">Memuat shift...</span>
+        </div>
+
+        <button type="button" class="btn btn-secondary" id="btnKickDrawerTop" style="height: 38px; padding: 0 14px; font-weight: 700; border-radius: 8px;" title="Buka Laci Uang Kasir (Kick RJ-11)">
+          <span>💰</span> Buka Laci
+        </button>
+
+        <button type="button" class="btn btn-secondary" id="btnRefreshPageData" style="height: 38px; padding: 0 14px; font-weight: 700; border-radius: 8px;" title="Segarkan Data Shift">
+          <span>🔄</span> Segarkan
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="cashier-main-container">
+    
+    <!-- 4 KPI Cards -->
+    <div class="kpi-row-4col">
+      <!-- KPI 1 -->
+      <div class="c-kpi-card" style="border-left: 4px solid #64748b;">
+        <div class="c-kpi-header">
+          <span class="c-kpi-title" style="color: #64748b;">1. Modal Awal Laci</span>
+          <span style="font-size: 18px;">💼</span>
+        </div>
+        <strong class="c-kpi-val" id="kpiStartingCash" style="color: #334155;">Rp 0</strong>
+        <span class="c-kpi-sub" style="color: #64748b;">Float modal kembalian buka shift</span>
+      </div>
+
+      <!-- KPI 2 -->
+      <div class="c-kpi-card" style="border-left: 4px solid #059669; background: #f0fdf4;">
+        <div class="c-kpi-header">
+          <span class="c-kpi-title" style="color: #166534;">2. Penjualan Tunai</span>
+          <span style="font-size: 18px;">💵</span>
+        </div>
+        <strong class="c-kpi-val" id="kpiCashSales" style="color: #15803d;">Rp 0</strong>
+        <span class="c-kpi-sub" id="kpiCashOrdersCount" style="color: #166534; font-weight: 600;">0 transaksi nota tunai</span>
+      </div>
+
+      <!-- KPI 3 -->
+      <div class="c-kpi-card" style="border-left: 4px solid #2563eb; background: #eff6ff;">
+        <div class="c-kpi-header">
+          <span class="c-kpi-title" style="color: #1e40af;">3. Kas Masuk & Bon</span>
+          <span style="font-size: 18px;">📥</span>
+        </div>
+        <strong class="c-kpi-val" id="kpiIncomeDebt" style="color: #1d4ed8;">Rp 0</strong>
+        <span class="c-kpi-sub" id="kpiIncomeDebtMeta" style="color: #1e40af;">Pelunasan bon & dana masuk laci</span>
+      </div>
+
+      <!-- KPI 4 -->
+      <div class="c-kpi-card" style="border-left: 4px solid #dc2626; background: #fef2f2;">
+        <div class="c-kpi-header">
+          <span class="c-kpi-title" style="color: #991b1b;">4. Biaya Keluar Laci</span>
+          <span style="font-size: 18px;">💸</span>
+        </div>
+        <strong class="c-kpi-val" id="kpiExpensesCash" style="color: #b91c1c;">Rp 0</strong>
+        <span class="c-kpi-sub" id="kpiExpensesCount" style="color: #991b1b; font-weight: 600;">0 pengeluaran kas laci</span>
+      </div>
+    </div>
+
+    <!-- Formula Banner (Saldo Kas Laci Seharusnya) -->
+    <div class="formula-banner">
+      <div>
+        <div class="formula-left-title">
+          <span>💡</span>
+          <span>Rumus Saldo Kas Laci Seharusnya (Sistem POS):</span>
+        </div>
+        <div class="formula-math-text" id="formulaExplanation">
+          Modal [Rp 0] + Tunai [Rp 0] + Pelunasan Bon [Rp 0] + Kas Masuk [Rp 0] - Biaya Laci [Rp 0] = Saldo Seharusnya
+        </div>
+      </div>
+      <div class="formula-right-val">
+        <span class="formula-right-label">Total Uang Laci Seharusnya</span>
+        <strong class="formula-total-number" id="expectedCashValue">Rp 0</strong>
+      </div>
+    </div>
+
+    <!-- Two Columns Layout -->
+    <div class="two-col-grid">
+      
+      <!-- KOLOM KIRI: KALKULATOR PECAHAN FISIK & STATUS SELISIH -->
+      <div class="section-card">
+        <div class="section-card-header">
+          <div>
+            <h2 class="section-card-title">
+              <span>🧮</span> Kalkulator Pecahan Uang Fisik di Laci
+            </h2>
+            <p class="section-card-desc">Hitung dan masukkan jumlah lembar uang fisik di laci kasir sekarang</p>
+          </div>
+          <button type="button" class="btn btn-secondary" id="btnResetDenom" style="height: 32px; padding: 0 10px; font-size: 12px; font-weight: 700;">
+            Reset 0
+          </button>
+        </div>
+
+        <div class="denom-table">
+          <!-- 100k -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #be123c;">Rp 100.000 :</span>
+            <input type="number" class="denom-input-ctrl" id="d100k" min="0" value="0">
+            <span style="font-size: 12px; color: #64748b;">lembar</span>
+            <span class="denom-subtotal-val" id="sub100k">Rp 0</span>
+          </div>
+
+          <!-- 50k -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #1d4ed8;">Rp 50.000 :</span>
+            <input type="number" class="denom-input-ctrl" id="d50k" min="0" value="0">
+            <span style="font-size: 12px; color: #64748b;">lembar</span>
+            <span class="denom-subtotal-val" id="sub50k">Rp 0</span>
+          </div>
+
+          <!-- 20k -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #047857;">Rp 20.000 :</span>
+            <input type="number" class="denom-input-ctrl" id="d20k" min="0" value="0">
+            <span style="font-size: 12px; color: #64748b;">lembar</span>
+            <span class="denom-subtotal-val" id="sub20k">Rp 0</span>
+          </div>
+
+          <!-- 10k -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #b45309;">Rp 10.000 :</span>
+            <input type="number" class="denom-input-ctrl" id="d10k" min="0" value="0">
+            <span style="font-size: 12px; color: #64748b;">lembar</span>
+            <span class="denom-subtotal-val" id="sub10k">Rp 0</span>
+          </div>
+
+          <!-- 5k -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #475569;">Rp 5.000 :</span>
+            <input type="number" class="denom-input-ctrl" id="d5k" min="0" value="0">
+            <span style="font-size: 12px; color: #64748b;">lembar</span>
+            <span class="denom-subtotal-val" id="sub5k">Rp 0</span>
+          </div>
+
+          <!-- 2k -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #475569;">Rp 2.000 :</span>
+            <input type="number" class="denom-input-ctrl" id="d2k" min="0" value="0">
+            <span style="font-size: 12px; color: #64748b;">lembar</span>
+            <span class="denom-subtotal-val" id="sub2k">Rp 0</span>
+          </div>
+
+          <!-- 1k -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #475569;">Rp 1.000 :</span>
+            <input type="number" class="denom-input-ctrl" id="d1k" min="0" value="0">
+            <span style="font-size: 12px; color: #64748b;">lembar</span>
+            <span class="denom-subtotal-val" id="sub1k">Rp 0</span>
+          </div>
+
+          <!-- Koin / Receh -->
+          <div class="denom-row-item">
+            <span class="denom-lbl" style="color: #475569;">Koin / Receh :</span>
+            <input type="number" class="denom-input-ctrl" id="dKoin" min="0" value="0" placeholder="Rp" style="width: 100px; text-align: right; padding-right: 6px;">
+            <span style="font-size: 12px; color: #64748b;">rupiah</span>
+            <span class="denom-subtotal-val" id="subKoin">Rp 0</span>
+          </div>
+        </div>
+
+        <!-- Banner Total Fisik Dihitung -->
+        <div class="physical-total-box">
+          <span style="font-size: 14px; font-weight: 700;">TOTAL FISIK DIHITUNG:</span>
+          <strong id="totalCounted">Rp 0</strong>
+        </div>
+
+        <!-- VARIANCE / DISCREPANCY STATUS CARD -->
+        <div class="variance-card balanced" id="varianceCard">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="varianceIcon" style="font-size: 24px;">✅</span>
+            <div>
+              <strong id="varianceTitle" style="font-size: 14px; color: #065f46; display: block;">KAS BALANCE (SESUAI)</strong>
+              <span id="varianceSubtitle" style="font-size: 12px; color: #047857;">Uang fisik tepat sesuai dengan catatan kalkulasi sistem.</span>
+            </div>
+          </div>
+          <strong id="varianceNominal" style="font-size: 18px; font-family: 'JetBrains Mono', monospace; color: #059669; font-weight: 800;">Selisih: Rp 0</strong>
+        </div>
+
+        <!-- Catatan Kasir -->
+        <div style="margin-top: 16px;">
+          <label style="font-size: 12.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px;">
+            Catatan / Keterangan Kasir (Wajib diisi jika terdapat selisih):
+          </label>
+          <textarea id="cashierNotes" rows="3" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; font-size: 13px; font-family: inherit; box-sizing: border-box;" placeholder="Misal: Uang fisik sesuai serah terima / kembalian kurang Rp 2.000 uang koin tercecer"></textarea>
+        </div>
+      </div>
+
+      <!-- KOLOM KANAN: RINGKASAN OMSET & BIAYA LACI -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- Box 1: Ringkasan Semua Transaksi Shift -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <div>
+              <h2 class="section-card-title">
+                <span>📋</span> Ringkasan Penjualan Shift
+              </h2>
+              <p class="section-card-desc">Semua transaksi yang terjadi selama shift berjalan</p>
+            </div>
+            <span id="badgeTotalOrders" style="background: #eff6ff; color: #1d4ed8; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 14px;">
+              0 Transaksi
+            </span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+              <span style="color: #64748b;">💵 Tunai (Masuk Laci):</span>
+              <strong id="salesCash" style="font-family: 'JetBrains Mono', monospace; color: #15803d; font-size: 14px;">Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+              <span style="color: #64748b;">📱 QRIS:</span>
+              <strong id="salesQris" style="font-family: 'JetBrains Mono', monospace; color: #0284c7; font-size: 14px;">Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+              <span style="color: #64748b;">🏦 Transfer Bank:</span>
+              <strong id="salesTransfer" style="font-family: 'JetBrains Mono', monospace; color: #4f46e5; font-size: 14px;">Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+              <span style="color: #64748b;">📒 Bon Tempo (Hutang Baru):</span>
+              <strong id="salesTempo" style="font-family: 'JetBrains Mono', monospace; color: #d97706; font-size: 14px;">Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 0 4px; font-size: 15px; font-weight: 800; border-top: 2px solid #e2e8f0;">
+              <span style="color: #0f172a;">TOTAL OMSET SHIFT:</span>
+              <strong id="totalOmset" style="font-family: 'JetBrains Mono', monospace; color: #0f172a; font-size: 18px;">Rp 0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Box 2: Biaya Keluar Laci Shift Ini -->
+        <div class="section-card" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="section-card-header">
+            <div>
+              <h2 class="section-card-title">
+                <span>💸</span> Pengeluaran Kas Laci (Shift Ini)
+              </h2>
+              <p class="section-card-desc">Uang fisik yang diambil dari laci untuk operasional</p>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <a href="/#modalCashierExpenses" class="btn btn-secondary" style="height: 32px; padding: 0 10px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <span>💸</span> + Biaya
+              </a>
+              <a href="/#modalCashierIncome" class="btn btn-secondary" style="height: 32px; padding: 0 10px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <span>📥</span> + Kas
+              </a>
+            </div>
+          </div>
+
+          <div id="expensesListContainer" style="overflow-y: auto; max-height: 260px; flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <div style="text-align: center; color: #94a3b8; font-size: 13px; padding: 24px;">
+              Belum ada pengeluaran kas laci pada shift ini.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Sticky Bottom Bar -->
+  <footer class="sticky-action-bar">
+    <div class="sticky-inner">
+      <div style="font-size: 12.5px; color: #64748b; display: flex; align-items: center; gap: 8px;">
+        <span>🖨️</span>
+        <span>Printer Bluetooth & System Print siap mencetak struk bukti kasir.</span>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <button type="button" class="btn-action-lg" id="btnPrintReportX" style="background: #f1f5f9; color: #334155; border: 1.5px solid #cbd5e1;">
+          <span>🖨️</span> Cetak Laporan X (Cek Kas Berjalan)
+        </button>
+        <button type="button" class="btn-action-lg" id="btnCloseShiftZ" style="background: #dc2626; color: #ffffff; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);">
+          <span>🔒</span> Tutup Shift & Cetak Laporan Z
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Hidden Thermal Receipt Canvas for System Print -->
+  <div id="thermalReceipt" style="display: none;"></div>
+
+  <script type="module" src="/src/cashier.js"></script>
+</body>
+</html>
