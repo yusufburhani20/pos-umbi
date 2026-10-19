@@ -27,8 +27,25 @@
       <!-- Left Section: Brand + Status Group -->
       <div class="top-bar-header">
         <div class="brand-section">
-          <span class="brand-icon" title="Kassa POS - Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar" style="padding: 3px; background: rgba(0,0,0,0.25); border: 1.5px solid rgba(234, 179, 8, 0.4);">
-            <img src="/icon.svg" alt="Kassa POS" style="width: 28px; height: 28px; border-radius: 7px; display: block; object-fit: cover;">
+          <span class="brand-icon" title="Kassa POS - Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar" style="padding: 2px; background: rgba(0,0,0,0.3); border: 1.5px solid rgba(234, 179, 8, 0.4); display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="30" height="30" class="brand-logo-svg">
+              <defs>
+                <linearGradient id="hdrBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#064e3b"/>
+                  <stop offset="100%" stop-color="#022c22"/>
+                </linearGradient>
+                <linearGradient id="hdrGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#fef08a"/>
+                  <stop offset="100%" stop-color="#eab308"/>
+                </linearGradient>
+              </defs>
+              <rect width="40" height="40" rx="9" fill="url(#hdrBgGrad)" stroke="url(#hdrGoldGrad)" stroke-width="1.5"/>
+              <path d="M20 7 L32 11 C32 23 24 31 20 34 C16 31 8 23 8 11 Z" fill="#022c22" stroke="#10b981" stroke-width="1.2"/>
+              <path d="M14 14 L17.5 14 L17.5 27 L14 27 Z" fill="#34d399"/>
+              <path d="M16 20 L23 14 L27 14 L19 21.5 Z" fill="#34d399"/>
+              <path d="M18 20 L25.5 27 L22 27 L16 22 Z" fill="url(#hdrGoldGrad)"/>
+              <path d="M26 8 C29 8 30.5 11 28.5 13 C27 11 25 10 26 8 Z" fill="#34d399"/>
+            </svg>
           </span>
           <div class="brand-text">
             <h1 class="brand-title" id="cashierBrandTitle">PD. HASIL BUMI RAYA 1</h1>
@@ -70,43 +87,31 @@
         </div>
       </div>
 
-      <!-- Right Section: Clean, Simplified Sub-Menu Navigation -->
+      <!-- Right Section: Clean, Streamlined Navigation Bar -->
       <div class="top-actions">
-        <!-- Direct Quick Action: Layar Penuh (Fullscreen Toggle) -->
-        <button class="btn-nav btn-fullscreen-direct" id="btnToggleFullscreen" type="button" title="Mode Layar Penuh (Sembunyikan bilah Chrome & bar tablet)">
+        <!-- Direct Quick Action: Layar Penuh -->
+        <button class="btn-nav btn-fullscreen-direct" id="btnToggleFullscreen" type="button" title="Mode Layar Penuh">
           <span class="icon" id="fullscreenIcon">⛶</span>
           <span class="nav-label" id="fullscreenLabel">Layar Penuh</span>
         </button>
 
         <!-- Direct Quick Action: Riwayat Transaksi -->
-        <button class="btn-nav btn-history-direct" id="btnHistory" title="Riwayat Transaksi Nota Kasir (Klik untuk melihat daftar nota)">
+        <button class="btn-nav btn-history-direct" id="btnHistory" title="Riwayat Transaksi Nota Kasir">
           <span class="icon">📋</span>
           <span class="nav-label">Riwayat</span>
         </button>
 
-        <!-- Direct Quick Action: Buka Laci Kasir (Cash Drawer Kick) -->
+        <!-- Direct Quick Action: Buka Laci Kasir -->
         <button class="btn-nav btn-drawer-direct" id="btnQuickOpenDrawer" type="button" title="Buka Laci Uang Kasir (Cash Drawer Kick RJ-11)">
           <span class="icon">💰</span>
           <span class="nav-label">Buka Laci</span>
         </button>
 
-        <!-- Direct Quick Action: Kulakan & Hutang Tempo Toko (Kasir / Admin) -->
-        <button class="btn-nav btn-kulakan-direct" id="btnDirectKulakan" type="button" title="Pemasok, Riwayat Kulakan & Hutang Tempo Toko" style="background: #f0fdf4; border: 1.5px solid #a7f3d0; color: #065f46;">
-          <span class="icon">🚛</span>
-          <span class="nav-label">Kulakan & Hutang</span>
-        </button>
-
-        <!-- Direct Quick Action: Biaya & Kas Operasional Toko (Kasir / Admin) -->
-        <button class="btn-nav btn-expenses-direct" id="btnDirectExpenses" type="button" title="Biaya Operasional Toko & Kas Kecil (Makan, Parkir, Listrik, WiFi, dll.)" style="background: #fffbeb; border: 1.5px solid #fde68a; color: #92400e;">
-          <span class="icon">💸</span>
-          <span class="nav-label">Biaya & Kas</span>
-        </button>
-
-        <!-- Sub Menu 1: Kelola Toko Dropdown -->
+        <!-- Sub Menu 1: Kelola Kios Dropdown (Menyatukan Kulakan, Hutang, Biaya, Kas, Opname) -->
         <div class="header-dropdown" id="storeMenuDropdown">
-          <button class="btn-nav btn-store-menu" id="btnStoreMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Manajemen & Operasional Toko">
-            <span class="icon">🏪</span>
-            <span class="nav-label">Kelola Toko</span>
+          <button class="btn-nav btn-store-menu" id="btnStoreMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Manajemen & Operasional Kios" style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10b981; color: #f8fafc;">
+            <span class="icon">📦</span>
+            <span class="nav-label">Kelola Kios</span>
             <span class="dropdown-chevron">▾</span>
           </button>
           <div class="header-dropdown-menu" id="storeDropdownContent">
@@ -324,18 +329,19 @@
             <span class="total-val" id="totalAmountText">Rp 0</span>
           </div>
 
-          <!-- Quick Cash Presets -->
+          <!-- Quick Cash Presets (Pecahan Pasar Lengkap) -->
           <div class="cash-presets" id="cashPresetsBar">
             <button class="btn-preset" data-amount="exact">Uang Pas</button>
+            <button class="btn-preset" data-amount="10000">10.000</button>
+            <button class="btn-preset" data-amount="20000">20.000</button>
             <button class="btn-preset" data-amount="50000">50.000</button>
             <button class="btn-preset" data-amount="100000">100.000</button>
             <button class="btn-preset" data-amount="200000">200.000</button>
           </div>
 
-          <!-- Primary Checkout Button -->
+          <!-- Primary Checkout Button (Touch-Friendly Tablet) -->
           <button class="btn-primary-checkout" id="btnCheckout" disabled>
-            <span class="checkout-title">BAYAR SEKARANG</span>
-            <span class="checkout-key">(Enter / F8)</span>
+            <span class="checkout-title">⚡ BAYAR SEKARANG</span>
           </button>
         </div>
       </section>
@@ -565,23 +571,51 @@
         </div>
 
         <div id="cashPaymentSection">
-          <div class="form-group">
-            <label class="field-label">Uang Diterima dari Pembeli (Rp):</label>
-            <input type="text" inputmode="numeric" id="cashTenderedInput" class="input-huge font-mono" placeholder="0 atau ketik misal 100rb">
+          <div class="form-group" style="margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="field-label" style="margin: 0; font-size: 13px; font-weight: 700; color: #f8fafc;">Uang Diterima dari Pembeli (Rp):</label>
+              <button type="button" class="btn-toggle-keyboard-mode" id="btnToggleKeyboardMode" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #94a3b8; font-size: 11px; padding: 2px 8px; border-radius: 6px; cursor: pointer;">⌨️ Buka Keyboard Tab</button>
+            </div>
+            <input type="text" id="cashTenderedInput" class="input-huge font-mono" placeholder="0 (Gunakan keypad di bawah)" inputmode="none" readonly style="cursor: pointer; text-align: right; font-size: 26px; height: 50px; font-weight: 800; color: #10b981; background: #0f172a; border: 2px solid #334155; border-radius: 10px; padding: 0 16px;">
           </div>
 
-          <div class="change-display-card" id="changeCard">
-            <span class="change-label">Kembalian:</span>
-            <span class="change-amount" id="changeDueText">Rp 0</span>
+          <div class="change-display-card" id="changeCard" style="margin-bottom: 10px; padding: 10px 14px; background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="change-label" style="font-size: 13px; color: #94a3b8; font-weight: 600;">Kembalian:</span>
+            <span class="change-amount font-mono" id="changeDueText" style="font-size: 22px; font-weight: 900; color: #10b981;">Rp 0</span>
           </div>
 
-          <div class="numpad-grid compact" id="tenderNumpad">
-            <button class="btn-num" data-val="10000">+10rb</button>
-            <button class="btn-num" data-val="20000">+20rb</button>
-            <button class="btn-num" data-val="50000">+50rb</button>
-            <button class="btn-num" data-val="100000">+100rb</button>
-            <button class="btn-num" data-val="pas">Uang Pas</button>
-            <button class="btn-num btn-num-danger" data-val="clear">Reset</button>
+          <!-- INTEGRATED TOUCH NUMPAD & NOMINAL CHIPS (NO SYSTEM KEYBOARD REQUIRED) -->
+          <div class="virtual-pos-keypad" id="tenderNumpad">
+            <!-- Row 1: Fast Cash Chips -->
+            <div class="keypad-chips-bar" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 8px;">
+              <button type="button" class="btn-num btn-chip-exact" data-val="pas" style="height: 38px; font-size: 12px; font-weight: 800; background: #16a34a; color: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(22,163,74,0.3); cursor: pointer;">⚡ Pas</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="10000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+10 Rb</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="20000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+20 Rb</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="50000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+50 Rb</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="100000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+100 Rb</button>
+            </div>
+
+            <!-- Numeric Keypad Grid 4x4 -->
+            <div class="keypad-touch-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+              <button type="button" class="btn-num btn-key-digit" data-num="7" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">7</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="8" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">8</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="9" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">9</button>
+              <button type="button" class="btn-num btn-key-action danger" data-val="clear" style="height: 44px; font-size: 16px; font-weight: 800; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; border-radius: 8px; cursor: pointer;">C</button>
+
+              <button type="button" class="btn-num btn-key-digit" data-num="4" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">4</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="5" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">5</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="6" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">6</button>
+              <button type="button" class="btn-num btn-key-action" data-num="000" style="height: 44px; font-size: 15px; font-weight: 700; background: #1e293b; color: #38bdf8; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">000</button>
+
+              <button type="button" class="btn-num btn-key-digit" data-num="1" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">1</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="2" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">2</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="3" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">3</button>
+              <button type="button" class="btn-num btn-key-action backspace" data-val="backspace" style="height: 44px; font-size: 18px; font-weight: 800; background: #475569; color: #f8fafc; border: 1px solid #64748b; border-radius: 8px; cursor: pointer;">⌫</button>
+
+              <button type="button" class="btn-num btn-key-digit" data-num="0" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">0</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="00" style="height: 44px; font-size: 16px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">00</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="200000" style="grid-column: span 2; height: 44px; font-size: 13px; font-weight: 700; background: #1e293b; color: #f59e0b; border: 1px solid #b45309; border-radius: 8px; cursor: pointer;">+200 Rb</button>
+            </div>
           </div>
         </div>
 
@@ -654,7 +688,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" id="btnCancelPayment">Batal</button>
-        <button class="btn-primary btn-lg" id="btnProcessPayment">Konfirmasi & Cetak Struk (Enter)</button>
+        <button class="btn-primary btn-lg" id="btnProcessPayment">⚡ Konfirmasi & Cetak Struk</button>
       </div>
     </div>
   </div>

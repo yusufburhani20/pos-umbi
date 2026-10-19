@@ -9,7 +9,7 @@
   "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "background_color": "#0b1120",
   "theme_color": "#064e3b",
-  "orientation": "landscape-primary",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon-kassa-192.png?v=2",

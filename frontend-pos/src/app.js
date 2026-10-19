@@ -1777,23 +1777,58 @@ function bindEvents() {
   attachCurrencyAutoFormat(el.startingCashInput);
   attachCurrencyAutoFormat(el.cashTenderedInput, calculateChangeDue);
 
-  
-  document.getElementById('tenderNumpad').addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-num');
-    if (!btn) return;
-    const val = btn.dataset.val;
-    const currentTotal = getCartTotal();
-    let currentTender = parseRupiahInput(el.cashTenderedInput.value);
+  const tenderNumpadEl = document.getElementById('tenderNumpad');
+  if (tenderNumpadEl) {
+    tenderNumpadEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-num');
+      if (!btn) return;
+      const currentTotal = getCartTotal();
+      let currentTender = parseRupiahInput(el.cashTenderedInput.value);
 
-    if (val === 'pas') {
-      el.cashTenderedInput.value = formatRupiahNumber(currentTotal);
-    } else if (val === 'clear') {
-      el.cashTenderedInput.value = '';
-    } else {
-      el.cashTenderedInput.value = formatRupiahNumber(currentTender + Number(val));
-    }
-    calculateChangeDue();
-  });
+      if (btn.dataset.val === 'pas') {
+        el.cashTenderedInput.value = formatRupiahNumber(currentTotal);
+      } else if (btn.dataset.val === 'clear') {
+        el.cashTenderedInput.value = '';
+      } else if (btn.dataset.val === 'backspace') {
+        const raw = String(currentTender);
+        const sliced = raw.length > 1 ? raw.slice(0, -1) : '';
+        el.cashTenderedInput.value = sliced ? formatRupiahNumber(Number(sliced)) : '';
+      } else if (btn.dataset.add) {
+        const addVal = Number(btn.dataset.add) || 0;
+        el.cashTenderedInput.value = formatRupiahNumber(currentTender + addVal);
+      } else if (btn.dataset.num !== undefined) {
+        const digit = String(btn.dataset.num);
+        const currentStr = currentTender > 0 ? String(currentTender) : '';
+        const newStr = currentStr + digit;
+        if (newStr.length <= 11) {
+          el.cashTenderedInput.value = formatRupiahNumber(Number(newStr));
+        }
+      }
+      calculateChangeDue();
+    });
+  }
+
+  // Toggle native tablet keyboard mode vs touch numpad
+  const btnToggleKbd = document.getElementById('btnToggleKeyboardMode');
+  if (btnToggleKbd && el.cashTenderedInput) {
+    btnToggleKbd.addEventListener('click', () => {
+      const isReadonly = el.cashTenderedInput.hasAttribute('readonly');
+      if (isReadonly) {
+        el.cashTenderedInput.removeAttribute('readonly');
+        el.cashTenderedInput.setAttribute('inputmode', 'numeric');
+        btnToggleKbd.textContent = '🔒 Kunci Keypad';
+        btnToggleKbd.style.color = '#34d399';
+        btnToggleKbd.style.borderColor = '#10b981';
+        el.cashTenderedInput.focus();
+      } else {
+        el.cashTenderedInput.setAttribute('readonly', 'true');
+        el.cashTenderedInput.setAttribute('inputmode', 'none');
+        btnToggleKbd.textContent = '⌨️ Buka Keyboard Tab';
+        btnToggleKbd.style.color = '#94a3b8';
+        btnToggleKbd.style.borderColor = 'rgba(255,255,255,0.2)';
+      }
+    });
+  }
 
   // Cash preset bar
   el.cashPresetsBar.addEventListener('click', (e) => {
@@ -2021,6 +2056,11 @@ function renderProductGrid() {
             <span class="price-label">Karung</span>
             <span class="price-val">${formatRupiah(p.reseller_price)}</span>
           </div>
+        </div>
+        <div class="card-action-bar">
+          <span class="btn-card-action ${isOut ? 'out-of-stock' : 'ready-to-weigh'}">
+            ${isOut ? '🚨 Stok Habis' : '⚖️ + Timbang'}
+          </span>
         </div>
       </div>
     `;

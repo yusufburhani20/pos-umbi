@@ -921,7 +921,7 @@ input, select, textarea {
 .product-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 18px;
+  padding: 18px 20px 80px 20px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
@@ -1119,6 +1119,58 @@ input, select, textarea {
   padding: 1px 4px;
   border-radius: 4px;
   margin-left: 4px;
+}
+
+/* Product Card Action Bar Pill */
+.card-action-bar {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(226, 232, 240, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-card-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  pointer-events: none;
+}
+
+.btn-card-action.ready-to-weigh {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.08);
+}
+
+.product-card:hover .btn-card-action.ready-to-weigh {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+  box-shadow: 0 3px 8px rgba(22, 163, 74, 0.28);
+}
+
+.product-card:active .btn-card-action.ready-to-weigh {
+  transform: scale(0.97);
+  background: #15803d;
+  color: #ffffff;
+}
+
+.btn-card-action.out-of-stock {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  opacity: 0.75;
 }
 
 /* --------------------------------------------------------------------------
@@ -1612,15 +1664,16 @@ input, select, textarea {
 }
 
 .total-val {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--primary);
+  font-size: 32px;
+  font-weight: 900;
+  color: #10b981;
   font-family: var(--font-mono);
+  letter-spacing: -0.5px;
 }
 
 .cash-presets {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 
@@ -2028,12 +2081,12 @@ input, select, textarea {
 
 .payment-method-selector {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
 .btn-method {
-  height: 48px;
+  height: 44px;
   background-color: #ffffff;
   border: 2px solid var(--border);
   border-radius: var(--radius-md);
@@ -2046,12 +2099,46 @@ input, select, textarea {
   justify-content: center;
   gap: 6px;
   transition: all 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-method.active {
   border-color: var(--primary);
   background-color: var(--primary-subtle);
   color: var(--primary);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+}
+
+.btn-method:active {
+  transform: scale(0.96);
+}
+
+/* Virtual POS Keypad for Touch Screen Tablets */
+.virtual-pos-keypad {
+  margin-top: 8px;
+}
+
+.keypad-chips-bar button {
+  transition: transform 0.08s ease, filter 0.1s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.keypad-chips-bar button:active {
+  transform: scale(0.94);
+  filter: brightness(1.2);
+}
+
+.keypad-touch-grid button {
+  transition: transform 0.08s ease, filter 0.1s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.keypad-touch-grid button:active {
+  transform: scale(0.92);
+  filter: brightness(1.25);
 }
 
 .change-display-card {
@@ -2660,7 +2747,8 @@ input, select, textarea {
   }
 
   .total-val {
-    font-size: 20px !important;
+    font-size: 28px !important;
+    font-weight: 900 !important;
   }
 
   .btn-preset {
