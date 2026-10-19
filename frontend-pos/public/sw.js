@@ -1,5 +1,5 @@
-// Service Worker for Toko Umbi POS (Offline-First PWA)
-const CACHE_NAME = 'toko-umbi-cache-v3';
+// Service Worker for Kassa POS (Offline-First PWA)
+const CACHE_NAME = 'kassa-pos-cache-v4';
 
 const STATIC_ASSETS = [
   '/',

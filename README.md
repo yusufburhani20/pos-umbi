@@ -1,6 +1,6 @@
-# 🥔 Toko Umbi POS & Executive Anti-Fraud Dashboard
+# 🛡️ Kassa POS - Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar
 
-Sistem Point of Sale (POS) dan Dashboard Manajemen Eksekutif modern yang dirancang khusus untuk operasional perdagangan komoditas pasar, umbi-umbian (kentang, ubi, singkong), bumbu dapur, dan hasil bumi.
+Sistem Point of Sale (POS) dan Dashboard Manajemen Eksekutif modern yang dirancang khusus untuk operasional perdagangan komoditas pasar, agen sembako, umbi-umbian (kentang, ubi, singkong), bumbu dapur, buah, dan hasil bumi.
 
 Aplikasi ini dibangun untuk mengatasi permasalahan nyata di toko pasar: perbedaan harga eceran vs grosir/reseller, kebocoran uang kasir, penjualan tempo (kasbon), penyusutan timbangan barang, serta pemantauan stok menipis.
 
@@ -75,4 +75,4 @@ Buka di browser atau tablet:
 ---
 
 ## 📄 Lisensi
-Hak Cipta © 2026 Toko Umbi POS. Seluruh hak cipta dilindungi.
+Hak Cipta © 2026 Kassa POS. Seluruh hak cipta dilindungi.

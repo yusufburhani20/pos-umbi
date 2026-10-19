@@ -12,7 +12,7 @@ async function startServer() {
 
     app.listen(PORT, () => {
       console.log(`===============================================`);
-      console.log(`🚀 Toko Umbi POS API is running on port ${PORT}`);
+      console.log(`🚀 Kassa POS API is running on port ${PORT}`);
       console.log(`📍 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`===============================================`);
     });

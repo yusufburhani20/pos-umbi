@@ -1,5 +1,5 @@
 # 📋 CATATAN PENGEMBANGAN SISTEM (DEVELOPMENT PROGRESS)
-**Proyek:** Toko Umbi POS & Executive Anti-Fraud Dashboard  
+**Proyek:** Kassa POS - Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar  
 **Lokasi Direktori:** `F:\POS`  
 **Repository GitHub:** [https://github.com/yusufburhani20/pos-umbi.git](https://github.com/yusufburhani20/pos-umbi.git)  
 **Branch Utama:** `main`  

@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'Toko Umbi POS API', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'Kassa POS API', timestamp: new Date().toISOString() });
 });
 
 // API Routes

@@ -400,7 +400,7 @@ class HardwareManager {
     append('THERMAL PRINTER TEST\n');
     append(COMMANDS.NORMAL_TEXT);
     append(COMMANDS.BOLD_OFF);
-    append('Toko Umbi POS System\n');
+    append('Kassa POS System\n');
     append('Hardware Ready: Tablet & Cash Drawer\n');
     append(divider + '\n');
     append(COMMANDS.ALIGN_LEFT);

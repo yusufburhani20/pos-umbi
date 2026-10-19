@@ -1,13 +1,13 @@
 {
-  "name": "Toko Umbi POS - Kasir Pasar",
-  "short_name": "Toko Umbi",
-  "description": "Sistem Kasir Pasar & Anti-Kecolongan Offline-First",
+  "name": "Kassa POS - Kasir Pasar",
+  "short_name": "Kassa POS",
+  "description": "Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],
-  "background_color": "#0f172a",
-  "theme_color": "#16a34a",
+  "background_color": "#0b1120",
+  "theme_color": "#064e3b",
   "orientation": "landscape-primary",
   "icons": [
     {
