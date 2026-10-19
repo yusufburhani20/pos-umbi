@@ -1228,6 +1228,7 @@ function bindEvents() {
   document.querySelectorAll('.btn-method').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const target = e.currentTarget;
+      const method = target.dataset.method || 'cash';
       document.querySelectorAll('.btn-method').forEach(b => b.classList.remove('active'));
       target.classList.add('active');
       state.paymentMethod = method;
@@ -3371,6 +3372,7 @@ function openPaymentModal() {
   }
 
   const total = getCartTotal();
+  state.paymentMethod = 'cash';
   el.payModalTotal.textContent = formatRupiah(total);
   el.cashTenderedInput.value = '';
   el.changeDueText.textContent = 'Rp 0';
@@ -3379,32 +3381,15 @@ function openPaymentModal() {
   if (el.tempoDpInput) el.tempoDpInput.value = '';
 
   document.querySelectorAll('.btn-method').forEach(b => {
-    b.classList.toggle('active', b.dataset.method === state.paymentMethod);
+    b.classList.toggle('active', b.dataset.method === 'cash');
   });
 
-  if (state.paymentMethod === 'cash') {
-    el.cashPaymentSection.style.display = 'block';
-    el.nonCashPaymentSection.style.display = 'none';
-    if (el.tempoPaymentSection) el.tempoPaymentSection.style.display = 'none';
-  } else if (state.paymentMethod === 'tempo') {
-    el.cashPaymentSection.style.display = 'none';
-    el.nonCashPaymentSection.style.display = 'none';
-    if (el.tempoPaymentSection) {
-      el.tempoPaymentSection.style.display = 'block';
-      updateTempoCalculation();
-    }
-  } else {
-    el.cashPaymentSection.style.display = 'none';
-    el.nonCashPaymentSection.style.display = 'block';
-    if (el.tempoPaymentSection) el.tempoPaymentSection.style.display = 'none';
-  }
+  el.cashPaymentSection.style.display = 'block';
+  el.nonCashPaymentSection.style.display = 'none';
+  if (el.tempoPaymentSection) el.tempoPaymentSection.style.display = 'none';
 
   el.paymentModal.style.display = 'flex';
-  if (state.paymentMethod === 'cash') {
-    el.cashTenderedInput.focus();
-  } else if (state.paymentMethod === 'tempo' && el.tempoCustomerNameInput) {
-    setTimeout(() => el.tempoCustomerNameInput.focus(), 60);
-  }
+  el.cashTenderedInput.focus();
 }
 
 function updateTempoCalculation() {
@@ -3544,7 +3529,7 @@ async function handleProcessOrder() {
         order_no: offlineOrderNo,
         total_amount: totalBill,
         change_due: Math.max(0, (tendered || totalBill) - totalBill),
-        status: state.paymentMethod === 'tempo' ? 'tempo' : 'completed',
+        status: 'completed',
         cashier_name: state.user ? state.user.name : 'Kasir',
         customer_name: buyerName,
         customer_phone: buyerPhone,

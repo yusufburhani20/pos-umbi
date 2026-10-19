@@ -146,7 +146,7 @@ router.post('/push', authenticateToken, async (req, res) => {
 
       const shiftId = await resolveShiftId(order.shift_id);
       const isTempo = order.payment_method === 'tempo';
-      const orderStatus = isTempo ? 'tempo' : (order.status || 'completed');
+      const orderStatus = order.status === 'void' ? 'void' : 'completed';
       const orderDate = order.created_at || new Date().toISOString().replace('T', ' ').substring(0, 19);
 
       let resolvedCustomerId = order.customer_id || null;
