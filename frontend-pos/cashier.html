@@ -934,34 +934,34 @@
 
   <!-- MODAL: Pratinjau Struk Thermal (Receipt Preview Modal) -->
   <div class="modal-backdrop" id="modalReceiptPreview" style="display: none; z-index: 10005;">
-    <div class="modal-dialog modal-sm cashier-preview-dialog" style="max-width: 440px; width: 92vw; background: #ffffff; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+    <div class="modal-dialog modal-sm cashier-preview-dialog" style="max-width: 320px; width: 92vw; background: #ffffff; border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); overflow: hidden; display: flex; flex-direction: column; max-height: 88vh;">
       <!-- Header -->
-      <div class="modal-header" style="padding: 14px 18px; background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3b82f6; flex-shrink: 0;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 18px;">🖨️</span>
-          <h3 id="receiptPreviewTitle" style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff;">Pratinjau Struk Laporan X</h3>
+      <div class="modal-header" style="padding: 10px 14px; background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3b82f6; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 16px;">🖨️</span>
+          <h3 id="receiptPreviewTitle" style="margin: 0; font-size: 13.5px; font-weight: 800; color: #ffffff;">Pratinjau Struk Laporan X</h3>
         </div>
-        <button type="button" class="modal-close" id="btnCloseReceiptPreview" style="background: rgba(255, 255, 255, 0.15); border: none; color: #ffffff; font-size: 16px; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
+        <button type="button" class="modal-close" id="btnCloseReceiptPreview" style="background: rgba(255, 255, 255, 0.15); border: none; color: #ffffff; font-size: 15px; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
       </div>
 
       <!-- Preview Body (Scrollable Receipt Paper) -->
-      <div class="modal-body" style="padding: 16px; overflow-y: auto; background: #f1f5f9; flex: 1; display: flex; justify-content: center;">
-        <div class="thermal-receipt" id="receiptPreviewContent" style="width: 100%; max-width: 360px; background: #ffffff; border: 1px dashed #94a3b8; border-radius: 8px; padding: 18px 14px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #000000; line-height: 1.45;">
+      <div class="modal-body" style="padding: 10px; overflow-y: auto; background: #f1f5f9; flex: 1; display: flex; justify-content: center; max-height: 52vh;">
+        <div class="thermal-receipt" id="receiptPreviewContent" style="width: 100%; max-width: 275px; background: #ffffff; border: 1px dashed #94a3b8; border-radius: 6px; padding: 10px 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #000000; line-height: 1.35;">
           <!-- Konten struk dihasilkan dinamis -->
         </div>
       </div>
 
       <!-- Footer Buttons -->
-      <div class="modal-footer" style="padding: 14px 18px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
-        <button type="button" class="btn-primary full-width" id="btnConfirmPrintReceipt" style="width: 100%; height: 44px; border-radius: 10px; background: #059669; color: #ffffff; border: none; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
-          <span>🖨️</span> Cetak ke Printer (Thermal / Bluetooth)
+      <div class="modal-footer" style="padding: 10px 12px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;">
+        <button type="button" class="btn-primary full-width" id="btnConfirmPrintReceipt" style="width: 100%; height: 38px; border-radius: 8px; background: #059669; color: #ffffff; border: none; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
+          <span>🖨️</span> Cetak ke Printer Thermal
         </button>
-        <div style="display: flex; gap: 8px; width: 100%;">
-          <button type="button" class="btn-secondary" id="btnPreviewKickDrawer" style="flex: 1; height: 38px; border-radius: 8px; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-            <span>💰</span> Buka Laci (Kick)
+        <div style="display: flex; gap: 6px; width: 100%;">
+          <button type="button" class="btn-secondary" id="btnPreviewKickDrawer" style="flex: 1; height: 32px; border-radius: 6px; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; font-size: 11.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+            <span>💰</span> Buka Laci
           </button>
-          <button type="button" class="btn-secondary" id="btnCancelReceiptPreview" style="flex: 1; height: 38px; border-radius: 8px; background: #f1f5f9; border: 1px solid #e2e8f0; color: #64748b; font-size: 12.5px; font-weight: 700; cursor: pointer;">
-            Tutup Pratinjau
+          <button type="button" class="btn-secondary" id="btnCancelReceiptPreview" style="flex: 1; height: 32px; border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; color: #64748b; font-size: 11.5px; font-weight: 700; cursor: pointer;">
+            Tutup
           </button>
         </div>
       </div>

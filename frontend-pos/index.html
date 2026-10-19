@@ -714,20 +714,22 @@
 
   <!-- MODAL: Struk Thermal Preview -->
   <div class="modal-backdrop" id="receiptModal" style="display:none;">
-    <div class="modal-dialog modal-sm">
-      <div class="modal-header">
-        <h2 id="receiptModalTitle">Transaksi Berhasil</h2>
-        <button class="modal-close" id="btnCloseReceiptModal">✕</button>
+    <div class="modal-dialog modal-sm" id="receiptModalDialog" style="max-width: 320px; width: 92vw; border-radius: 14px;">
+      <div class="modal-header" style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <h2 id="receiptModalTitle" style="font-size: 14px; font-weight: 800; margin: 0; color: #0f172a;">Transaksi Berhasil</h2>
+        <button class="modal-close" id="btnCloseReceiptModal" style="font-size: 15px; width: 28px; height: 28px; border-radius: 6px; cursor: pointer;">✕</button>
       </div>
-      <div class="modal-body">
-        <div class="thermal-receipt" id="thermalReceipt">
+      <div class="modal-body" style="padding: 10px 12px; background: #f8fafc; max-height: 52vh; overflow-y: auto; display: flex; justify-content: center;">
+        <div class="thermal-receipt" id="thermalReceipt" style="width: 100%; max-width: 275px; padding: 10px 10px; font-size: 11px; line-height: 1.35; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);">
           <!-- Receipt Content Generated Dynamically -->
         </div>
       </div>
-      <div class="modal-footer flex-column">
-        <button class="btn-primary full-width" id="btnPrintReceipt">🖨️ Cetak Struk (Thermal / Bluetooth)</button>
-        <button class="btn-secondary full-width btn-drawer-action" id="btnReceiptOpenDrawer">💰 Buka Laci Kasir (Kick RJ-11)</button>
-        <button class="btn-secondary full-width" id="btnNextOrder">Transaksi Baru Berikutnya</button>
+      <div class="modal-footer" style="padding: 10px 12px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 6px;">
+        <button class="btn-primary full-width" id="btnPrintReceipt" style="height: 38px; font-size: 13px; font-weight: 800; border-radius: 8px; padding: 0 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">🖨️ Cetak Struk (Thermal / Bluetooth)</button>
+        <div style="display: flex; gap: 6px; width: 100%;">
+          <button class="btn-secondary btn-drawer-action" id="btnReceiptOpenDrawer" style="flex: 1; height: 32px; font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 0 6px;">💰 Buka Laci</button>
+          <button class="btn-secondary" id="btnNextOrder" style="flex: 1; height: 32px; font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 0 6px;">Transaksi Baru</button>
+        </div>
       </div>
     </div>
   </div>
