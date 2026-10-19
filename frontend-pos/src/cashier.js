@@ -15,6 +15,10 @@ function formatRupiah(val) {
   return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
 }
 
+function formatRupiahNumber(val) {
+  return Number(val || 0).toLocaleString('id-ID');
+}
+
 function parseSafeDate(d) {
   if (!d) return new Date();
   const dt = new Date(d);
@@ -101,6 +105,12 @@ const el = {
   cashierStatusDot: document.getElementById('cashierStatusDot'),
 
   // Content Area Elements
+  activeShiftDashboard: document.getElementById('activeShiftDashboard'),
+  noShiftSection: document.getElementById('noShiftSection'),
+  inpDirectStartingCash: document.getElementById('inpDirectStartingCash'),
+  btnDirectOpenShiftSubmit: document.getElementById('btnDirectOpenShiftSubmit'),
+  stickyActionBar: document.getElementById('stickyActionBar'),
+
   pageStoreName: document.getElementById('pageStoreName'),
   pageShiftSubtitle: document.getElementById('pageShiftSubtitle'),
   badgeShiftText: document.getElementById('badgeShiftText'),
@@ -385,11 +395,33 @@ async function loadActiveShiftData() {
 
     const res = await api.getCurrentShift().catch(() => null);
     if (!res || !res.has_active_shift) {
-      if (confirm('Belum ada shift kasir yang aktif saat ini.\nApakah Anda ingin kembali ke halaman kasir utama?')) {
-        window.location.href = '/';
+      // BELUM ADA SHIFT: Tampilkan kartu bersih ramah pengguna di cashier.html
+      state.shift = null;
+      if (el.activeShiftDashboard) el.activeShiftDashboard.style.display = 'none';
+      if (el.stickyActionBar) el.stickyActionBar.style.display = 'none';
+      if (el.noShiftSection) el.noShiftSection.style.display = 'block';
+
+      if (el.inpDirectStartingCash && !el.inpDirectStartingCash.value) {
+        el.inpDirectStartingCash.value = '200.000';
+      }
+
+      if (el.activeShiftMeta) el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
+      if (el.badgeShiftText) el.badgeShiftText.textContent = '🔴 Shift Belum Dibuka';
+      if (el.badgeShiftStatus) el.badgeShiftStatus.textContent = 'Shift Belum Dibuka';
+      if (el.pageShiftSubtitle) el.pageShiftSubtitle.textContent = 'Toko belum membuka shift aktif hari ini. Buka shift kasir di bawah untuk memulai.';
+      if (el.btnHeaderCloseShift) el.btnHeaderCloseShift.style.display = 'none';
+      if (el.btnRefreshPageData) {
+        el.btnRefreshPageData.disabled = false;
+        el.btnRefreshPageData.innerHTML = '<span>🔄</span> Segarkan Data';
       }
       return;
     }
+
+    // ADA SHIFT AKTIF: Tampilkan dashboard & bottom bar, sembunyikan kartu noShift
+    if (el.noShiftSection) el.noShiftSection.style.display = 'none';
+    if (el.activeShiftDashboard) el.activeShiftDashboard.style.display = 'block';
+    if (el.stickyActionBar) el.stickyActionBar.style.display = 'block';
+    if (el.btnHeaderCloseShift) el.btnHeaderCloseShift.style.display = 'flex';
 
     state.shift = res.shift;
     const s = state.shift;
@@ -699,6 +731,35 @@ async function handleConfirmPrintReceipt() {
     if (el.btnConfirmPrintReceipt) {
       el.btnConfirmPrintReceipt.disabled = false;
       el.btnConfirmPrintReceipt.innerHTML = origBtnText;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// BUKA SHIFT LANGSUNG DARI HALAMAN CASHIER.HTML
+// -----------------------------------------------------------------------------
+async function handleDirectOpenShift() {
+  const raw = el.inpDirectStartingCash ? el.inpDirectStartingCash.value.replace(/[^0-9]/g, '') : '';
+  const amount = Number(raw) || 0;
+
+  try {
+    if (el.btnDirectOpenShiftSubmit) {
+      el.btnDirectOpenShiftSubmit.disabled = true;
+      el.btnDirectOpenShiftSubmit.innerHTML = '<span>⏳</span> Membuka Shift Kasir...';
+    }
+
+    const res = await api.openShift(amount);
+    showToast(`🎉 Shift kasir berhasil dibuka dengan modal ${formatRupiah(amount)}!`, 'success');
+
+    // Reload shift data & tampilkan dashboard otomatis
+    await loadActiveShiftData();
+  } catch (err) {
+    console.error('Gagal membuka shift kasir:', err);
+    showToast('Gagal membuka shift: ' + (err.message || 'Terjadi kesalahan sistem'), 'error');
+  } finally {
+    if (el.btnDirectOpenShiftSubmit) {
+      el.btnDirectOpenShiftSubmit.disabled = false;
+      el.btnDirectOpenShiftSubmit.innerHTML = '<span>🚀</span> Buka Shift Kasir Sekarang';
     }
   }
 }
@@ -1126,6 +1187,44 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (el.btnCloseShiftZ) {
     el.btnCloseShiftZ.addEventListener('click', handleCloseShiftZ);
+  }
+
+  // Direct Open Shift Handlers in cashier.html
+  document.querySelectorAll('.btn-chip-direct-cash').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const val = e.currentTarget.dataset.val;
+      if (el.inpDirectStartingCash) {
+        el.inpDirectStartingCash.value = formatRupiahNumber(Number(val));
+      }
+      document.querySelectorAll('.btn-chip-direct-cash').forEach(b => {
+        b.style.background = '#ffffff';
+        b.style.border = '1px solid #cbd5e1';
+        b.style.color = '#334155';
+        b.style.fontWeight = '700';
+      });
+      e.currentTarget.style.background = '#eff6ff';
+      e.currentTarget.style.border = '1.5px solid #3b82f6';
+      e.currentTarget.style.color = '#1d4ed8';
+      e.currentTarget.style.fontWeight = '800';
+    });
+  });
+
+  if (el.inpDirectStartingCash) {
+    el.inpDirectStartingCash.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = raw ? formatRupiahNumber(Number(raw)) : '';
+    });
+
+    el.inpDirectStartingCash.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleDirectOpenShift();
+      }
+    });
+  }
+
+  if (el.btnDirectOpenShiftSubmit) {
+    el.btnDirectOpenShiftSubmit.addEventListener('click', handleDirectOpenShift);
   }
 
   // Receipt Preview Modal Actions
