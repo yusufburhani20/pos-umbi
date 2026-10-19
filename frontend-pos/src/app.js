@@ -947,9 +947,12 @@ async function loadInitialData() {
     ]);
 
     if (localProds && localProds.length > 0) {
-      state.products = localProds;
-      state.filteredProducts = [...state.products];
-      renderProductGrid();
+      const validProds = localProds.filter(p => p && (p.name || p.product_name));
+      if (validProds.length > 0) {
+        state.products = validProds;
+        state.filteredProducts = [...state.products];
+        renderProductGrid();
+      }
     }
     if (localCusts && localCusts.length > 0) {
       state.customers = localCusts;
@@ -968,8 +971,12 @@ async function loadInitialData() {
         api.getSettings().catch(() => null)
       ]);
 
-      if (prodRes && prodRes.products) {
-        state.products = prodRes.products;
+      if (prodRes && prodRes.products && prodRes.products.length > 0) {
+        const serverProds = prodRes.products.map(p => {
+          if (!p.name && p.product_name) p.name = p.product_name;
+          return p;
+        });
+        state.products = serverProds;
         state.filteredProducts = [...state.products];
         await saveProductsLocal(state.products);
       }
@@ -2199,6 +2206,7 @@ function renderProductGrid() {
   }
 
   el.productGrid.innerHTML = state.filteredProducts.map(p => {
+    const productName = (p.name || p.product_name || p.nama || p.title || '').trim() || 'Komoditas';
     const minAlert = p.min_stock_alert !== undefined && p.min_stock_alert !== null ? Number(p.min_stock_alert) : 15.0;
     const isOut = Number(p.stock_qty) <= 0;
     const isLow = !isOut && Number(p.stock_qty) <= minAlert;
@@ -2223,13 +2231,13 @@ function renderProductGrid() {
     const inCartClass = qtyInCart ? 'in-cart-highlight' : '';
 
     return `
-      <div class="product-card ${cardClass} ${inCartClass}" data-id="${p.id}" data-unit="${p.unit || 'kg'}" tabindex="0" role="button" aria-label="Tambah ${p.name} ke keranjang">
+      <div class="product-card ${cardClass} ${inCartClass}" data-id="${p.id}" data-unit="${p.unit || 'kg'}" tabindex="0" role="button" aria-label="Tambah ${escapeHtml(productName)} ke keranjang">
         ${inCartBadge}
-        <div class="card-header-row">
+        <div class="card-header-row card-top">
           <span class="product-emoji">${p.image_emoji || '🥔'}</span>
           ${tagHtml}
         </div>
-        <h3 class="product-name" title="${p.name}">${p.name}</h3>
+        <h3 class="product-name" title="${escapeHtml(productName)}" style="display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #0f172a !important; font-size: 14.5px !important; font-weight: 700 !important; line-height: 1.35 !important; min-height: 38px !important; max-height: 44px !important; margin: 4px 0 8px 0 !important; flex-shrink: 0 !important; visibility: visible !important;">${escapeHtml(productName)}</h3>
         <div class="card-pricing">
           <div class="price-row price-row-retail">
             <span class="price-label">Ecer</span>
@@ -2322,8 +2330,9 @@ function openScaleModal(product, existingQty = null, cartIndex = null) {
   state.activeCartEditIndex = cartIndex;
   state.scaleMode = 'weight';
 
+  const scaleProdName = (product.name || product.product_name || product.nama || '').trim() || 'Komoditas';
   el.scaleProdEmoji.textContent = product.image_emoji || '🥔';
-  el.scaleProdName.textContent = product.name;
+  el.scaleProdName.textContent = scaleProdName;
   el.scaleProdPriceRate.innerHTML = `Eceran: <strong>${formatRupiah(product.retail_price)}/${product.unit}</strong> | Karungan: <strong>${formatRupiah(product.reseller_price)}/${product.unit}</strong>`;
 
   // Initialize or restore custom unit rate
@@ -2468,15 +2477,17 @@ function handleApplyScaleToCart() {
     }
   }
 
+  const prodName = product.name || product.product_name || 'Komoditas';
   el.modalScaleWeight.style.display = 'none';
   recalculateCart();
   renderCart();
-  showToast(`${product.name} (${qty.toFixed(2)} ${product.unit}) berhasil dimasukkan ke keranjang!`, 'success');
+  showToast(`${prodName} (${qty.toFixed(2)} ${product.unit || 'kg'}) berhasil dimasukkan ke keranjang!`, 'success');
 }
 
 function addToCart(product) {
+  const prodName = product.name || product.product_name || 'Komoditas';
   if (Number(product.stock_qty) <= 0) {
-    showToast(`⚠️ Stok ${product.name} telah habis (0 ${product.unit}). Tidak dapat ditambahkan ke keranjang.`, 'warning');
+    showToast(`⚠️ Stok ${prodName} telah habis (0 ${product.unit || 'kg'}). Tidak dapat ditambahkan ke keranjang.`, 'warning');
     return;
   }
   const existingIndex = state.cart.findIndex(i => i.product.id === product.id);
@@ -2557,11 +2568,13 @@ function renderCart() {
     totalWeight += item.qty;
     totalAmount += item.subtotal;
 
+    const itemName = (item.product && (item.product.name || item.product.product_name || item.product.nama)) || 'Komoditas';
+
     return `
       <div class="cart-item-card">
         <div class="cart-item-top">
           <div class="item-info">
-            <span class="item-title">${item.product.name}</span>
+            <span class="item-title">${escapeHtml(itemName)}</span>
             <span class="item-badge ${item.priceMode === 'karungan' ? 'karungan' : 'eceran'}">${item.priceMode === 'karungan' ? '📦 Karung' : '🛒 Ecer'}</span>
             ${item.isCustomPrice ? '<span class="custom-price-pill">Nego</span>' : ''}
           </div>

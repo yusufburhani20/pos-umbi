@@ -84,12 +84,21 @@ async function getStore(storeName, mode = 'readonly') {
 // 1. PRODUCTS MASTER DATA
 // ==========================================
 export async function saveProductsLocal(products) {
+  if (!products || !Array.isArray(products) || products.length === 0) return true;
   const db = await openOfflineDB();
   const tx = db.transaction('products', 'readwrite');
   const store = tx.objectStore('products');
   
+  // Clear old cache to avoid stale/corrupt records
+  store.clear();
+
   for (const prod of products) {
-    store.put(prod);
+    if (prod && (prod.name || prod.product_name)) {
+      if (!prod.name && prod.product_name) {
+        prod.name = prod.product_name;
+      }
+      store.put(prod);
+    }
   }
 
   return new Promise((resolve, reject) => {
@@ -104,6 +113,11 @@ export async function getProductsLocal(category = null) {
     const request = store.getAll();
     request.onsuccess = () => {
       let items = request.result || [];
+      items = items.map(p => {
+        if (!p.name && p.product_name) p.name = p.product_name;
+        return p;
+      }).filter(p => p && p.name);
+
       if (category) {
         items = items.filter(p => p.category === category);
       }
