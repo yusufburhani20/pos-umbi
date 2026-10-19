@@ -905,7 +905,7 @@ async function initApp() {
   // Handle URL modal parameter (e.g. from cashier.html header dropdown)
   const targetModal = urlParams.get('modal');
   if (targetModal) {
-    setTimeout(() => {
+    const triggerModal = () => {
       try {
         if (targetModal === 'history') openHistoryModal();
         else if (targetModal === 'catalog') openCatalogMarginModal();
@@ -932,10 +932,19 @@ async function initApp() {
         else if (targetModal === 'hardware') {
           if (el.hardwareModal) el.hardwareModal.style.display = 'flex';
         }
+        if (isEmbedMode) {
+          window.parent.postMessage({ action: 'modalReady' }, '*');
+        }
       } catch (err) {
         console.warn('Gagal membuka modal dari parameter URL:', err);
       }
-    }, 250);
+    };
+
+    if (isEmbedMode) {
+      triggerModal();
+    } else {
+      setTimeout(triggerModal, 250);
+    }
   }
 
   // Embedded mode close listener

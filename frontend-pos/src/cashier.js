@@ -1620,29 +1620,69 @@ function initCashierLockScreen() {
 // -----------------------------------------------------------------------------
 // EMBEDDED IN-PAGE MODAL CONTROLLER (Riwayat, Katalog, Piutang, Opname, dll.)
 // -----------------------------------------------------------------------------
+const MODAL_TITLES = {
+  history: 'Riwayat Transaksi Kasir',
+  catalog: 'Katalog & Margin Harga',
+  stockOpname: 'Audit Stok Opname',
+  waste: 'Pencatatan Susut & Rusak',
+  debts: 'Buku Piutang & Kasbon',
+  suppliers: 'Pemasok & Buku Kulakan',
+  supplierDebt: 'Hutang Tempo Toko',
+  hardware: 'Printer & Laci Kasir',
+  identity: 'Identitas Toko & Profil'
+};
+
 function openEmbeddedModal(modalName) {
   const overlay = document.getElementById('cashierModalOverlay');
   const iframe = document.getElementById('cashierModalIframe');
+  const loader = document.getElementById('cashierModalLoader');
+  const loaderText = document.getElementById('cashierModalLoaderText');
   const userDropdown = document.getElementById('userMenuDropdown');
   if (userDropdown) userDropdown.classList.remove('active');
 
   if (!overlay || !iframe) return;
 
+  const title = MODAL_TITLES[modalName] || 'Jendela';
+  if (loaderText) loaderText.textContent = `Memuat ${title}...`;
+  if (loader) loader.style.display = 'flex';
+  iframe.style.opacity = '0';
+
   overlay.style.display = 'block';
   iframe.src = `/?modal=${encodeURIComponent(modalName)}&embed=1`;
+
+  // Fallback to reveal iframe smoothly
+  clearTimeout(openEmbeddedModal._fallbackTimer);
+  openEmbeddedModal._fallbackTimer = setTimeout(() => {
+    iframe.style.opacity = '1';
+    if (loader) loader.style.display = 'none';
+  }, 350);
 }
 
 function closeEmbeddedModal() {
+  clearTimeout(openEmbeddedModal._fallbackTimer);
   const overlay = document.getElementById('cashierModalOverlay');
   const iframe = document.getElementById('cashierModalIframe');
+  const loader = document.getElementById('cashierModalLoader');
   if (overlay) overlay.style.display = 'none';
-  if (iframe) iframe.src = 'about:blank';
+  if (iframe) {
+    iframe.style.opacity = '0';
+    iframe.src = 'about:blank';
+  }
+  if (loader) loader.style.display = 'none';
   loadActiveShiftData();
 }
 
 window.addEventListener('message', (event) => {
-  if (event.data && event.data.action === 'closeCashierModal') {
-    closeEmbeddedModal();
+  if (event.data) {
+    if (event.data.action === 'closeCashierModal') {
+      closeEmbeddedModal();
+    } else if (event.data.action === 'modalReady') {
+      clearTimeout(openEmbeddedModal._fallbackTimer);
+      const iframe = document.getElementById('cashierModalIframe');
+      const loader = document.getElementById('cashierModalLoader');
+      if (iframe) iframe.style.opacity = '1';
+      if (loader) loader.style.display = 'none';
+    }
   }
 });
 

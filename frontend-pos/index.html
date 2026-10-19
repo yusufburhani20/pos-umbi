@@ -19,6 +19,32 @@
   <link rel="icon" type="image/svg+xml" href="/icon-kassa.svg?v=2">
   <link rel="apple-touch-icon" sizes="192x192" href="/icon-kassa-192.png?v=2">
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-kassa-512.png?v=2">
+
+  <script>
+    if (window.location.search.includes('embed=1')) {
+      document.documentElement.classList.add('is-embedded');
+    }
+  </script>
+  <style>
+    html.is-embedded,
+    html.is-embedded body {
+      background: transparent !important;
+      background-color: transparent !important;
+      overflow: hidden !important;
+    }
+    html.is-embedded #app {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+    html.is-embedded .top-bar,
+    html.is-embedded .tablet-view-switcher,
+    html.is-embedded .pos-container,
+    html.is-embedded .header-dropdown-backdrop,
+    html.is-embedded #loginModal,
+    html.is-embedded #openShiftModal {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
   <div id="app">
