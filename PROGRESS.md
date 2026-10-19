@@ -436,6 +436,16 @@ F:\POS
   - Cache Service Worker dinaikkan ke `kassa-pos-cache-v24`.
   - Bundle terbaru dideploy langsung ke server live `192.168.18.32` (`kassa.konfigin.my.id`) dan Nginx direload.
 
+### 16. ⚡ In-Page Modal Langsung di Dashboard Kasir Tanpa Redirect (v1.9.3 - 19 Oktober 2026)
+- [x] **Pencegahan Redirect Keluar Halaman**:
+  - Mengubah link `href="/?modal=..."` di dropdown profil [`cashier.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/cashier.html) menjadi tombol aksi `data-modal="..."`.
+  - Kasir kini dapat membuka seluruh modal operasional (*Riwayat Transaksi Kasir, Katalog & Margin, Audit Stok Opname, Susut & Rusak, Buku Piutang & Kasbon, Pemasok, Hutang Tempo, Printer & Laci, Identitas Toko*) langsung di atas layar Dashboard Kasir tanpa terlempar kembali ke halaman penjualan utama.
+- [x] **Seamless Overlay Container & Auto-Sync Kas**:
+  - Menyediakan container overlay `#cashierModalOverlay` dengan iframe embedded (`embed=1`) dan tombol `[✕ Tutup]` mengambang di pojok kanan atas.
+  - Saat modal ditutup (baik via tombol ✕ modal, klik backdrop luar, tombol Tutup overlay, maupun tombol Escape keyboard), sistem otomatis memanggil `loadActiveShiftData()` untuk menyinkronkan saldo kas laci secara instan.
+- [x] **Service Worker Cache v25 & Rilis Server Live**:
+  - Cache Service Worker dinaikkan ke `kassa-pos-cache-v25` dan dideploy ke server online `192.168.18.32` (`kassa.konfigin.my.id`).
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
 
