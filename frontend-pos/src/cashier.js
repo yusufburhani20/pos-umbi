@@ -661,7 +661,7 @@ function openReceiptPreview(type, data) {
     titleText = 'Pratinjau Struk Laporan X (Cek Kas Berjalan)';
     htmlReceipt = renderThermalShiftReceipt(data, 'X');
   } else if (type === 'shift_z') {
-    titleText = 'Pratinjau Struk Laporan Z (Tutup Shift Kasir)';
+    titleText = 'Pratinjau Struk Laporan Harian (Tutup Shift Kasir)';
     htmlReceipt = renderThermalShiftReceipt(data, 'Z');
   } else if (type === 'expense') {
     titleText = 'Pratinjau Voucher Pengeluaran Kas Laci';
@@ -716,7 +716,8 @@ async function handleConfirmPrintReceipt() {
     if (type === 'shift_x' || type === 'shift_z') {
       const modeType = type === 'shift_z' ? 'Z' : 'X';
       await hardwareManager.printShiftReport(data, modeType, settings);
-      showToast(`🖨️ Struk Laporan ${modeType} berhasil dikirim ke printer!`, 'success');
+      const repLabel = type === 'shift_z' ? 'Laporan Harian' : 'Laporan X';
+      showToast(`🖨️ Struk ${repLabel} berhasil dikirim ke printer!`, 'success');
     } else if (type === 'expense' || type === 'income') {
       await hardwareManager.printExpense(data, settings, false);
       showToast('🖨️ Bukti kas berhasil dicetak ke printer!', 'success');
@@ -789,7 +790,7 @@ function handlePrintReportX() {
 }
 
 // -----------------------------------------------------------------------------
-// TUTUP SHIFT & PRINT LAPORAN Z
+// TUTUP SHIFT & PRINT LAPORAN HARIAN
 // -----------------------------------------------------------------------------
 async function handleCloseShiftZ() {
   if (!state.shift) {
@@ -807,7 +808,7 @@ async function handleCloseShiftZ() {
   } else {
     confirmMsg += `\n\nℹ️ Status: SELISIH LEBIH ${formatRupiah(diff)}`;
   }
-  confirmMsg += '\n\nSistem akan menutup shift, membuka laci kasir otomatis, dan menampilkan pratinjau Laporan Z untuk dicetak.';
+  confirmMsg += '\n\nSistem akan menutup shift, membuka laci kasir otomatis, dan menampilkan pratinjau Laporan Harian untuk dicetak.';
 
   if (!confirm(confirmMsg)) return;
 
@@ -827,7 +828,7 @@ async function handleCloseShiftZ() {
 
     const sum = res.summary;
 
-    // Buka pratinjau struk Laporan Z
+    // Buka pratinjau struk Laporan Harian
     openReceiptPreview('shift_z', sum);
 
     let alertMsg = `Shift Kasir #${sum.shift_id} Berhasil Ditutup!\nTotal Fisik: ${formatRupiah(sum.actual_cash_input)}`;
@@ -844,7 +845,7 @@ async function handleCloseShiftZ() {
   } finally {
     if (el.btnCloseShiftZ) {
       el.btnCloseShiftZ.disabled = false;
-      el.btnCloseShiftZ.innerHTML = '<span>🔒</span> Tutup Shift & Cetak Laporan Z';
+      el.btnCloseShiftZ.innerHTML = '<span>🔒</span> Tutup Shift & Cetak Laporan Harian';
     }
   }
 }
@@ -885,6 +886,46 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
     varianceBadge = `<div style="color: #d97706; font-weight: 800; font-size: 13px;">[ ℹ️ SELISIH LEBIH ${formatRupiah(diff)} ]</div>`;
   }
 
+  // Extract clean breakdown object if available
+  let breakdownObj = null;
+  if (shiftData.breakdown && typeof shiftData.breakdown === 'object') {
+    breakdownObj = shiftData.breakdown;
+  } else {
+    const rawNotes = shiftData.closing_notes || shiftData.notes || '';
+    const match = String(rawNotes).match(/^Breakdown\s*:\s*(\{[\s\S]*?\})/i);
+    if (match) {
+      try { breakdownObj = JSON.parse(match[1]); } catch (e) { breakdownObj = null; }
+    }
+  }
+
+  let breakdownHtml = '';
+  if (breakdownObj && typeof breakdownObj === 'object') {
+    const b = breakdownObj;
+    const bRows = [];
+    if (b.d100k) bRows.push(`<span>Rp 100.000 x ${Math.round(b.d100k / 100000)}</span><span style="font-family:monospace;">${formatRupiah(b.d100k)}</span>`);
+    if (b.d50k)  bRows.push(`<span>Rp 50.000 x ${Math.round(b.d50k / 50000)}</span><span style="font-family:monospace;">${formatRupiah(b.d50k)}</span>`);
+    if (b.d20k)  bRows.push(`<span>Rp 20.000 x ${Math.round(b.d20k / 20000)}</span><span style="font-family:monospace;">${formatRupiah(b.d20k)}</span>`);
+    if (b.d10k)  bRows.push(`<span>Rp 10.000 x ${Math.round(b.d10k / 10000)}</span><span style="font-family:monospace;">${formatRupiah(b.d10k)}</span>`);
+    if (b.d5k)   bRows.push(`<span>Rp 5.000 x ${Math.round(b.d5k / 5000)}</span><span style="font-family:monospace;">${formatRupiah(b.d5k)}</span>`);
+    if (b.d2k)   bRows.push(`<span>Rp 2.000 x ${Math.round(b.d2k / 2000)}</span><span style="font-family:monospace;">${formatRupiah(b.d2k)}</span>`);
+    if (b.d1k)   bRows.push(`<span>Rp 1.000 x ${Math.round(b.d1k / 1000)}</span><span style="font-family:monospace;">${formatRupiah(b.d1k)}</span>`);
+    if (b.dKoin) bRows.push(`<span>Koin / Receh</span><span style="font-family:monospace;">${formatRupiah(b.dKoin)}</span>`);
+
+    if (bRows.length > 0) {
+      breakdownHtml = `
+        <div class="receipt-divider"></div>
+        <div style="font-size: 11px; line-height: 1.45;">
+          <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">RINCIAN PECAHAN UANG LACI:</div>
+          ${bRows.map(r => `<div style="display:flex; justify-content:space-between;">${r}</div>`).join('')}
+        </div>
+      `;
+    }
+  }
+
+  // Extract clean human cashier notes (strip any raw "Breakdown: {...}." text)
+  let cleanNotes = String(shiftData.closing_notes || shiftData.notes || '').trim();
+  cleanNotes = cleanNotes.replace(/^Breakdown\s*:\s*\{[\s\S]*?\}\s*(\.|\;)?\s*/i, '').trim();
+
   return `
     <div class="receipt-header">
       <div class="receipt-title">${escapeHtml(sName)}</div>
@@ -893,10 +934,10 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
       ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
       <div class="receipt-divider"></div>
       <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
-        ${isZ ? '*** LAPORAN Z (TUTUP SHIFT KASIR) ***' : '*** LAPORAN X (CEK SALDO BERJALAN) ***'}
+        ${isZ ? '*** LAPORAN HARIAN (TUTUP KASIR) ***' : '*** LAPORAN X (CEK SALDO BERJALAN) ***'}
       </div>
       <div style="font-size: 11px; color: #475569;">
-        ${isZ ? '(REKONSILIASI KAS & SERAH TERIMA SHIFT)' : '(RINGKASAN SEMENTARA TENGAH SHIFT)'}
+        ${isZ ? '(REKONSILIASI KAS & PENUTUPAN HARIAN)' : '(RINGKASAN SEMENTARA TENGAH SHIFT)'}
       </div>
       <div style="margin-top: 6px;">No. Shift   : #${escapeHtml(String(shiftData.id || shiftData.shift_id || '-'))}</div>
       <div>Petugas Kasir: ${escapeHtml(shiftData.cashier_name || (state.user ? state.user.name : 'Kasir'))}</div>
@@ -951,6 +992,7 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
     <div style="text-align:center; margin: 8px 0 4px;">
       ${varianceBadge}
     </div>
+    ${breakdownHtml}
     <div class="receipt-divider"></div>
     <div style="font-size: 11.5px; line-height: 1.4;">
       <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">NON-TUNAI & OMSET:</div>
@@ -975,11 +1017,11 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
         <span>${totalOrders} Transaksi</span>
       </div>
     </div>
-    ${shiftData.closing_notes || shiftData.notes ? `
+    ${cleanNotes ? `
       <div class="receipt-divider"></div>
       <div style="font-size:11px;">
         <strong>Catatan Kasir:</strong><br>
-        <span>${escapeHtml(shiftData.closing_notes || shiftData.notes)}</span>
+        <span>${escapeHtml(cleanNotes)}</span>
       </div>
     ` : ''}
     <div class="receipt-divider" style="margin-top:8px;"></div>

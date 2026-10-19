@@ -621,7 +621,7 @@ class HardwareManager {
     }
   }
 
-  // --- Build Shift Balancing Report Bytes (Laporan X & Laporan Z) ---
+  // --- Build Shift Balancing Report Bytes (Laporan X & Laporan Harian) ---
   buildShiftReportBytes(shiftData, type = 'X', settings = {}) {
     const is80mm = this.config.paperSize === '80mm';
     const maxCols = is80mm ? 48 : 32;
@@ -670,9 +670,9 @@ class HardwareManager {
     // 2. Report Title
     append(COMMANDS.BOLD_ON);
     if (type === 'Z') {
-      append('*** LAPORAN Z (TUTUP SHIFT KASIR) ***\n');
+      append('*** LAPORAN HARIAN (TUTUP KASIR) ***\n');
       append(COMMANDS.NORMAL_TEXT);
-      append('(REKONSILIASI KAS & SERAH TERIMA)\n');
+      append('(REKONSILIASI KAS & PENUTUPAN HARIAN)\n');
     } else {
       append('*** LAPORAN X (CEK SALDO BERJALAN) ***\n');
       append(COMMANDS.NORMAL_TEXT);
@@ -784,10 +784,11 @@ class HardwareManager {
     append(formatLine('  Total Nota Transaksi:', String(totalOrders) + ' Nota') + '\n');
     append(subDivider + '\n');
 
-    // 8. Notes
-    if (shiftData.closing_notes || shiftData.notes) {
+    // 8. Notes (Cleaned without raw breakdown JSON)
+    const cleanNotes = String(shiftData.closing_notes || shiftData.notes || '').replace(/^Breakdown\s*:\s*\{[\s\S]*?\}\s*(\.|\;)?\s*/i, '').trim();
+    if (cleanNotes) {
       append('Catatan Kasir:\n');
-      append('  ' + (shiftData.closing_notes || shiftData.notes) + '\n');
+      append('  ' + cleanNotes + '\n');
       append(subDivider + '\n');
     }
 

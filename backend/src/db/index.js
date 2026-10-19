@@ -105,6 +105,7 @@ async function initDatabase() {
       cash_difference REAL,
       status TEXT DEFAULT 'open' CHECK(status IN ('open', 'closed')),
       closing_notes TEXT,
+      breakdown TEXT,
       FOREIGN KEY(cashier_id) REFERENCES users(id)
     );
   `);
@@ -301,6 +302,17 @@ async function initDatabase() {
       FOREIGN KEY(user_id) REFERENCES users(id)
     );
   `);
+
+  // Migration: Add breakdown column to shifts if not present
+  try {
+    const shiftCols = await dbQuery.all("PRAGMA table_info(shifts)");
+    if (!shiftCols.some(c => c.name === 'breakdown')) {
+      await dbQuery.exec("ALTER TABLE shifts ADD COLUMN breakdown TEXT;");
+      console.log('[DB] Migrated: Added breakdown column to shifts table');
+    }
+  } catch (mErr) {
+    console.warn('[DB] Migration error on shifts breakdown:', mErr.message);
+  }
 
   // Seed default data if empty
   await seedInitialData();

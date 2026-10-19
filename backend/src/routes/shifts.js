@@ -224,23 +224,39 @@ router.post('/close', authenticateToken, async (req, res) => {
 
     const cashDifference = Number(actual_cash) - Number(expectedSystemCash);
 
-    // Save notes with breakdown if provided
-    let finalNotes = closing_notes || '';
-    if (breakdown) {
-      finalNotes = `Breakdown: ${JSON.stringify(breakdown)}. ${finalNotes}`;
-    }
+    // Clean notes - do NOT pollute closing_notes with raw JSON breakdown string!
+    let cleanNotes = closing_notes ? String(closing_notes).trim() : '';
+    cleanNotes = cleanNotes.replace(/^Breakdown\s*:\s*\{[\s\S]*?\}\s*(\.|\;)?\s*/i, '').trim();
 
-    await dbQuery.run(
-      `UPDATE shifts
-       SET end_time = datetime('now', 'localtime'),
-           system_cash = ?,
-           actual_cash = ?,
-           cash_difference = ?,
-           status = 'closed',
-           closing_notes = ?
-       WHERE id = ?`,
-      [expectedSystemCash, actual_cash, cashDifference, finalNotes, shift_id]
-    );
+    const breakdownStr = breakdown && typeof breakdown === 'object' ? JSON.stringify(breakdown) : null;
+
+    try {
+      await dbQuery.run(
+        `UPDATE shifts
+         SET end_time = datetime('now', 'localtime'),
+             system_cash = ?,
+             actual_cash = ?,
+             cash_difference = ?,
+             status = 'closed',
+             closing_notes = ?,
+             breakdown = ?
+         WHERE id = ?`,
+        [expectedSystemCash, actual_cash, cashDifference, cleanNotes, breakdownStr, shift_id]
+      );
+    } catch (updateErr) {
+      // Fallback if breakdown column is still updating
+      await dbQuery.run(
+        `UPDATE shifts
+         SET end_time = datetime('now', 'localtime'),
+             system_cash = ?,
+             actual_cash = ?,
+             cash_difference = ?,
+             status = 'closed',
+             closing_notes = ?
+         WHERE id = ?`,
+        [expectedSystemCash, actual_cash, cashDifference, cleanNotes, shift_id]
+      );
+    }
 
     const auditAction = cashDifference === 0 
       ? 'SHIFT_CLOSED_BALANCED' 
@@ -281,8 +297,8 @@ router.post('/close', authenticateToken, async (req, res) => {
         actual_cash_input: actual_cash,
         cash_difference: cashDifference,
         is_balanced: cashDifference === 0,
-        breakdown,
-        closing_notes: finalNotes
+        breakdown: breakdown || null,
+        closing_notes: cleanNotes
       }
     });
   } catch (err) {
@@ -303,7 +319,26 @@ router.get('/history', authenticateToken, async (req, res) => {
        ORDER BY s.id DESC LIMIT ?`,
       [Number(limit)]
     );
-    return res.json({ success: true, shifts });
+    const formattedShifts = (shifts || []).map(s => {
+      let bObj = null;
+      if (s.breakdown) {
+        try { bObj = JSON.parse(s.breakdown); } catch (e) { bObj = null; }
+      }
+      let cNotes = s.closing_notes ? String(s.closing_notes).trim() : '';
+      if (!bObj && cNotes.startsWith('Breakdown:')) {
+        const match = cNotes.match(/^Breakdown\s*:\s*(\{[\s\S]*?\})/i);
+        if (match) {
+          try { bObj = JSON.parse(match[1]); } catch (e) {}
+        }
+      }
+      cNotes = cNotes.replace(/^Breakdown\s*:\s*\{[\s\S]*?\}\s*(\.|\;)?\s*/i, '').trim();
+      return {
+        ...s,
+        breakdown: bObj,
+        closing_notes: cNotes
+      };
+    });
+    return res.json({ success: true, shifts: formattedShifts });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
