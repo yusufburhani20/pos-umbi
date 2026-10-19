@@ -5,7 +5,9 @@ import { hardwareManager } from './hardware.js';
 const state = {
   shift: null,
   user: null,
-  settings: null
+  settings: null,
+  activePreviewType: null, // 'shift_x' | 'shift_z' | 'expense' | 'income'
+  activePreviewData: null
 };
 
 // Helpers
@@ -116,7 +118,36 @@ const el = {
 
   btnPrintReportX: document.getElementById('btnPrintReportX'),
   btnCloseShiftZ: document.getElementById('btnCloseShiftZ'),
-  thermalReceipt: document.getElementById('thermalReceipt')
+  thermalReceipt: document.getElementById('thermalReceipt'),
+
+  // Receipt Preview Modal
+  modalReceiptPreview: document.getElementById('modalReceiptPreview'),
+  receiptPreviewTitle: document.getElementById('receiptPreviewTitle'),
+  receiptPreviewContent: document.getElementById('receiptPreviewContent'),
+  btnConfirmPrintReceipt: document.getElementById('btnConfirmPrintReceipt'),
+  btnPreviewKickDrawer: document.getElementById('btnPreviewKickDrawer'),
+  btnCancelReceiptPreview: document.getElementById('btnCancelReceiptPreview'),
+  btnCloseReceiptPreview: document.getElementById('btnCloseReceiptPreview'),
+
+  // Quick Expense Modal
+  btnQuickExpense: document.getElementById('btnQuickExpense'),
+  modalAddExpense: document.getElementById('modalAddExpense'),
+  btnCloseAddExpense: document.getElementById('btnCloseAddExpense'),
+  btnCancelAddExpense: document.getElementById('btnCancelAddExpense'),
+  btnSubmitAddExpense: document.getElementById('btnSubmitAddExpense'),
+  selectExpenseCategory: document.getElementById('selectExpenseCategory'),
+  inputExpenseAmount: document.getElementById('inputExpenseAmount'),
+  inputExpenseNotes: document.getElementById('inputExpenseNotes'),
+
+  // Quick Income Modal
+  btnQuickIncome: document.getElementById('btnQuickIncome'),
+  modalAddIncome: document.getElementById('modalAddIncome'),
+  btnCloseAddIncome: document.getElementById('btnCloseAddIncome'),
+  btnCancelAddIncome: document.getElementById('btnCancelAddIncome'),
+  btnSubmitAddIncome: document.getElementById('btnSubmitAddIncome'),
+  selectIncomeCategory: document.getElementById('selectIncomeCategory'),
+  inputIncomeAmount: document.getElementById('inputIncomeAmount'),
+  inputIncomeNotes: document.getElementById('inputIncomeNotes')
 };
 
 // -----------------------------------------------------------------------------
@@ -177,23 +208,31 @@ async function loadActiveShiftData() {
     }
 
     // 4 KPI Cards
-    if (el.kpiStartingCash) el.kpiStartingCash.textContent = formatRupiah(s.starting_cash || 0);
-    if (el.kpiCashSales) el.kpiCashSales.textContent = formatRupiah(s.cash_sales || 0);
-    if (el.kpiCashOrdersCount) el.kpiCashOrdersCount.textContent = `${s.total_orders || 0} nota lunas tunai`;
-    
-    const totalIn = Number(s.cash_income || 0) + Number(s.cash_debt_collected || 0);
-    if (el.kpiIncomeDebt) el.kpiIncomeDebt.textContent = `+${formatRupiah(totalIn)}`;
-    if (el.kpiIncomeDebtMeta) {
-      el.kpiIncomeDebtMeta.textContent = `Kas Masuk: ${formatRupiah(s.cash_income || 0)} | Bon: ${formatRupiah(s.cash_debt_collected || 0)}`;
+    if (el.kpiStartingCash) {
+      el.kpiStartingCash.textContent = formatRupiah(s.starting_cash || 0);
     }
-
-    if (el.kpiExpensesCash) el.kpiExpensesCash.textContent = `-${formatRupiah(s.cash_expenses || 0)}`;
+    if (el.kpiCashSales) {
+      el.kpiCashSales.textContent = formatRupiah(s.cash_sales || 0);
+    }
+    if (el.kpiCashOrdersCount) {
+      el.kpiCashOrdersCount.textContent = `${s.total_orders || 0} transaksi lunas tunai`;
+    }
+    if (el.kpiIncomeDebt) {
+      const totalIn = Number(s.cash_income || 0) + Number(s.cash_debt_collected || 0);
+      el.kpiIncomeDebt.textContent = `+${formatRupiah(totalIn)}`;
+    }
+    if (el.kpiIncomeDebtMeta) {
+      el.kpiIncomeDebtMeta.textContent = `Masuk: ${formatRupiah(s.cash_income || 0)} | Bon: ${formatRupiah(s.cash_debt_collected || 0)}`;
+    }
+    if (el.kpiExpensesCash) {
+      el.kpiExpensesCash.textContent = `-${formatRupiah(s.cash_expenses || 0)}`;
+    }
     if (el.kpiExpensesCount) {
       const expCount = (s.recent_expenses && s.recent_expenses.length) || 0;
-      el.kpiExpensesCount.textContent = `${expCount} pengeluaran kas laci`;
+      el.kpiExpensesCount.textContent = `${expCount} pengeluaran laci shift ini`;
     }
 
-    // Expected Formula
+    // Expected Cash Formula
     const starting = Number(s.starting_cash || 0);
     const cashSales = Number(s.cash_sales || 0);
     const debtIn = Number(s.cash_debt_collected || 0);
@@ -217,18 +256,51 @@ async function loadActiveShiftData() {
     if (el.salesTempo) el.salesTempo.textContent = formatRupiah(s.tempo_sales || 0);
     if (el.totalOmset) el.totalOmset.textContent = formatRupiah(s.total_omset || 0);
 
-    // Recent Expenses
+    // Recent Expenses List with Print Voucher buttons
     if (el.expensesListContainer) {
       if (s.recent_expenses && s.recent_expenses.length > 0) {
-        el.expensesListContainer.innerHTML = s.recent_expenses.map(e => `
-          <div style="display: flex; justify-content: space-between; align-items: center; background: #fff5f5; border: 1px solid #fee2e2; border-radius: 10px; padding: 8px 12px; font-size: 13px;">
-            <div>
-              <strong style="color: #991b1b; display: block;">${escapeHtml(e.category || 'Biaya Operasional')}</strong>
-              <span style="color: #64748b; font-size: 11.5px;">${escapeHtml(e.notes || '-')} • ${parseSafeDate(e.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+        el.expensesListContainer.innerHTML = s.recent_expenses.map(e => {
+          const isIncome = e.type === 'income';
+          const timeStr = parseSafeDate(e.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          const catLabel = e.category_name || e.category || (isIncome ? 'Kas Masuk Laci' : 'Biaya Operasional');
+          const borderClr = isIncome ? '#bbf7d0' : '#fee2e2';
+          const bgClr = isIncome ? '#f0fdf4' : '#fff5f5';
+          const textClr = isIncome ? '#166534' : '#991b1b';
+          const amountSign = isIncome ? '+' : '-';
+          const amountClr = isIncome ? '#15803d' : '#b91c1c';
+
+          return `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: ${bgClr}; border: 1px solid ${borderClr}; border-radius: 10px; padding: 10px 14px; gap: 8px;">
+              <div style="flex: 1; min-width: 0;">
+                <strong style="color: ${textClr}; display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${isIncome ? '📥' : '💸'} ${escapeHtml(catLabel)}
+                </strong>
+                <span style="color: #64748b; font-size: 11.5px; display: block; margin-top: 2px;">
+                  ${escapeHtml(e.notes || '-')} • ${timeStr} WIB • 👤 ${escapeHtml(e.recorded_by_name || 'Kasir')}
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <strong style="font-family: 'JetBrains Mono', monospace; color: ${amountClr}; font-size: 14px;">
+                  ${amountSign}${formatRupiah(e.amount)}
+                </strong>
+                <button type="button" class="btn-preview-expense" data-id="${e.id}" style="padding: 5px 10px; border-radius: 6px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; font-weight: 700; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Pratinjau & Cetak Struk Bukti Kas">
+                  <span>🖨️</span> Cetak
+                </button>
+              </div>
             </div>
-            <strong style="font-family: 'JetBrains Mono', monospace; color: #b91c1c; font-size: 14px;">-${formatRupiah(e.amount)}</strong>
-          </div>
-        `).join('');
+          `;
+        }).join('');
+
+        // Wire event listener on each Cetak button
+        el.expensesListContainer.querySelectorAll('.btn-preview-expense').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const expId = Number(btn.dataset.id);
+            const exp = (state.shift.recent_expenses || []).find(x => x.id === expId);
+            if (exp) {
+              openReceiptPreview(exp.type === 'income' ? 'income' : 'expense', exp);
+            }
+          });
+        });
       } else {
         el.expensesListContainer.innerHTML = `
           <div style="text-align: center; color: #94a3b8; font-size: 13px; padding: 24px;">
@@ -324,9 +396,95 @@ function recalculateDenominations() {
 }
 
 // -----------------------------------------------------------------------------
-// PRINT LAPORAN X (CEK SALDO BERJALAN)
+// RECEIPT PREVIEW MODAL LOGIC (PRATINJAU STRUK SEBELUM CETAK)
 // -----------------------------------------------------------------------------
-async function handlePrintReportX() {
+function openReceiptPreview(type, data) {
+  state.activePreviewType = type;
+  state.activePreviewData = data;
+
+  let htmlReceipt = '';
+  let titleText = 'Pratinjau Struk Thermal';
+
+  if (type === 'shift_x') {
+    titleText = 'Pratinjau Struk Laporan X (Cek Kas Berjalan)';
+    htmlReceipt = renderThermalShiftReceipt(data, 'X');
+  } else if (type === 'shift_z') {
+    titleText = 'Pratinjau Struk Laporan Z (Tutup Shift Kasir)';
+    htmlReceipt = renderThermalShiftReceipt(data, 'Z');
+  } else if (type === 'expense') {
+    titleText = 'Pratinjau Voucher Pengeluaran Kas Laci';
+    htmlReceipt = renderThermalExpenseReceipt(data, false);
+  } else if (type === 'income') {
+    titleText = 'Pratinjau Bukti Kas Masuk Laci';
+    htmlReceipt = renderThermalExpenseReceipt(data, false);
+  }
+
+  if (el.receiptPreviewTitle) {
+    el.receiptPreviewTitle.textContent = titleText;
+  }
+  if (el.receiptPreviewContent) {
+    el.receiptPreviewContent.innerHTML = htmlReceipt;
+  }
+  if (el.thermalReceipt) {
+    el.thermalReceipt.innerHTML = htmlReceipt;
+  }
+
+  if (el.modalReceiptPreview) {
+    el.modalReceiptPreview.style.display = 'flex';
+  }
+}
+
+function closeReceiptPreview() {
+  if (el.modalReceiptPreview) {
+    el.modalReceiptPreview.style.display = 'none';
+  }
+  state.activePreviewType = null;
+  state.activePreviewData = null;
+}
+
+async function handleConfirmPrintReceipt() {
+  if (!state.activePreviewData || !state.activePreviewType) {
+    showToast('Tidak ada dokumen yang sedang dipratinjau.', 'warning');
+    return;
+  }
+
+  const origBtnText = el.btnConfirmPrintReceipt ? el.btnConfirmPrintReceipt.innerHTML : '';
+  try {
+    if (el.btnConfirmPrintReceipt) {
+      el.btnConfirmPrintReceipt.disabled = true;
+      el.btnConfirmPrintReceipt.innerHTML = '<span>⏳</span> Mengirim ke Printer...';
+    }
+
+    const settings = state.settings || {};
+    const type = state.activePreviewType;
+    const data = state.activePreviewData;
+
+    if (type === 'shift_x' || type === 'shift_z') {
+      const modeType = type === 'shift_z' ? 'Z' : 'X';
+      await hardwareManager.printShiftReport(data, modeType, settings);
+      showToast(`🖨️ Struk Laporan ${modeType} berhasil dikirim ke printer!`, 'success');
+    } else if (type === 'expense' || type === 'income') {
+      await hardwareManager.printExpense(data, settings, false);
+      showToast('🖨️ Bukti kas berhasil dicetak ke printer!', 'success');
+    }
+
+    closeReceiptPreview();
+  } catch (err) {
+    console.warn('[Print] Gagal cetak thermal, fallback ke system print:', err);
+    showToast('Printer belum terhubung (' + err.message + '). Membuka cetak browser...', 'warning');
+    window.print();
+  } finally {
+    if (el.btnConfirmPrintReceipt) {
+      el.btnConfirmPrintReceipt.disabled = false;
+      el.btnConfirmPrintReceipt.innerHTML = origBtnText;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// PRINT LAPORAN X (CEK SALDO BERJALAN) -> BUKA PRATINJAU DULU
+// -----------------------------------------------------------------------------
+function handlePrintReportX() {
   if (!state.shift) {
     showToast('Tidak ada shift aktif yang bisa dicetak.', 'warning');
     return;
@@ -343,24 +501,8 @@ async function handlePrintReportX() {
     closing_notes: el.cashierNotes ? el.cashierNotes.value : ''
   };
 
-  try {
-    if (el.btnPrintReportX) {
-      el.btnPrintReportX.disabled = true;
-      el.btnPrintReportX.innerHTML = '<span>⏳</span> Mencetak Laporan X...';
-    }
-
-    renderThermalShiftReceipt(reportData, 'X');
-    const settings = state.settings || {};
-    await hardwareManager.printShiftReport(reportData, 'X', settings);
-    showToast('🖨️ Struk Laporan X (Cek Kas Berjalan) berhasil dicetak ke printer kasir!', 'success');
-  } catch (err) {
-    showToast('Gagal mencetak Laporan X: ' + err.message, 'error');
-  } finally {
-    if (el.btnPrintReportX) {
-      el.btnPrintReportX.disabled = false;
-      el.btnPrintReportX.innerHTML = '<span>🖨️</span> Cetak Laporan X (Cek Kas Berjalan)';
-    }
-  }
+  // Sediakan preview struk terlebih dahulu seperti struk transaksi
+  openReceiptPreview('shift_x', reportData);
 }
 
 // -----------------------------------------------------------------------------
@@ -382,14 +524,14 @@ async function handleCloseShiftZ() {
   } else {
     confirmMsg += `\n\nℹ️ Status: SELISIH LEBIH ${formatRupiah(diff)}`;
   }
-  confirmMsg += '\n\nSistem akan menutup shift, membuka laci kasir otomatis, dan mencetak Struk Laporan Z.';
+  confirmMsg += '\n\nSistem akan menutup shift, membuka laci kasir otomatis, dan menampilkan pratinjau Laporan Z untuk dicetak.';
 
   if (!confirm(confirmMsg)) return;
 
   try {
     if (el.btnCloseShiftZ) {
       el.btnCloseShiftZ.disabled = true;
-      el.btnCloseShiftZ.innerHTML = '<span>⏳</span> Menutup Shift & Mencetak...';
+      el.btnCloseShiftZ.innerHTML = '<span>⏳</span> Menutup Shift...';
     }
 
     const notes = el.cashierNotes ? el.cashierNotes.value : '';
@@ -402,14 +544,8 @@ async function handleCloseShiftZ() {
 
     const sum = res.summary;
 
-    // Print Report Z
-    try {
-      renderThermalShiftReceipt(sum, 'Z');
-      const settings = state.settings || {};
-      await hardwareManager.printShiftReport(sum, 'Z', settings);
-    } catch (printErr) {
-      console.warn('[Hardware] Gagal mencetak Laporan Z:', printErr);
-    }
+    // Buka pratinjau struk Laporan Z
+    openReceiptPreview('shift_z', sum);
 
     let alertMsg = `Shift Kasir #${sum.shift_id} Berhasil Ditutup!\nTotal Fisik: ${formatRupiah(sum.actual_cash_input)}`;
     if (sum.is_balanced) {
@@ -419,10 +555,7 @@ async function handleCloseShiftZ() {
     } else {
       alertMsg += `\nStatus: Selisih LEBIH ${formatRupiah(sum.cash_difference)}`;
     }
-    alertMsg += '\n\nStruk Laporan Z telah dicetak ke printer kasir.';
-
-    alert(alertMsg);
-    window.location.href = '/';
+    showToast(alertMsg, 'success');
   } catch (err) {
     showToast('Gagal menutup shift: ' + err.message, 'error');
   } finally {
@@ -434,10 +567,9 @@ async function handleCloseShiftZ() {
 }
 
 // -----------------------------------------------------------------------------
-// RENDER THERMAL SHIFT RECEIPT (FALLBACK SYSTEM PRINT)
+// RENDER THERMAL SHIFT RECEIPT (LAPORAN X & Z)
 // -----------------------------------------------------------------------------
 function renderThermalShiftReceipt(shiftData, type = 'X') {
-  if (!el.thermalReceipt) return;
   const isZ = type === 'Z';
   const timeFormatted = new Date().toLocaleString('id-ID');
   const sName = (state.settings && state.settings.store_name) || 'PD. HASIL BUMI RAYA 1';
@@ -470,7 +602,7 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
     varianceBadge = `<div style="color: #d97706; font-weight: 800; font-size: 13px;">[ ℹ️ SELISIH LEBIH ${formatRupiah(diff)} ]</div>`;
   }
 
-  el.thermalReceipt.innerHTML = `
+  return `
     <div class="receipt-header">
       <div class="receipt-title">${escapeHtml(sName)}</div>
       <div>${escapeHtml(sTagline)}</div>
@@ -586,7 +718,70 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
 }
 
 // -----------------------------------------------------------------------------
-// EVENT LISTENERS
+// RENDER THERMAL EXPENSE RECEIPT (VOUCHER BIAYA & KAS MASUK)
+// -----------------------------------------------------------------------------
+function renderThermalExpenseReceipt(expense, isReprint = false) {
+  const isIncome = expense.type === 'income';
+  const timeFormatted = parseSafeDate(expense.created_at || Date.now()).toLocaleString('id-ID');
+  const sName = (state.settings && state.settings.store_name) || 'PD. HASIL BUMI RAYA 1';
+  const sTagline = (state.settings && state.settings.store_tagline) || 'Pusat Umbi, Bawang & Komoditas';
+  const sAddress = (state.settings && state.settings.store_address) || '';
+  const sPhone = (state.settings && state.settings.store_phone) || '';
+
+  return `
+    <div class="receipt-header">
+      <div class="receipt-title">${escapeHtml(sName)}</div>
+      <div>${escapeHtml(sTagline)}</div>
+      ${sAddress ? `<div style="font-size:11px; margin-top:2px;">${escapeHtml(sAddress)}</div>` : ''}
+      ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
+      <div class="receipt-divider"></div>
+      <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
+        ${isIncome ? '*** BUKTI KAS MASUK TOKO ***' : '*** VOUCHER BIAYA OPERASIONAL ***'}
+      </div>
+      <div style="font-size: 11px; color: #475569;">
+        ${isIncome ? '(TAMBAH MODAL / DANA LACI)' : '(BUKTI PENGELUARAN KAS KIOS)'}
+      </div>
+      ${isReprint ? '<div class="receipt-reprint-tag" style="background:#0f172a; color:#fff; font-weight:800; padding:2px 4px; margin:4px 0; border-radius:4px; text-align:center;">*** SALINAN / CETAK ULANG ***</div>' : ''}
+      <div style="margin-top: 6px;">No. Bukti : ${escapeHtml(expense.expense_no || ('EXP-' + (expense.id || '001')))}</div>
+      <div>Waktu     : ${timeFormatted}</div>
+      <div>Petugas   : ${escapeHtml(expense.recorded_by_name || (state.user ? state.user.name : 'Kasir'))}</div>
+      <div>Sumber Kas: ${expense.source === 'cash' ? '💵 Kas Laci Kasir' : '🏦 Transfer Bank'}</div>
+      <div>Kategori  : ${escapeHtml(expense.category_name || expense.category || '-')}</div>
+    </div>
+    <div class="receipt-divider"></div>
+    <div style="text-align: center; padding: 6px 0;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">JUMLAH NOMINAL:</div>
+      <div style="font-size: 20px; font-weight: 900; font-family: monospace; color: ${isIncome ? '#059669' : '#dc2626'}; margin-top: 2px;">
+        ${isIncome ? '+' : '-'}${formatRupiah(expense.amount)}
+      </div>
+    </div>
+    <div class="receipt-divider"></div>
+    ${expense.notes ? `
+      <div style="font-size: 11.5px; padding: 2px 0;">
+        <strong>Keterangan:</strong><br>
+        <span>${escapeHtml(expense.notes)}</span>
+      </div>
+      <div class="receipt-divider"></div>
+    ` : ''}
+    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px; margin-top: 14px; padding: 0 10px;">
+      <div>
+        Kasir Bertugas,<br><br><br><br>
+        ( .................... )
+      </div>
+      <div>
+        Penerima Dana,<br><br><br><br>
+        ( .................... )
+      </div>
+    </div>
+    <div class="receipt-divider" style="margin-top: 16px;"></div>
+    <div class="receipt-footer">
+      <p>Harap simpan struk ini sebagai bukti sah pembukuan keuangan kios.</p>
+    </div>
+  `;
+}
+
+// -----------------------------------------------------------------------------
+// EVENT LISTENERS & MODAL WIRES
 // -----------------------------------------------------------------------------
 window.addEventListener('DOMContentLoaded', () => {
   initCashierPage();
@@ -623,11 +818,172 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Action Buttons
   if (el.btnPrintReportX) {
     el.btnPrintReportX.addEventListener('click', handlePrintReportX);
   }
 
   if (el.btnCloseShiftZ) {
     el.btnCloseShiftZ.addEventListener('click', handleCloseShiftZ);
+  }
+
+  // Receipt Preview Modal Actions
+  if (el.btnConfirmPrintReceipt) {
+    el.btnConfirmPrintReceipt.addEventListener('click', handleConfirmPrintReceipt);
+  }
+  if (el.btnPreviewKickDrawer) {
+    el.btnPreviewKickDrawer.addEventListener('click', async () => {
+      try {
+        await hardwareManager.kickCashDrawer();
+        showToast('💰 Laci uang kasir (Kick RJ-11) berhasil dibuka!', 'success');
+      } catch (err) {
+        showToast('Gagal membuka laci: ' + err.message, 'warning');
+      }
+    });
+  }
+  if (el.btnCancelReceiptPreview) {
+    el.btnCancelReceiptPreview.addEventListener('click', closeReceiptPreview);
+  }
+  if (el.btnCloseReceiptPreview) {
+    el.btnCloseReceiptPreview.addEventListener('click', closeReceiptPreview);
+  }
+  if (el.modalReceiptPreview) {
+    el.modalReceiptPreview.addEventListener('click', (e) => {
+      if (e.target === el.modalReceiptPreview) closeReceiptPreview();
+    });
+  }
+
+  // Quick Expense Modal Actions
+  if (el.btnQuickExpense) {
+    el.btnQuickExpense.addEventListener('click', () => {
+      if (el.inputExpenseAmount) el.inputExpenseAmount.value = '';
+      if (el.inputExpenseNotes) el.inputExpenseNotes.value = '';
+      if (el.modalAddExpense) el.modalAddExpense.style.display = 'flex';
+      if (el.inputExpenseAmount) el.inputExpenseAmount.focus();
+    });
+  }
+  if (el.btnCloseAddExpense) {
+    el.btnCloseAddExpense.addEventListener('click', () => {
+      if (el.modalAddExpense) el.modalAddExpense.style.display = 'none';
+    });
+  }
+  if (el.btnCancelAddExpense) {
+    el.btnCancelAddExpense.addEventListener('click', () => {
+      if (el.modalAddExpense) el.modalAddExpense.style.display = 'none';
+    });
+  }
+  if (el.modalAddExpense) {
+    el.modalAddExpense.addEventListener('click', (e) => {
+      if (e.target === el.modalAddExpense) el.modalAddExpense.style.display = 'none';
+    });
+  }
+  if (el.btnSubmitAddExpense) {
+    el.btnSubmitAddExpense.addEventListener('click', async () => {
+      const category = el.selectExpenseCategory ? el.selectExpenseCategory.value : 'operasional';
+      const amount = Number(el.inputExpenseAmount ? el.inputExpenseAmount.value : 0);
+      const notes = el.inputExpenseNotes ? el.inputExpenseNotes.value.trim() : '';
+
+      if (isNaN(amount) || amount <= 0) {
+        showToast('Masukkan nominal pengeluaran yang valid!', 'error');
+        if (el.inputExpenseAmount) el.inputExpenseAmount.focus();
+        return;
+      }
+
+      try {
+        el.btnSubmitAddExpense.disabled = true;
+        el.btnSubmitAddExpense.textContent = 'Menyimpan...';
+
+        const res = await api.createExpense({
+          category,
+          amount,
+          source: 'cash',
+          notes,
+          type: 'expense'
+        });
+
+        showToast('💸 Pengeluaran kas laci berhasil dicatat!', 'success');
+        if (el.modalAddExpense) el.modalAddExpense.style.display = 'none';
+
+        // Reload shift data and open receipt preview
+        await loadActiveShiftData();
+        if (res.expense) {
+          openReceiptPreview('expense', res.expense);
+        }
+      } catch (err) {
+        showToast('Gagal mencatat pengeluaran: ' + err.message, 'error');
+      } finally {
+        if (el.btnSubmitAddExpense) {
+          el.btnSubmitAddExpense.disabled = false;
+          el.btnSubmitAddExpense.innerHTML = '<span>💸</span> Simpan & Pratinjau Struk';
+        }
+      }
+    });
+  }
+
+  // Quick Income Modal Actions
+  if (el.btnQuickIncome) {
+    el.btnQuickIncome.addEventListener('click', () => {
+      if (el.inputIncomeAmount) el.inputIncomeAmount.value = '';
+      if (el.inputIncomeNotes) el.inputIncomeNotes.value = '';
+      if (el.modalAddIncome) el.modalAddIncome.style.display = 'flex';
+      if (el.inputIncomeAmount) el.inputIncomeAmount.focus();
+    });
+  }
+  if (el.btnCloseAddIncome) {
+    el.btnCloseAddIncome.addEventListener('click', () => {
+      if (el.modalAddIncome) el.modalAddIncome.style.display = 'none';
+    });
+  }
+  if (el.btnCancelAddIncome) {
+    el.btnCancelAddIncome.addEventListener('click', () => {
+      if (el.modalAddIncome) el.modalAddIncome.style.display = 'none';
+    });
+  }
+  if (el.modalAddIncome) {
+    el.modalAddIncome.addEventListener('click', (e) => {
+      if (e.target === el.modalAddIncome) el.modalAddIncome.style.display = 'none';
+    });
+  }
+  if (el.btnSubmitAddIncome) {
+    el.btnSubmitAddIncome.addEventListener('click', async () => {
+      const category = el.selectIncomeCategory ? el.selectIncomeCategory.value : 'kas_masuk_modal';
+      const amount = Number(el.inputIncomeAmount ? el.inputIncomeAmount.value : 0);
+      const notes = el.inputIncomeNotes ? el.inputIncomeNotes.value.trim() : '';
+
+      if (isNaN(amount) || amount <= 0) {
+        showToast('Masukkan nominal kas masuk yang valid!', 'error');
+        if (el.inputIncomeAmount) el.inputIncomeAmount.focus();
+        return;
+      }
+
+      try {
+        el.btnSubmitAddIncome.disabled = true;
+        el.btnSubmitAddIncome.textContent = 'Menyimpan...';
+
+        const res = await api.createExpense({
+          category,
+          amount,
+          source: 'cash',
+          notes,
+          type: 'income'
+        });
+
+        showToast('📥 Kas masuk berhasil dicatat!', 'success');
+        if (el.modalAddIncome) el.modalAddIncome.style.display = 'none';
+
+        // Reload shift data and open receipt preview
+        await loadActiveShiftData();
+        if (res.expense) {
+          openReceiptPreview('income', res.expense);
+        }
+      } catch (err) {
+        showToast('Gagal mencatat kas masuk: ' + err.message, 'error');
+      } finally {
+        if (el.btnSubmitAddIncome) {
+          el.btnSubmitAddIncome.disabled = false;
+          el.btnSubmitAddIncome.innerHTML = '<span>📥</span> Simpan & Pratinjau Struk';
+        }
+      }
+    });
   }
 });

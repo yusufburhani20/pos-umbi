@@ -1905,6 +1905,7 @@ function bindEvents() {
   // Receipt Modal
   const closeReceiptModal = () => {
     el.receiptModal.style.display = 'none';
+    state.lastCompletedExpense = null;
     if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Transaksi Berhasil';
     if (el.btnNextOrder) el.btnNextOrder.textContent = 'Transaksi Baru Berikutnya';
     switchTabletView('catalog');
@@ -1913,7 +1914,21 @@ function bindEvents() {
   el.btnNextOrder.addEventListener('click', closeReceiptModal);
   
   el.btnPrintReceipt.addEventListener('click', async () => {
-    if (state.lastCompletedOrder) {
+    if (state.lastCompletedExpense) {
+      const originalText = el.btnPrintReceipt.textContent;
+      el.btnPrintReceipt.disabled = true;
+      el.btnPrintReceipt.textContent = '⏳ Mencetak ke Printer...';
+      try {
+        await hardwareManager.printExpense(state.lastCompletedExpense, state.settings, state.lastExpenseIsReprint);
+        showToast('🖨️ Struk bukti kas berhasil dicetak!', 'success');
+      } catch (err) {
+        showToast('Gagal cetak Bluetooth: ' + err.message + '. Membuka dialog cetak...', 'error');
+        window.print();
+      } finally {
+        el.btnPrintReceipt.disabled = false;
+        el.btnPrintReceipt.textContent = originalText;
+      }
+    } else if (state.lastCompletedOrder) {
       const originalText = el.btnPrintReceipt.textContent;
       el.btnPrintReceipt.disabled = true;
       el.btnPrintReceipt.textContent = '⏳ Mencetak ke Printer...';
@@ -5966,22 +5981,19 @@ function renderCashierExpensesHistoryTable() {
   }).join('');
 
   el.cashierExpensesTableBody.querySelectorAll('.btn-print-cashier-expense').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', () => {
       const id = Number(btn.dataset.id);
       const exp = (state.expenses || []).find(x => x.id === id);
       if (exp) {
-        try {
-          btn.disabled = true;
-          btn.innerHTML = '<span>⏳</span> Mencetak...';
-          renderThermalExpenseReceipt(exp, true);
-          const settings = state.settings || {};
-          await hardwareManager.printExpense(exp, settings, true);
-          showToast('🖨️ Bukti kas/biaya berhasil dicetak ke printer!', 'success');
-        } catch (err) {
-          showToast('Gagal mencetak: ' + err.message, 'error');
-        } finally {
-          btn.disabled = false;
-          btn.innerHTML = '<span>🖨️</span> Cetak';
+        state.lastCompletedExpense = exp;
+        state.lastCompletedOrder = null;
+        state.lastExpenseIsReprint = true;
+        renderThermalExpenseReceipt(exp, true);
+        if (el.receiptModalTitle) el.receiptModalTitle.textContent = exp.type === 'income' ? 'Pratinjau Bukti Kas Masuk' : 'Pratinjau Voucher Biaya Kas';
+        if (el.btnNextOrder) el.btnNextOrder.textContent = 'Tutup Pratinjau';
+        if (el.receiptModal) {
+          el.receiptModal.style.zIndex = '13000';
+          el.receiptModal.style.display = 'flex';
         }
       }
     });
@@ -6091,19 +6103,17 @@ async function handleSaveCashierExpense() {
 
     showToast(res.message || 'Pengeluaran berhasil dicatat!', 'success');
 
-    // Auto-print expense voucher to thermal printer if option is checked
+    // Show voucher preview modal first
     if (res.expense) {
-      const chkPrint = document.getElementById('chkAutoPrintExpense');
-      if (!chkPrint || chkPrint.checked) {
-        try {
-          renderThermalExpenseReceipt(res.expense, false);
-          const settings = state.settings || {};
-          await hardwareManager.printExpense(res.expense, settings, false);
-          showToast('🖨️ Struk bukti biaya sedang dicetak...', 'info');
-        } catch (printErr) {
-          console.warn('[Hardware] Gagal cetak bukti biaya:', printErr);
-          showToast('Tersimpan, namun printer gagal: ' + printErr.message, 'warning');
-        }
+      state.lastCompletedExpense = res.expense;
+      state.lastCompletedOrder = null;
+      state.lastExpenseIsReprint = false;
+      renderThermalExpenseReceipt(res.expense, false);
+      if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Pratinjau Voucher Biaya Kas Laci';
+      if (el.btnNextOrder) el.btnNextOrder.textContent = 'Tutup Pratinjau';
+      if (el.receiptModal) {
+        el.receiptModal.style.zIndex = '13000';
+        el.receiptModal.style.display = 'flex';
       }
     }
 
@@ -6149,18 +6159,17 @@ async function handleSaveCashierIncome() {
 
     showToast(res.message || 'Kas masuk berhasil dicatat!', 'success');
 
-    // Auto-print income voucher to thermal printer if option is checked
+    // Show voucher preview modal first
     if (res.expense) {
-      const chkPrint = document.getElementById('chkAutoPrintIncome');
-      if (!chkPrint || chkPrint.checked) {
-        try {
-          renderThermalExpenseReceipt(res.expense, false);
-          const settings = state.settings || {};
-          await hardwareManager.printExpense(res.expense, settings, false);
-          showToast('🖨️ Struk kas masuk sedang dicetak...', 'info');
-        } catch (printErr) {
-          console.warn('[Hardware] Gagal cetak kas masuk:', printErr);
-        }
+      state.lastCompletedExpense = res.expense;
+      state.lastCompletedOrder = null;
+      state.lastExpenseIsReprint = false;
+      renderThermalExpenseReceipt(res.expense, false);
+      if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Pratinjau Bukti Kas Masuk Laci';
+      if (el.btnNextOrder) el.btnNextOrder.textContent = 'Tutup Pratinjau';
+      if (el.receiptModal) {
+        el.receiptModal.style.zIndex = '13000';
+        el.receiptModal.style.display = 'flex';
       }
     }
 
