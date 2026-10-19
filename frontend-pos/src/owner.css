@@ -4779,22 +4779,42 @@ body.executive-body {
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 840px) {
   .feed-item-card {
+    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 8px !important;
-    padding: 10px 12px !important;
+    padding: 12px 14px !important;
   }
+  .feed-item-card .feed-card-main {
+    width: 100% !important;
+  }
+  .feed-item-card .feed-card-side,
   .feed-item-card > div:last-child {
     display: flex !important;
+    flex-direction: row !important;
     justify-content: space-between !important;
     align-items: center !important;
     border-top: 1px dashed #e2e8f0 !important;
-    padding-top: 6px !important;
+    padding-top: 8px !important;
     margin-left: 0 !important;
     text-align: left !important;
+    width: 100% !important;
   }
+}
+
+/* Delete Cashier Action Button */
+.btn-card-action.btn-delete-cashier {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #e11d48 !important;
+  transition: all 0.16s ease !important;
+}
+.btn-card-action.btn-delete-cashier:hover {
+  background: #ffe4e6 !important;
+  border-color: #fda4af !important;
+  color: #be123c !important;
 }
 
 /* --------------------------------------------------------------------------

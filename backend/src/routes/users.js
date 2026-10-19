@@ -9,7 +9,7 @@ const { authenticateToken, requireStrictOwner, logAudit } = require('../middlewa
 router.get('/', authenticateToken, requireStrictOwner, async (req, res) => {
   try {
     const users = await dbQuery.all(
-      'SELECT id, name, username, role, is_active, created_at FROM users ORDER BY role DESC, id ASC'
+      'SELECT id, name, username, role, is_active, created_at FROM users WHERE is_active >= 0 ORDER BY role DESC, id ASC'
     );
     return res.json({ success: true, users });
   } catch (err) {
@@ -125,4 +125,77 @@ router.put('/:id', authenticateToken, requireStrictOwner, async (req, res) => {
   }
 });
 
+// DELETE /api/users/:id (Owner only)
+// Delete cashier account with safety guards
+router.delete('/:id', authenticateToken, requireStrictOwner, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await dbQuery.get('SELECT * FROM users WHERE id = ?', [id]);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User kasir tidak ditemukan' });
+    }
+
+    // Protection 1: Owner cannot delete themselves
+    if (user.id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'Anda tidak dapat menghapus akun Owner Anda sendiri' });
+    }
+
+    // Protection 2: Cannot delete account with role owner
+    if (user.role === 'owner') {
+      return res.status(400).json({ success: false, message: 'Akun Owner tidak dapat dihapus' });
+    }
+
+    // Protection 3: Cannot delete cashier with active open shift
+    const activeShift = await dbQuery.get('SELECT id FROM shifts WHERE cashier_id = ? AND status = "open"', [id]);
+    if (activeShift) {
+      return res.status(400).json({
+        success: false,
+        message: `Kasir "${user.name}" saat ini masih memiliki shift yang sedang aktif (Shift #${activeShift.id}). Harap tutup shift kasir terlebih dahulu sebelum menghapus akun.`
+      });
+    }
+
+    // Check if user has related records (shifts, audit logs, adjustments, expenses)
+    const shiftCount = await dbQuery.get('SELECT COUNT(id) as count FROM shifts WHERE cashier_id = ?', [id]);
+    const hasHistory = shiftCount && Number(shiftCount.count) > 0;
+
+    if (hasHistory) {
+      // Soft-delete to preserve relational integrity & accounting history:
+      // Set is_active = -1, append timestamp to username so the username is freed up for future use, and scramble pin
+      const freedUsername = `deleted_${user.id}_${Date.now()}`;
+      await dbQuery.run(
+        'UPDATE users SET is_active = -1, username = ?, pin_code = "DELETED" WHERE id = ?',
+        [freedUsername, id]
+      );
+    } else {
+      // Hard delete if no relational dependencies exist
+      try {
+        await dbQuery.run('DELETE FROM users WHERE id = ?', [id]);
+      } catch (delErr) {
+        // Fallback to soft-delete if foreign key constraint triggers
+        const freedUsername = `deleted_${user.id}_${Date.now()}`;
+        await dbQuery.run(
+          'UPDATE users SET is_active = -1, username = ?, pin_code = "DELETED" WHERE id = ?',
+          [freedUsername, id]
+        );
+      }
+    }
+
+    await logAudit(req.user.id, 'CASHIER_DELETED', {
+      target_user_id: id,
+      target_name: user.name,
+      target_username: user.username
+    });
+
+    return res.json({
+      success: true,
+      message: `Akun kasir "${user.name}" (@${user.username}) berhasil dihapus.`
+    });
+  } catch (err) {
+    console.error('Error deleting cashier:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
+

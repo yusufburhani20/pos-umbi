@@ -202,6 +202,12 @@ class ApiClient {
     });
   }
 
+  deleteUser(id) {
+    return this.request('/users/' + id, {
+      method: 'DELETE'
+    });
+  }
+
   // Auth
   login(pin, username = null) {
     return this.request('/auth/login', {

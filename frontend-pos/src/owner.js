@@ -1533,23 +1533,23 @@ function renderRecentFeeds() {
 
         return `
           <div class="feed-item-card feed-order">
-            <div style="min-width: 0; flex: 1;">
+            <div class="feed-card-main">
               <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <strong style="font-size: 12.5px; color: #0f172a; white-space: nowrap;">#${escapeHtml(o.order_no)}</strong>
+                <strong style="font-size: 13px; color: #0f172a;">#${escapeHtml(o.order_no)}</strong>
                 ${methodBadge}
               </div>
-              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; word-break: break-word;">
                 ${escapeHtml(o.customer_name || 'Pelanggan Umum')} • <span style="color: #64748b;">Kasir: ${escapeHtml(o.cashier_name || 'Kasir')}</span>
               </div>
               <div style="margin-top: 4px;">
                 <span class="feed-time-chip">📅 ${fullTimeStr}</span>
               </div>
             </div>
-            <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
-              <div style="font-family: monospace; font-size: 13.5px; font-weight: 800; color: #2563eb;">
+            <div class="feed-card-side">
+              <div style="font-family: monospace; font-size: 14px; font-weight: 800; color: #2563eb;">
                 ${formatRupiah(o.total_amount)}
               </div>
-              <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">
+              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
                 ${o.total_kg > 0 ? `${o.total_kg} kg` : `${o.item_count || 1} item`}
               </div>
             </div>
@@ -1581,23 +1581,23 @@ function renderRecentFeeds() {
 
         return `
           <div class="${cardClass}">
-            <div style="min-width: 0; flex: 1;">
+            <div class="feed-card-main">
               <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <strong style="font-size: 12.5px; color: #0f172a; white-space: nowrap;">${escapeHtml(e.category_name)}</strong>
+                <strong style="font-size: 13px; color: #0f172a;">${escapeHtml(e.category_name)}</strong>
                 <span style="font-size: 10px; background: #f1f5f9; color: #475569; padding: 1px 6px; border-radius: 4px; font-weight: 600;">${sourceLabel}</span>
               </div>
-              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; word-break: break-word;">
                 ${escapeHtml(e.notes || 'Biaya operasional')} • <span style="color: #64748b;">Oleh: ${escapeHtml(e.recorded_by_name || 'Staff')}</span>
               </div>
               <div style="margin-top: 4px;">
                 <span class="feed-time-chip">📅 ${fullTimeStr}</span>
               </div>
             </div>
-            <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
-              <div style="font-family: monospace; font-size: 13.5px; font-weight: 800; color: ${amountColor};">
+            <div class="feed-card-side">
+              <div style="font-family: monospace; font-size: 14px; font-weight: 800; color: ${amountColor};">
                 ${amountPrefix}${formatRupiah(e.amount)}
               </div>
-              <div style="font-size: 10px; color: ${amountColor}; margin-top: 2px; font-weight: 700;">
+              <div style="font-size: 11px; color: ${amountColor}; margin-top: 2px; font-weight: 700;">
                 ${isIncome ? 'KAS MASUK' : 'KAS KELUAR'}
               </div>
             </div>
@@ -1628,12 +1628,12 @@ function renderRecentFeeds() {
 
         return `
           <div class="feed-item-card feed-purchase">
-            <div style="min-width: 0; flex: 1;">
+            <div class="feed-card-main">
               <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <strong style="font-size: 12.5px; color: #0f172a;">${escapeHtml(p.supplier_name)}</strong>
+                <strong style="font-size: 13px; color: #0f172a;">${escapeHtml(p.supplier_name)}</strong>
                 ${statusBadge}
               </div>
-              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; word-break: break-word;">
                 <strong>${escapeHtml(p.product_name)}</strong>: ${p.qty_kg} kg @ ${formatRupiah(p.cost_price)}
                 ${p.notes ? ` • <em>"${escapeHtml(p.notes)}"</em>` : ''}
               </div>
@@ -1641,11 +1641,11 @@ function renderRecentFeeds() {
                 <span class="feed-time-chip">📅 ${fullTimeStr}</span>
               </div>
             </div>
-            <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
-              <div style="font-family: monospace; font-size: 13.5px; font-weight: 800; color: #059669;">
+            <div class="feed-card-side">
+              <div style="font-family: monospace; font-size: 14px; font-weight: 800; color: #059669;">
                 ${formatRupiah(p.total_cost)}
               </div>
-              <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">
+              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
                 +${p.qty_kg} kg stok
               </div>
             </div>
@@ -2501,6 +2501,13 @@ function parseAuditToNarrative(log) {
         : `Status akun kasir <strong>"${d.target_name}"</strong> diperbarui menjadi <strong>${d.is_active ? 'Aktif' : 'Nonaktif'}</strong>.`;
       break;
 
+    case 'CASHIER_DELETED':
+      icon = '🗑️';
+      badgeClass = 'rose';
+      badgeTitle = 'Hapus Akun Kasir';
+      narrative = `Akun kasir <strong>"${d.target_name || ''}"</strong> (@${d.target_username || ''}) telah dihapus dari sistem oleh Owner.`;
+      break;
+
     case 'PRODUCT_CREATED':
       icon = '✨';
       badgeClass = 'blue';
@@ -2816,6 +2823,11 @@ function renderCashiers() {
               <span class="btn-ico">${u.is_active ? '⛔' : '⚡'}</span>
               ${u.is_active ? 'Nonaktifkan' : 'Aktifkan'}
             </button>
+            ${!isOwner ? `
+              <button class="btn-card-action btn-delete-cashier" data-delete-id="${u.id}" data-user-name="${escapeHtml(u.name)}" title="Hapus akun kasir ini">
+                <span class="btn-ico">🗑️</span> Hapus
+              </button>
+            ` : ''}
           `}
         </div>
       </div>
@@ -2838,6 +2850,27 @@ function renderCashiers() {
       const currentActive = Number(btn.dataset.currentActive) === 1;
       const user = state.users.find(u => u.id === userId);
       if (user) handleToggleUserStatus(user, currentActive);
+    });
+  });
+
+  // Attach handlers to Delete Cashier buttons
+  el.cashierCardsGrid.querySelectorAll('[data-delete-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const userId = Number(btn.dataset.deleteId);
+      const userName = btn.dataset.userName || 'Kasir';
+      const user = state.users.find(u => u.id === userId);
+      if (!user) return;
+
+      const confirmed = window.confirm(`⚠️ PERINGATAN: Apakah Anda yakin ingin menghapus akun kasir "${userName}" (@${user.username})?\n\nKasir ini tidak akan dapat login lagi ke aplikasi.`);
+      if (!confirmed) return;
+
+      try {
+        const res = await api.deleteUser(userId);
+        showToast(res.message || `Akun kasir "${userName}" berhasil dihapus`, 'success');
+        await loadAllData();
+      } catch (err) {
+        showToast('Gagal menghapus kasir: ' + err.message, 'error');
+      }
     });
   });
 }

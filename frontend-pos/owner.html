@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/src/style.css">
-  <link rel="stylesheet" href="/src/owner.css">
+  <link rel="stylesheet" href="/src/style.css?v=16">
+  <link rel="stylesheet" href="/src/owner.css?v=16">
   <link rel="manifest" href="/manifest.webmanifest?v=kassa2">
   <meta name="theme-color" content="#064e3b">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-kassa-192.png?v=2">
@@ -20,6 +20,96 @@
   <link rel="icon" type="image/svg+xml" href="/icon-kassa.svg?v=2">
   <link rel="apple-touch-icon" sizes="192x192" href="/icon-kassa-192.png?v=2">
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-kassa-512.png?v=2">
+  <style>
+    /* CRITICAL MOBILE RESPONSIVE OVERRIDES - GUARANTEED INSTANT RENDER */
+    @media (max-width: 900px) {
+      .recent-feeds-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+      }
+      .cashflow-ledger-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+      }
+      .liquidity-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .feed-item-card {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        padding: 12px 14px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+      }
+      .feed-item-card .feed-card-main {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      .feed-item-card .feed-card-side,
+      .feed-item-card > div:last-child {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-top: 1px dashed #e2e8f0 !important;
+        padding-top: 8px !important;
+        margin-top: 2px !important;
+        margin-left: 0 !important;
+        text-align: left !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .feed-card-main .feed-desc {
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .liquidity-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .table-responsive {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        display: block !important;
+      }
+    }
+
+    /* Delete Cashier Action Button */
+    .btn-card-action.btn-delete-cashier {
+      background: #fff1f2 !important;
+      border: 1px solid #fecdd3 !important;
+      color: #e11d48 !important;
+      border-radius: 8px !important;
+      padding: 6px 12px !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: all 0.16s ease !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 5px !important;
+    }
+    .btn-card-action.btn-delete-cashier:hover {
+      background: #ffe4e6 !important;
+      border-color: #fda4af !important;
+      color: #be123c !important;
+      transform: translateY(-1px) !important;
+    }
+  </style>
 </head>
 <body class="executive-body">
   <div id="executiveApp">
