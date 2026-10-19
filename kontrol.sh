@@ -35,7 +35,7 @@ pause() {
 print_header() {
     clear 2>/dev/null || true
     echo -e "${CYAN}${BOLD}================================================================================"
-    echo -e "       💎 PANEL KONTROL VENDOR - POS UMBI (PD. HASIL BUMI RAYA 1)"
+    echo -e "       💎 PANEL KONTROL VENDOR - KASSA POS (PD. HASIL BUMI RAYA 1)"
     echo -e "================================================================================${RESET}"
     echo -e "${DIM}Direktori Proyek: $SCRIPT_DIR${RESET}"
     echo ""
@@ -347,6 +347,79 @@ do_restore() {
     pause
 }
 
+# 13. Cek Integritas Database SQLite
+do_db_check() {
+    print_header
+    echo -e "${BOLD}${CYAN}▶ CEK KESEHATAN & INTEGRITAS DATABASE SQLITE${RESET}"
+    echo ""
+    node -e "
+    const sqlite3 = require('$SCRIPT_DIR/backend/node_modules/sqlite3').verbose();
+    const db = new sqlite3.Database('$SCRIPT_DIR/backend/pos_umbi.db');
+    db.get('PRAGMA integrity_check;', (err, row) => {
+      console.log('1. Integritas File DB    :', row ? row.integrity_check : err?.message);
+      db.all('PRAGMA foreign_key_check;', (e, fks) => {
+        console.log('2. Foreign Key Check     :', fks ? (fks.length === 0 ? '0 Pelanggaran (Bersih 100%)' : fks.length + ' Isu ditemukan') : e?.message);
+        db.get('SELECT COUNT(*) as neg FROM products WHERE stock_qty < 0', (e, r) => {
+          console.log('3. Produk Stok Negatif   :', r ? r.neg : 'N/A');
+          db.get('SELECT COUNT(*) as ord FROM orders', (e, r2) => {
+            console.log('4. Total Transaksi       :', r2 ? r2.ord + ' nota' : 'N/A');
+            db.get('SELECT COUNT(*) as sh FROM shifts WHERE status = \"open\"', (e, r3) => {
+              console.log('5. Shift Kasir Terbuka   :', r3 ? r3.sh : 'N/A');
+              db.close();
+            });
+          });
+        });
+      });
+    });
+    "
+    pause
+}
+
+# 14. Status PM2 & Log
+do_pm2_status() {
+    print_header
+    echo -e "${BOLD}${BLUE}▶ STATUS PROSES PM2 & LOG KASSA POS${RESET}"
+    echo ""
+    if command -v pm2 >/dev/null 2>&1; then
+        pm2 status kassa-pos || pm2 status
+        echo ""
+        echo -e "${CYAN}20 Baris Log Terakhir:${RESET}"
+        pm2 logs kassa-pos --lines 20 --nostream 2>/dev/null || true
+    else
+        echo -e "${YELLOW}PM2 tidak terdeteksi di lingkungan lokal ini (atau belum masuk PATH).${RESET}"
+    fi
+    pause
+}
+
+# 15. Build Frontend & Reload
+do_build_frontend() {
+    print_header
+    echo -e "${BOLD}${GREEN}▶ BUILD ULANG & DEPLOY FRONTEND PWA${RESET}"
+    echo "Memproses Vite build di frontend-pos..."
+    echo ""
+    if [ -d "$SCRIPT_DIR/frontend-pos" ]; then
+        cd "$SCRIPT_DIR/frontend-pos" || return
+        npm run build
+        cd "$SCRIPT_DIR" || return
+        if [ -d "/www/wwwroot/kassa.konfigin.my.id" ]; then
+            echo -e "${CYAN}Menyalin dist ke webroot produksi...${RESET}"
+            cp -rf "$SCRIPT_DIR/frontend-pos/dist/"* /www/wwwroot/kassa.konfigin.my.id/
+            cp -f "$SCRIPT_DIR/frontend-pos/public/sw.js" /www/wwwroot/kassa.konfigin.my.id/
+            chown -R www:www /www/wwwroot/kassa.konfigin.my.id/ 2>/dev/null || true
+            echo -e "${GREEN}Deploy webroot selesai.${RESET}"
+            if command -v nginx >/dev/null 2>&1; then
+                nginx -s reload 2>/dev/null && echo "Nginx reloaded."
+            fi
+            if command -v pm2 >/dev/null 2>&1; then
+                pm2 restart kassa-pos 2>/dev/null && echo "PM2 restarted."
+            fi
+        fi
+    else
+        echo -e "${RED}Folder frontend-pos tidak ditemukan.${RESET}"
+    fi
+    pause
+}
+
 # ==============================================================================
 #                               LOOP MENU UTAMA
 # ==============================================================================
@@ -370,9 +443,13 @@ while true; do
     echo -e "  ${BLUE}${BOLD}[11]${RESET} 📋 Lihat Daftar File Cadangan (Folder backups/)"
     echo -e "  ${RED}${BOLD}[12]${RESET} 🔄 Pulihkan (Restore) Database dari Berkas Cadangan"
     echo ""
+    echo -e "  ${CYAN}${BOLD}[13]${RESET} 🩺 Cek Kesehatan & Integritas Database SQLite"
+    echo -e "  ${BLUE}${BOLD}[14]${RESET} 🛠️  Cek Status Service PM2 & Error Log"
+    echo -e "  ${GREEN}${BOLD}[15]${RESET} 🚀 Kompilasi (Build) & Deploy Frontend PWA"
+    echo ""
     echo -e "  ${DIM}[ 0] ❌ Keluar / Tutup Menu${RESET}"
     echo ""
-    read -r -p "Masukkan Nomor Pilihan [0-12]: " main_choice
+    read -r -p "Masukkan Nomor Pilihan [0-15]: " main_choice
 
     case "$main_choice" in
         1) do_status ;;
@@ -387,13 +464,16 @@ while true; do
         10) do_backup ;;
         11) do_list_backups ;;
         12) do_restore ;;
+        13) do_db_check ;;
+        14) do_pm2_status ;;
+        15) do_build_frontend ;;
         0|q|exit)
             clear 2>/dev/null || true
             echo -e "${GREEN}Terima kasih. Program menu vendor ditutup.${RESET}\n"
             exit 0
             ;;
         *)
-            echo -e "${RED}Pilihan tidak dikenali. Silakan masukkan angka 0 s/d 12.${RESET}"
+            echo -e "${RED}Pilihan tidak dikenali. Silakan masukkan angka 0 s/d 15.${RESET}"
             pause
             ;;
     esac
