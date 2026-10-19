@@ -391,6 +391,21 @@ F:\POS
   - Grid katalog kasir dioptimalkan dengan CSS `grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px !important;`.
   - Ukuran font judul barang (`12.5px`), label harga (`10.5px`), badge stok (`9px`), dan emoji (`22px`) disesuaikan secara proporsional sehingga 4 komoditas tampil rapi, padat, dan jelas per baris tanpa terpotong.
 
+### 13. 👑 Portal Login PIN Mandiri PWA Owner & Produksi (v1.9.0 - 19 Oktober 2026)
+- [x] **Modal Login PIN Langsung di `owner.html`**:
+  - Menyediakan form login PIN khusus Owner langsung di dalam `owner.html` tanpa melempar pengguna ke halaman kasir `/` atau memunculkan dialog `alert()` bawaan browser.
+  - Tampilan portal eksekutif mewah dengan latar radial obsidian gelap, lencana mahkota zamrud bersinar (*emerald crown glow*), tag portal eksekutif pemilik, nama toko resmi (`PD. HASIL BUMI RAYA 1`), dan 6 titik PIN (*dots indicator*) dengan animasi haptik & getar (*shake feedback*) saat salah.
+  - Dilengkapi *touch numpad* responsif dan integrasi *keyboard input* langsung (0-9, Backspace, Enter).
+  - Validasi ketat peran pengguna: jika PIN kasir dimasukkan, sistem menolak dan menampilkan pesan edukatif bahwa halaman tersebut khusus pemilik toko, dilengkapi tombol navigasi ke terminal kasir.
+- [x] **Dialog Konfirmasi Logout In-App**:
+  - Menggantikan native `confirm()` browser dengan modal elegan (*Kunci & Keluar Sesi Owner*) saat menekan tombol Keluar di desktop maupun *bottom sheet* mobile.
+  - Setelah logout, aplikasi kembali ke layar kunci PIN Owner secara aman tanpa merusak cache.
+- [x] **Pembaruan Service Worker v20**:
+  - Menaikkan cache Service Worker ke `kassa-pos-cache-v20` untuk memastikan seluruh perangkat Owner dan Tablet kasir mendapatkan pembaruan otomatis.
+- [x] **Sinkronisasi & Rilis Produksi**:
+  - Bundle Vite terkompilasi bersih, git commit dipusatkan ke `origin/main` (`7f5870f`), dan file aset terbaru telah dideploy ke server produksi `192.168.18.32` (`kassa.konfigin.my.id`).
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
+
 
