@@ -970,13 +970,14 @@ input, select, textarea {
   background-color: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 10px !important;
-  padding: 8px 10px !important;
+  padding: 7px 9px !important;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
   transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  min-height: 140px !important;
+  min-height: 104px !important;
+  height: auto !important;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -1096,13 +1097,13 @@ input, select, textarea {
 }
 
 .product-name {
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   color: #0f172a !important;
   line-height: 1.25 !important;
   margin: 2px 0 4px 0 !important;
-  min-height: 30px !important;
-  max-height: 33px !important;
+  min-height: 28px !important;
+  max-height: 32px !important;
   display: -webkit-box !important;
   -webkit-line-clamp: 2 !important;
   -webkit-box-orient: vertical !important;
@@ -1119,9 +1120,10 @@ input, select, textarea {
   flex-direction: column;
   gap: 2px !important;
   background-color: var(--surface-subtle);
-  padding: 4px 6px !important;
+  padding: 3px 6px !important;
   border-radius: 6px !important;
   border: 1px solid var(--border);
+  margin-top: auto !important;
 }
 
 .price-row {
@@ -1167,63 +1169,17 @@ input, select, textarea {
   margin-left: 4px;
 }
 
-/* Product Card Action Bar Pill */
-.card-action-bar {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(226, 232, 240, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+/* Product Card Action Bar (Hidden) */
+.card-action-bar,
 .btn-card-action {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  user-select: none;
-  pointer-events: none;
-}
-
-.btn-card-action.ready-to-weigh {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.08);
-}
-
-.product-card:hover .btn-card-action.ready-to-weigh {
-  background: #16a34a;
-  color: #ffffff;
-  border-color: #16a34a;
-  box-shadow: 0 3px 8px rgba(22, 163, 74, 0.28);
-}
-
-.product-card:active .btn-card-action.ready-to-weigh {
-  transform: scale(0.97);
-  background: #15803d;
-  color: #ffffff;
-}
-
-.btn-card-action.out-of-stock {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-  opacity: 0.75;
+  display: none !important;
 }
 
 /* --------------------------------------------------------------------------
    RIGHT PANE: CART & CHECKOUT
    -------------------------------------------------------------------------- */
 .cart-pane {
-  width: clamp(380px, 30vw, 480px);
+  width: clamp(310px, 28vw, 360px);
   background-color: var(--surface);
   display: flex;
   flex-direction: column;
@@ -2697,13 +2653,18 @@ input, select, textarea {
 /* 1. TABLET LANDSCAPE & MEDIUM SCREENS (901px to 1399px) */
 @media (min-width: 901px) and (max-width: 1399px) {
   .product-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 12px !important;
-    padding: 14px 16px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 10px 10px 40px 10px !important;
+  }
+
+  .product-card {
+    min-height: 104px !important;
+    padding: 7px 9px !important;
   }
 
   .cart-pane {
-    width: clamp(360px, 32vw, 420px) !important;
+    width: clamp(300px, 28vw, 340px) !important;
   }
 
   .top-bar {
@@ -2790,7 +2751,7 @@ input, select, textarea {
   }
 
   .cart-pane {
-    width: clamp(330px, 31vw, 390px) !important;
+    width: clamp(300px, 28vw, 340px) !important;
     min-height: 0 !important;
     max-height: 100% !important;
     overflow: hidden !important;
@@ -3034,17 +2995,16 @@ input, select, textarea {
     min-height: 0 !important;
   }
 
-  /* Product Catalog Grid on Tablet Portrait: 3 spacious columns */
+  /* Product Catalog Grid on Tablet Portrait: 4 columns */
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
-    gap: 12px !important;
-    padding: 12px !important;
-    padding-bottom: 120px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 10px 10px 120px 10px !important;
   }
 
   .product-card {
-    min-height: 136px;
-    padding: 12px;
+    min-height: 104px !important;
+    padding: 7px 9px !important;
   }
 
   /* Cart Items List ergonomics on Tablet */

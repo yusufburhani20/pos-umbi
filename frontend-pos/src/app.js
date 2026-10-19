@@ -2318,7 +2318,7 @@ function renderProductGrid() {
           <span class="product-emoji">${p.image_emoji || '🥔'}</span>
           ${tagHtml}
         </div>
-        <h3 class="product-name" title="${escapeHtml(productName)}" style="display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #0f172a !important; font-size: 12.5px !important; font-weight: 700 !important; line-height: 1.25 !important; min-height: 30px !important; max-height: 33px !important; margin: 2px 0 4px 0 !important; flex-shrink: 0 !important; visibility: visible !important;">${escapeHtml(productName)}</h3>
+        <h3 class="product-name" title="${escapeHtml(productName)}" style="display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #0f172a !important; font-size: 12px !important; font-weight: 700 !important; line-height: 1.25 !important; min-height: 28px !important; max-height: 32px !important; margin: 2px 0 4px 0 !important; flex-shrink: 0 !important; visibility: visible !important;">${escapeHtml(productName)}</h3>
         <div class="card-pricing">
           <div class="price-row price-row-retail">
             <span class="price-label">Ecer</span>
@@ -2328,11 +2328,6 @@ function renderProductGrid() {
             <span class="price-label">Karung</span>
             <span class="price-val">${formatRupiah(p.reseller_price)}</span>
           </div>
-        </div>
-        <div class="card-action-bar">
-          <span class="btn-card-action ${isOut ? 'out-of-stock' : 'ready-to-weigh'}">
-            ${isOut ? '🚨 Stok Habis' : '⚖️ + Timbang'}
-          </span>
         </div>
       </div>
     `;
