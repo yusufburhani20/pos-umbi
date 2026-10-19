@@ -27,6 +27,16 @@ const COMMANDS = {
   FEED_AND_CUT: [0x0a, 0x0a, 0x0a, 0x0a, GS, 0x56, 0x42, 0x00]
 };
 
+function parseSafeDate(dateInput) {
+  if (!dateInput) return new Date();
+  if (dateInput instanceof Date) return dateInput;
+  let s = String(dateInput).trim();
+  if (s.includes(' ') && !s.includes('T')) {
+    s = s.replace(' ', 'T');
+  }
+  return new Date(s);
+}
+
 // Known BLE Primary Services & Characteristics for Thermal Printers (Panda, RPP, MPT, Feasycom, etc.)
 const PRINTER_SERVICES = [
   '000018f0-0000-1000-8000-00805f9b34fb', // Standard Print Service
@@ -317,7 +327,7 @@ class HardwareManager {
     append(COMMANDS.ALIGN_LEFT);
     append(divider + '\n');
     append(formatRow('No. Nota:', order.order_no));
-    append(formatRow('Waktu   :', new Date(order.created_at || Date.now()).toLocaleString('id-ID')));
+    append(formatRow('Waktu   :', parseSafeDate(order.created_at || Date.now()).toLocaleString('id-ID')));
     append(formatRow('Kasir   :', order.cashier_name || 'Kasir'));
     append(formatRow('Pembeli :', (order.customer_name || 'Pelanggan Umum') + (order.customer_phone ? ` (${order.customer_phone})` : '')));
     if (order.due_date) {
@@ -540,7 +550,7 @@ class HardwareManager {
     // 3. Meta Data
     append(COMMANDS.ALIGN_LEFT);
     append(formatRow('No. Bukti :', expense.expense_no || '-'));
-    append(formatRow('Waktu     :', new Date(expense.created_at || Date.now()).toLocaleString('id-ID')));
+    append(formatRow('Waktu     :', parseSafeDate(expense.created_at || Date.now()).toLocaleString('id-ID')));
     append(formatRow('Petugas   :', expense.recorded_by_name || 'Kasir'));
     append(formatRow('Sumber Kas:', sourceLabel));
     append(formatRow('Kategori  :', expense.category_name || '-'));
@@ -686,10 +696,10 @@ class HardwareManager {
     append(formatLine('No. Shift   :', '#' + (shiftData.id || shiftData.shift_id || '-')) + '\n');
     append(formatLine('Kasir       :', shiftData.cashier_name || 'Kasir Bertugas') + '\n');
     if (shiftData.start_time) {
-      append(formatLine('Waktu Buka  :', new Date(shiftData.start_time).toLocaleString('id-ID')) + '\n');
+      append(formatLine('Waktu Buka  :', parseSafeDate(shiftData.start_time).toLocaleString('id-ID')) + '\n');
     }
     const printTime = type === 'Z' && shiftData.end_time 
-      ? new Date(shiftData.end_time).toLocaleString('id-ID')
+      ? parseSafeDate(shiftData.end_time).toLocaleString('id-ID')
       : new Date().toLocaleString('id-ID');
     append(formatLine(type === 'Z' ? 'Waktu Tutup :' : 'Waktu Cetak :', printTime) + '\n');
     append(formatLine('Status Shift:', type === 'Z' ? 'TUTUP (CLOSED)' : 'AKTIF (OPEN)') + '\n');

@@ -479,6 +479,21 @@ F:\POS
   - Cache Service Worker dinaikkan ke `kassa-pos-cache-v28`.
   - Bundle terbaru dideploy langsung ke server live `192.168.18.32` (`kassa.konfigin.my.id`) dan Nginx direload.
 
+### 20. ⏰ Perbaikan Sinkronisasi Zona Waktu Server ke WIB (UTC+7) (v1.9.7 - 19 Oktober 2026)
+- [x] **Akar Masalah Waktu Struk & Riwayat Ngaco**:
+  - Jam transaksi yang dilakukan kasir pada pukul `21:01 WIB` tercetak `14:01` (selisih tepat 7 jam) karena server Linux live `192.168.18.32` sebelumnya memiliki zona waktu default `Etc/UTC` (`UTC+0`).
+  - Akibatnya fungsi `datetime('now', 'localtime')` pada SQLite backend mengevaluasi waktu sebagai UTC (14:01) alih-alih waktu lokal Indonesia (21:01).
+- [x] **Konfigurasi Zona Waktu OS Server & Node.js Runtime**:
+  - Mengubah tautan `/etc/localtime` dan `/etc/timezone` pada server Linux live menjadi **`Asia/Jakarta`** (`WIB, UTC+7`).
+  - Menetapkan `process.env.TZ = 'Asia/Jakarta'` secara eksplisit di baris paling awal [`backend/index.js`](file:///home/yusufb/posumbi/pos-umbi/backend/index.js) dan [`backend/src/app.js`](file:///home/yusufb/posumbi/pos-umbi/backend/src/app.js) agar runtime Node.js dan SQLite binding selalu berjalan pada zona waktu Indonesia Barat.
+  - Me-restart proses PM2 `kassa-pos` dengan opsi `--update-env`.
+- [x] **Koreksi Data Riwayat & Struk Thermal**:
+  - Mengoreksi data transaksi dan shift yang tersimpan dengan selisih waktu 7 jam pada database live.
+  - Menambahkan pembungkus `parseSafeDate` pada modul pencetakan struk printer thermal [`frontend-pos/src/hardware.js`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/src/hardware.js).
+- [x] **Service Worker Cache v29 & Deploy Produksi**:
+  - Cache Service Worker dinaikkan ke `kassa-pos-cache-v29`.
+  - Bundle frontend terbaru dideploy ke server live `192.168.18.32` (`kassa.konfigin.my.id`) dan Nginx direload.
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
 

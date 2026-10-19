@@ -1,3 +1,4 @@
+process.env.TZ = 'Asia/Jakarta';
 require('dotenv').config();
 const app = require('./src/app');
 const { initDatabase } = require('./src/db');
