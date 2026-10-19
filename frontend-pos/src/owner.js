@@ -4681,13 +4681,39 @@ function renderOwnerExpensesTable() {
           👤 ${escapeHtml(e.recorded_by_name || 'Kasir')} <span style="font-size: 10px; color: #94a3b8;">(${e.recorded_by_role || '-'})</span>
         </td>
         <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
-          <button type="button" class="btn-delete-owner-expense" data-id="${e.id}" style="padding: 3px 8px; border-radius: 6px; background: #fee2e2; border: 1px solid #fecdd3; color: #dc2626; cursor: pointer; font-size: 11px; font-weight: 700;" title="Hapus Catatan">
-            🗑️ Hapus
-          </button>
+          <div style="display: flex; gap: 4px; justify-content: center;">
+            <button type="button" class="btn-print-owner-expense" data-id="${e.id}" style="padding: 4px 8px; border-radius: 6px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; cursor: pointer; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Cetak Ulang Bukti Kas / Biaya (Printer Thermal)">
+              <span>🖨️</span> Cetak
+            </button>
+            <button type="button" class="btn-delete-owner-expense" data-id="${e.id}" style="padding: 4px 8px; border-radius: 6px; background: #fee2e2; border: 1px solid #fecdd3; color: #dc2626; cursor: pointer; font-size: 11px; font-weight: 700;" title="Hapus Catatan">
+              🗑️
+            </button>
+          </div>
         </td>
       </tr>
     `;
   }).join('');
+
+  el.ownerExpensesTableBody.querySelectorAll('.btn-print-owner-expense').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.id);
+      const exp = (state.ownerExpenses || []).find(x => x.id === id);
+      if (exp) {
+        try {
+          btn.disabled = true;
+          btn.innerHTML = '<span>⏳</span>';
+          const settings = state.settings || {};
+          await hardwareManager.printExpense(exp, settings, true);
+          showToast('🖨️ Bukti kas/biaya berhasil dicetak ke printer!', 'success');
+        } catch (err) {
+          showToast('Gagal mencetak: ' + err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🖨️</span> Cetak';
+        }
+      }
+    });
+  });
 
   el.ownerExpensesTableBody.querySelectorAll('.btn-delete-owner-expense').forEach(btn => {
     btn.addEventListener('click', () => {

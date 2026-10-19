@@ -474,6 +474,152 @@ class HardwareManager {
       return { success: true, mode: 'system' };
     }
   }
+
+  // --- ESC/POS Expense Receipt Formatter ---
+  buildExpenseReceiptBytes(expense, settings = {}, isReprint = false) {
+    const is80mm = this.config.paperSize === '80mm';
+    const maxCols = is80mm ? 48 : 32;
+    const divider = '-'.repeat(maxCols);
+    const doubleDivider = '='.repeat(maxCols);
+
+    const encoder = new TextEncoder();
+    const byteChunks = [];
+
+    const append = (bytes) => {
+      if (Array.isArray(bytes)) byteChunks.push(new Uint8Array(bytes));
+      else if (bytes instanceof Uint8Array) byteChunks.push(bytes);
+      else if (typeof bytes === 'string') byteChunks.push(encoder.encode(bytes));
+    };
+
+    const formatRow = (left, right) => {
+      const leftStr = String(left || '');
+      const rightStr = String(right || '');
+      const space = maxCols - leftStr.length - rightStr.length;
+      if (space >= 0) {
+        return leftStr + ' '.repeat(space) + rightStr + '\n';
+      } else {
+        return leftStr + '\n' + ' '.repeat(Math.max(0, maxCols - rightStr.length)) + rightStr + '\n';
+      }
+    };
+
+    const formatRp = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID');
+
+    const isIncome = expense.type === 'income';
+    const sourceLabel = expense.source === 'cash' ? 'KAS LACI (TUNAI)' : 'TRANSFER BANK';
+
+    // 1. Initialize
+    append(COMMANDS.INIT);
+
+    // 2. Header
+    append(COMMANDS.ALIGN_CENTER);
+    append(COMMANDS.DOUBLE_SIZE_ON);
+    append(COMMANDS.BOLD_ON);
+    append((settings.store_name || 'PD. HASIL BUMI RAYA 1') + '\n');
+    append(COMMANDS.NORMAL_TEXT);
+    append(COMMANDS.BOLD_OFF);
+
+    append((settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas') + '\n');
+    if (settings.store_address) append(settings.store_address + '\n');
+    if (settings.store_phone) append('Telp/WA: ' + settings.store_phone + '\n');
+
+    append(doubleDivider + '\n');
+    append(COMMANDS.BOLD_ON);
+    if (isIncome) {
+      append('*** BUKTI KAS MASUK TOKO ***\n');
+      append('(TAMBAH MODAL / DANA LACI)\n');
+    } else {
+      append('*** VOUCHER BIAYA OPERASIONAL ***\n');
+      append('(BUKTI PENGELUARAN KAS)\n');
+    }
+    if (isReprint) {
+      append('*** SALINAN / CETAK ULANG ***\n');
+    }
+    append(COMMANDS.BOLD_OFF);
+    append(doubleDivider + '\n');
+
+    // 3. Meta Data
+    append(COMMANDS.ALIGN_LEFT);
+    append(formatRow('No. Bukti :', expense.expense_no || '-'));
+    append(formatRow('Waktu     :', new Date(expense.created_at || Date.now()).toLocaleString('id-ID')));
+    append(formatRow('Petugas   :', expense.recorded_by_name || 'Kasir'));
+    append(formatRow('Sumber Kas:', sourceLabel));
+    append(formatRow('Kategori  :', expense.category_name || '-'));
+    append(divider + '\n');
+
+    // 4. Nominal Amount Highlight (Double size bold centered)
+    append(COMMANDS.ALIGN_CENTER);
+    append(COMMANDS.BOLD_ON);
+    append('JUMLAH NOMINAL:\n');
+    append(COMMANDS.DOUBLE_SIZE_ON);
+    append((isIncome ? '+ ' : '- ') + formatRp(expense.amount) + '\n');
+    append(COMMANDS.NORMAL_TEXT);
+    append(COMMANDS.BOLD_OFF);
+    append(COMMANDS.ALIGN_LEFT);
+    append(divider + '\n');
+
+    // 5. Notes / Keterangan
+    if (expense.notes) {
+      append('Keterangan:\n');
+      append('  ' + expense.notes + '\n');
+      append(divider + '\n');
+    }
+
+    // 6. Signature Boxes (Kasir & Penerima)
+    append(COMMANDS.ALIGN_CENTER);
+    if (is80mm) {
+      append('       Kasir / Petugas,              Penerima Dana,      \n\n\n\n');
+      append('    ( .................... )      ( .................... )\n');
+    } else {
+      append('    Kasir,              Penerima,   \n\n\n\n');
+      append(' ( .......... )      ( .......... )\n');
+    }
+
+    // 7. Footer
+    append(divider + '\n');
+    append('Harap simpan struk ini sebagai\nbukti sah pembukuan keuangan kios.\n');
+    append(COMMANDS.FEED_AND_CUT);
+
+    let totalLen = 0;
+    byteChunks.forEach(c => (totalLen += c.length));
+    const merged = new Uint8Array(totalLen);
+    let offset = 0;
+    byteChunks.forEach(c => {
+      merged.set(c, offset);
+      offset += c.length;
+    });
+    return merged;
+  }
+
+  // --- Main Print Expense Method ---
+  async printExpense(expense, settings = {}, isReprint = false) {
+    const bytes = this.buildExpenseReceiptBytes(expense, settings, isReprint);
+
+    // Auto-open cash drawer if expense was paid with drawer cash
+    if (this.config.autoDrawer && expense.source === 'cash') {
+      try {
+        await this.kickCashDrawer();
+      } catch (err) {
+        console.warn('[Hardware] Gagal membuka laci otomatis:', err);
+      }
+    }
+
+    if (this.config.mode === 'bluetooth') {
+      if (this.isConnected) {
+        await this.sendBluetoothBytes(bytes);
+        return { success: true, mode: 'bluetooth' };
+      } else {
+        console.warn('[Hardware] Bluetooth printer belum terhubung, mencoba RawBT...');
+        this.sendRawBT(bytes);
+        return { success: true, mode: 'rawbt_fallback' };
+      }
+    } else if (this.config.mode === 'rawbt') {
+      this.sendRawBT(bytes);
+      return { success: true, mode: 'rawbt' };
+    } else {
+      window.print();
+      return { success: true, mode: 'system' };
+    }
+  }
 }
 
 export const hardwareManager = new HardwareManager();

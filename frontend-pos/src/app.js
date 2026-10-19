@@ -5818,19 +5818,107 @@ function renderCashierExpensesHistoryTable() {
           👤 ${escapeHtml(e.recorded_by_name || 'Kasir')}
         </td>
         <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
-          <button type="button" class="btn-delete-cashier-expense" data-id="${e.id}" style="padding: 3px 8px; border-radius: 6px; background: #fee2e2; border: 1px solid #fecdd3; color: #dc2626; cursor: pointer; font-size: 11px; font-weight: 700;" title="Hapus Catatan">
-            🗑️
-          </button>
+          <div style="display: flex; gap: 4px; justify-content: center;">
+            <button type="button" class="btn-print-cashier-expense" data-id="${e.id}" style="padding: 4px 8px; border-radius: 6px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; cursor: pointer; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Cetak Ulang Bukti Kas / Biaya (Printer Thermal)">
+              <span>🖨️</span> Cetak
+            </button>
+            <button type="button" class="btn-delete-cashier-expense" data-id="${e.id}" style="padding: 4px 8px; border-radius: 6px; background: #fee2e2; border: 1px solid #fecdd3; color: #dc2626; cursor: pointer; font-size: 11px; font-weight: 700;" title="Hapus Catatan">
+              🗑️
+            </button>
+          </div>
         </td>
       </tr>
     `;
   }).join('');
+
+  el.cashierExpensesTableBody.querySelectorAll('.btn-print-cashier-expense').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.id);
+      const exp = (state.expenses || []).find(x => x.id === id);
+      if (exp) {
+        try {
+          btn.disabled = true;
+          btn.innerHTML = '<span>⏳</span> Mencetak...';
+          renderThermalExpenseReceipt(exp, true);
+          const settings = state.settings || {};
+          await hardwareManager.printExpense(exp, settings, true);
+          showToast('🖨️ Bukti kas/biaya berhasil dicetak ke printer!', 'success');
+        } catch (err) {
+          showToast('Gagal mencetak: ' + err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🖨️</span> Cetak';
+        }
+      }
+    });
+  });
 
   el.cashierExpensesTableBody.querySelectorAll('.btn-delete-cashier-expense').forEach(btn => {
     btn.addEventListener('click', () => {
       handleDeleteCashierExpense(Number(btn.dataset.id));
     });
   });
+}
+
+function renderThermalExpenseReceipt(expense, isReprint = false) {
+  if (!el.thermalReceipt) return;
+  const isIncome = expense.type === 'income';
+  const timeFormatted = parseSafeDate(expense.created_at || Date.now()).toLocaleString('id-ID');
+  const sName = (state.settings && state.settings.store_name) || 'PD. HASIL BUMI RAYA 1';
+  const sTagline = (state.settings && state.settings.store_tagline) || 'Pusat Umbi, Bawang & Komoditas';
+  const sAddress = (state.settings && state.settings.store_address) || '';
+  const sPhone = (state.settings && state.settings.store_phone) || '';
+
+  el.thermalReceipt.innerHTML = `
+    <div class="receipt-header">
+      <div class="receipt-title">${escapeHtml(sName)}</div>
+      <div>${escapeHtml(sTagline)}</div>
+      ${sAddress ? `<div style="font-size:11px; margin-top:2px;">${escapeHtml(sAddress)}</div>` : ''}
+      ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
+      <div class="receipt-divider"></div>
+      <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
+        ${isIncome ? '*** BUKTI KAS MASUK TOKO ***' : '*** VOUCHER BIAYA OPERASIONAL ***'}
+      </div>
+      <div style="font-size: 11px; color: #475569;">
+        ${isIncome ? '(TAMBAH MODAL / DANA LACI)' : '(BUKTI PENGELUARAN KAS KIOS)'}
+      </div>
+      ${isReprint ? '<div class="receipt-reprint-tag" style="background:#0f172a; color:#fff; font-weight:800; padding:2px 4px; margin:4px 0; border-radius:4px; text-align:center;">*** SALINAN / CETAK ULANG ***</div>' : ''}
+      <div style="margin-top: 6px;">No. Bukti : ${escapeHtml(expense.expense_no || '-')}</div>
+      <div>Waktu     : ${timeFormatted}</div>
+      <div>Petugas   : ${escapeHtml(expense.recorded_by_name || (state.user ? state.user.name : 'Kasir'))}</div>
+      <div>Sumber Kas: ${expense.source === 'cash' ? '💵 Kas Laci Kasir' : '🏦 Transfer Bank'}</div>
+      <div>Kategori  : ${escapeHtml(expense.category_name || '-')}</div>
+    </div>
+    <div class="receipt-divider"></div>
+    <div style="text-align: center; padding: 6px 0;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">JUMLAH NOMINAL:</div>
+      <div style="font-size: 20px; font-weight: 900; font-family: monospace; color: ${isIncome ? '#059669' : '#dc2626'}; margin-top: 2px;">
+        ${isIncome ? '+' : '-'}${formatRupiah(expense.amount)}
+      </div>
+    </div>
+    <div class="receipt-divider"></div>
+    ${expense.notes ? `
+      <div style="font-size: 11.5px; padding: 2px 0;">
+        <strong>Keterangan:</strong><br>
+        <span>${escapeHtml(expense.notes)}</span>
+      </div>
+      <div class="receipt-divider"></div>
+    ` : ''}
+    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px; margin-top: 14px; padding: 0 10px;">
+      <div>
+        Kasir / Petugas,<br><br><br><br>
+        ( .................... )
+      </div>
+      <div>
+        Penerima Dana,<br><br><br><br>
+        ( .................... )
+      </div>
+    </div>
+    <div class="receipt-divider" style="margin-top: 16px;"></div>
+    <div class="receipt-footer">
+      <p>Harap simpan struk ini sebagai bukti sah pembukuan keuangan kios.</p>
+    </div>
+  `;
 }
 
 async function handleSaveCashierExpense() {
@@ -5856,7 +5944,7 @@ async function handleSaveCashierExpense() {
   try {
     if (el.btnSubmitExpense) {
       el.btnSubmitExpense.disabled = true;
-      el.btnSubmitExpense.textContent = 'Menyimpan...';
+      el.btnSubmitExpense.textContent = 'Menyimpan & Mencetak...';
     }
 
     const res = await api.createExpense({
@@ -5868,6 +5956,23 @@ async function handleSaveCashierExpense() {
     });
 
     showToast(res.message || 'Pengeluaran berhasil dicatat!', 'success');
+
+    // Auto-print expense voucher to thermal printer if option is checked
+    if (res.expense) {
+      const chkPrint = document.getElementById('chkAutoPrintExpense');
+      if (!chkPrint || chkPrint.checked) {
+        try {
+          renderThermalExpenseReceipt(res.expense, false);
+          const settings = state.settings || {};
+          await hardwareManager.printExpense(res.expense, settings, false);
+          showToast('🖨️ Struk bukti biaya sedang dicetak...', 'info');
+        } catch (printErr) {
+          console.warn('[Hardware] Gagal cetak bukti biaya:', printErr);
+          showToast('Tersimpan, namun printer gagal: ' + printErr.message, 'warning');
+        }
+      }
+    }
+
     if (el.inputExpenseAmount) el.inputExpenseAmount.value = '';
     if (el.inputExpenseNotes) el.inputExpenseNotes.value = '';
 
@@ -5877,7 +5982,7 @@ async function handleSaveCashierExpense() {
   } finally {
     if (el.btnSubmitExpense) {
       el.btnSubmitExpense.disabled = false;
-      el.btnSubmitExpense.innerHTML = '<span>💸</span> Simpan Biaya Pengeluaran';
+      el.btnSubmitExpense.innerHTML = '<span>💸</span> Simpan & Cetak Pengeluaran';
     }
   }
 }
@@ -5897,7 +6002,7 @@ async function handleSaveCashierIncome() {
   try {
     if (el.btnSubmitCashierIncome) {
       el.btnSubmitCashierIncome.disabled = true;
-      el.btnSubmitCashierIncome.textContent = 'Menyimpan...';
+      el.btnSubmitCashierIncome.textContent = 'Menyimpan & Mencetak...';
     }
 
     const res = await api.createExpense({
@@ -5909,6 +6014,22 @@ async function handleSaveCashierIncome() {
     });
 
     showToast(res.message || 'Kas masuk berhasil dicatat!', 'success');
+
+    // Auto-print income voucher to thermal printer if option is checked
+    if (res.expense) {
+      const chkPrint = document.getElementById('chkAutoPrintIncome');
+      if (!chkPrint || chkPrint.checked) {
+        try {
+          renderThermalExpenseReceipt(res.expense, false);
+          const settings = state.settings || {};
+          await hardwareManager.printExpense(res.expense, settings, false);
+          showToast('🖨️ Struk kas masuk sedang dicetak...', 'info');
+        } catch (printErr) {
+          console.warn('[Hardware] Gagal cetak kas masuk:', printErr);
+        }
+      }
+    }
+
     if (el.inputIncomeAmount) el.inputIncomeAmount.value = '';
     if (el.inputIncomeNotes) el.inputIncomeNotes.value = '';
     if (el.modalCashierIncome) el.modalCashierIncome.style.display = 'none';
@@ -5919,7 +6040,7 @@ async function handleSaveCashierIncome() {
   } finally {
     if (el.btnSubmitCashierIncome) {
       el.btnSubmitCashierIncome.disabled = false;
-      el.btnSubmitCashierIncome.textContent = 'Simpan Kas Masuk';
+      el.btnSubmitCashierIncome.textContent = 'Simpan & Cetak Kas Masuk';
     }
   }
 }
