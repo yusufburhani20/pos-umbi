@@ -446,6 +446,17 @@ F:\POS
 - [x] **Service Worker Cache v25 & Rilis Server Live**:
   - Cache Service Worker dinaikkan ke `kassa-pos-cache-v25` dan dideploy ke server online `192.168.18.32` (`kassa.konfigin.my.id`).
 
+### 17. 🛡️ Eliminasi Total Kedipan/Flip Layar Kasir Saat Membuka Modal (v1.9.4 - 19 Oktober 2026)
+- [x] **Pencegahan Render Layout POS di Awal Parsing (`<head>` Script)**:
+  - Menyematkan inline script dan style langsung di dalam `<head>` [`index.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/index.html) yang langsung menyematkan kelas `.is-embedded` dan menyembunyikan `.top-bar`, `.pos-container`, katalog, dan keranjang secara sinkron sebelum satu piksel pun digambar oleh browser.
+- [x] **Pemicu Modal Seketika Tanpa Jeda Waktu**:
+  - Menghilangkan `setTimeout(..., 250)` pada mode embed sehingga modal terbuka secara instan (0 milidetik).
+  - Mengirimkan sinyal `modalReady` melalui `postMessage` dari iframe ke [`cashier.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/cashier.html).
+- [x] **Transisi Opasitas Halus & Indikator Pemuatan**:
+  - Menambahkan `#cashierModalLoader` elegan ("⏳ Memuat Riwayat Transaksi...") dan transisi opasitas pada iframe sehingga jendela modal muncul secara halus dan bersih tanpa ada kilatan halaman kasir sama sekali.
+- [x] **Service Worker Cache v26 & Deploy Server Live**:
+  - Cache Service Worker dinaikkan ke `kassa-pos-cache-v26` dan dideploy ke server online `192.168.18.32` (`kassa.konfigin.my.id`).
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
 
