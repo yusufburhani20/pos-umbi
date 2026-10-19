@@ -1557,7 +1557,7 @@
               </div>
 
               <div class="settings-form-body">
-                <div class="printer-card" style="margin-bottom: 16px;">
+                <div class="printer-card" style="margin-bottom: 10px;">
                   <div class="printer-card-status">
                     <span class="status-indicator-circle" id="ownerHwPrinterIndicator"></span>
                     <div>
@@ -1568,6 +1568,39 @@
                   <div class="printer-card-actions">
                     <button type="button" class="btn-primary" id="ownerBtnConnectBluetooth" style="padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer;">🔵 Hubungkan Printer</button>
                     <button type="button" class="btn-secondary" id="ownerBtnDisconnectBluetooth" style="display:none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">Putuskan</button>
+                  </div>
+                </div>
+
+                <!-- Printer Lock Container -->
+                <div class="printer-lock-container" id="ownerHwLockContainer" style="margin-bottom: 16px;">
+                  <div class="printer-lock-card locked" id="ownerHwLockActive" style="display:none;">
+                    <div class="lock-card-main">
+                      <span class="lock-card-icon">🔒</span>
+                      <div class="lock-card-details">
+                        <div class="lock-card-headline">
+                          <strong>Koneksi Terkunci ke: <span class="lock-device-highlight" id="ownerHwLockedName">-</span></strong>
+                          <span class="lock-active-badge">Auto-Reconnect Aktif</span>
+                        </div>
+                        <p class="lock-card-hint">
+                          Setiap sambungan terputus, aplikasi akan otomatis mencari & menyambung kembali ke printer ini tanpa pairing ulang manual.
+                        </p>
+                      </div>
+                    </div>
+                    <button type="button" class="btn-unlock-danger" id="ownerBtnUnlockPrinter">
+                      🔓 Hapus Kunci Printer
+                    </button>
+                  </div>
+
+                  <div class="printer-lock-card unlocked" id="ownerHwLockInactive">
+                    <div class="lock-card-main">
+                      <span class="lock-card-icon">🔓</span>
+                      <div class="lock-card-details">
+                        <strong>Belum Ada Printer yang Dikunci</strong>
+                        <p class="lock-card-hint">
+                          Hubungkan printer satu kali di atas untuk mengunci koneksi otomatis ke perangkat tersebut.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

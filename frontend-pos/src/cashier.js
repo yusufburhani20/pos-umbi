@@ -238,13 +238,23 @@ function updateHeaderStatusPills() {
     }
   }
 
-  function updatePrinterPill() {
+  function updatePrinterPill(hwState = (hardwareManager ? hardwareManager.getState() : {})) {
     if (!el.printerStatusPill) return;
-    if (hardwareManager && hardwareManager.connectedDevice) {
+    if (hwState && hwState.isConnected) {
       el.printerStatusPill.className = 'printer-status-pill online';
-      if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hardwareManager.connectedDevice.name || 'Printer OK'}`;
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hwState.deviceName || 'Printer OK'}`;
       if (el.printerSubLabel) el.printerSubLabel.textContent = 'Bluetooth / Laci RJ-11';
-      el.printerStatusPill.setAttribute('title', `Printer: Terhubung (${hardwareManager.connectedDevice.name || 'Thermal'}) • Siap Cetak`);
+      el.printerStatusPill.setAttribute('title', `Printer: Terhubung (${hwState.deviceName || 'Thermal'}) • Siap Cetak`);
+    } else if (hwState && hwState.isReconnecting) {
+      el.printerStatusPill.className = 'printer-status-pill reconnecting';
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ Mencari Printer...';
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'Auto-Reconnect';
+      el.printerStatusPill.setAttribute('title', `Printer: Mencari ${hwState.lockedDeviceName || 'Printer'} secara otomatis...`);
+    } else if (hwState && hwState.isLocked) {
+      el.printerStatusPill.className = 'printer-status-pill offline';
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hwState.lockedDeviceName || 'Printer'} (Offline)`;
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'Koneksi Terkunci';
+      el.printerStatusPill.setAttribute('title', `Printer: Terkunci ke ${hwState.lockedDeviceName} • Otomatis sambung saat printer menyala`);
     } else {
       el.printerStatusPill.className = 'printer-status-pill offline';
       if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ Printer: Putus';
@@ -255,6 +265,9 @@ function updateHeaderStatusPills() {
 
   updateSyncPill();
   updatePrinterPill();
+  if (hardwareManager && hardwareManager.subscribeState) {
+    hardwareManager.subscribeState(updatePrinterPill);
+  }
   window.addEventListener('online', updateSyncPill);
   window.addEventListener('offline', updateSyncPill);
 }

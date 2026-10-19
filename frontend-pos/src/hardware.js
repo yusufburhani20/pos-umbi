@@ -56,7 +56,29 @@ class HardwareManager {
     this.characteristic = null;
     this.isConnected = false;
     this.isConnecting = false;
+    this.isReconnecting = false;
+    this.manualDisconnect = false;
+    this.reconnectTimer = null;
     this.stateListeners = new Set();
+
+    // Setup lifecycle listeners for automatic reconnect
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', () => {
+        if (this.config.isLocked && !this.isConnected && !this.manualDisconnect) {
+          this.startAutoReconnectWatcher();
+        }
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this.config.isLocked && !this.isConnected && !this.manualDisconnect) {
+          this.startAutoReconnectWatcher();
+        }
+      });
+
+      // Attempt background auto-connect on startup if previously locked
+      setTimeout(() => {
+        this.initAutoConnect();
+      }, 1200);
+    }
   }
 
   loadConfig() {
@@ -64,7 +86,10 @@ class HardwareManager {
       mode: localStorage.getItem('pos_printer_mode') || 'bluetooth', // 'bluetooth', 'rawbt', 'system'
       paperSize: localStorage.getItem('pos_paper_size') || '58mm', // '58mm' (32 cols), '80mm' (48 cols)
       autoDrawer: localStorage.getItem('pos_auto_drawer') !== 'false', // default true
-      lastDeviceName: localStorage.getItem('pos_last_bt_device') || null
+      lastDeviceName: localStorage.getItem('pos_last_bt_device') || null,
+      lockedDeviceId: localStorage.getItem('pos_locked_printer_id') || null,
+      lockedDeviceName: localStorage.getItem('pos_locked_printer_name') || null,
+      isLocked: localStorage.getItem('pos_locked_printer_enabled') === 'true'
     };
   }
 
@@ -76,6 +101,17 @@ class HardwareManager {
     if (this.config.lastDeviceName) {
       localStorage.setItem('pos_last_bt_device', this.config.lastDeviceName);
     }
+    if (this.config.lockedDeviceId) {
+      localStorage.setItem('pos_locked_printer_id', this.config.lockedDeviceId);
+    } else {
+      localStorage.removeItem('pos_locked_printer_id');
+    }
+    if (this.config.lockedDeviceName) {
+      localStorage.setItem('pos_locked_printer_name', this.config.lockedDeviceName);
+    } else {
+      localStorage.removeItem('pos_locked_printer_name');
+    }
+    localStorage.setItem('pos_locked_printer_enabled', this.config.isLocked ? 'true' : 'false');
     this.notifyState();
   }
 
@@ -101,92 +137,126 @@ class HardwareManager {
       isSupported: typeof navigator !== 'undefined' && 'bluetooth' in navigator,
       isConnected: this.isConnected,
       isConnecting: this.isConnecting,
-      deviceName: this.bluetoothDevice ? this.bluetoothDevice.name || 'Printer Thermal' : this.config.lastDeviceName,
+      isReconnecting: this.isReconnecting,
+      deviceName: this.bluetoothDevice ? this.bluetoothDevice.name || 'Printer Thermal' : (this.config.lockedDeviceName || this.config.lastDeviceName),
+      lockedDeviceName: this.config.lockedDeviceName,
+      isLocked: Boolean(this.config.isLocked),
       config: { ...this.config }
     };
   }
 
-  // --- Bluetooth Connection ---
+  // --- Bluetooth Connection & GATT Handling ---
+  bindDeviceEvents(device) {
+    if (!device) return;
+    if (device._disconnectHandler) {
+      device.removeEventListener('gattserverdisconnected', device._disconnectHandler);
+    }
+    device._disconnectHandler = () => {
+      console.warn('[Hardware] Printer Bluetooth terputus');
+      this.isConnected = false;
+      this.characteristic = null;
+      this.notifyState();
+
+      // Trigger automatic reconnection if printer is locked
+      if (this.config.isLocked && !this.manualDisconnect) {
+        this.startAutoReconnectWatcher();
+      }
+    };
+    device.addEventListener('gattserverdisconnected', device._disconnectHandler);
+  }
+
+  async connectToDeviceGatt(device) {
+    if (!device) throw new Error('Perangkat printer tidak valid');
+
+    console.log(`[Hardware] Menghubungkan ke ${device.name || 'Printer Thermal'}...`);
+    const server = await device.gatt.connect();
+    this.gattServer = server;
+
+    // Find writable characteristic in known services
+    let targetChar = null;
+    for (const serviceUuid of PRINTER_SERVICES) {
+      try {
+        const service = await server.getPrimaryService(serviceUuid);
+        const chars = await service.getCharacteristics();
+        for (const c of chars) {
+          if (c.properties.write || c.properties.writeWithoutResponse) {
+            targetChar = c;
+            console.log(`[Hardware] Characteristic printer ditemukan pada service ${serviceUuid}`);
+            break;
+          }
+        }
+        if (targetChar) break;
+      } catch {
+        // Continue searching
+      }
+    }
+
+    // Fallback: auto-discover all services
+    if (!targetChar) {
+      try {
+        const services = await server.getPrimaryServices();
+        for (const service of services) {
+          try {
+            const chars = await service.getCharacteristics();
+            for (const c of chars) {
+              if (c.properties.write || c.properties.writeWithoutResponse) {
+                targetChar = c;
+                console.log(`[Hardware] Characteristic alternatif ditemukan pada ${service.uuid}`);
+                break;
+              }
+            }
+            if (targetChar) break;
+          } catch {}
+        }
+      } catch (e) {
+        console.warn('[Hardware] Gagal auto-discover services:', e);
+      }
+    }
+
+    if (!targetChar) {
+      throw new Error('Gagal menemukan jalur cetak (write characteristic) pada printer ini.');
+    }
+
+    this.characteristic = targetChar;
+    this.bluetoothDevice = device;
+    this.isConnected = true;
+    this.isConnecting = false;
+    this.isReconnecting = false;
+    this.bindDeviceEvents(device);
+    this.notifyState();
+    return { success: true, deviceName: device.name || 'Printer Thermal' };
+  }
+
   async connectBluetooth() {
     if (!('bluetooth' in navigator)) {
       throw new Error('Web Bluetooth tidak didukung di browser ini. Pastikan menggunakan Google Chrome di Android (Redmi Pad SE).');
     }
 
+    this.manualDisconnect = false;
     this.isConnecting = true;
     this.notifyState();
 
     try {
-      console.log('[Hardware] Requesting Bluetooth device...');
+      console.log('[Hardware] Membuka pemilih Bluetooth...');
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: PRINTER_SERVICES
       });
 
       this.bluetoothDevice = device;
-      this.bluetoothDevice.addEventListener('gattserverdisconnected', () => {
-        console.warn('[Hardware] Printer Bluetooth terputus');
-        this.isConnected = false;
-        this.characteristic = null;
-        this.notifyState();
+      this.bindDeviceEvents(device);
+
+      const res = await this.connectToDeviceGatt(device);
+
+      // Kunci koneksi printer secara otomatis agar tersimpan & selalu auto-reconnect
+      this.saveConfig({
+        lastDeviceName: device.name || 'Printer Thermal',
+        lockedDeviceId: device.id,
+        lockedDeviceName: device.name || 'Printer Thermal',
+        isLocked: true
       });
 
-      console.log(`[Hardware] Menghubungkan ke ${device.name || 'Printer Thermal'}...`);
-      const server = await device.gatt.connect();
-      this.gattServer = server;
-
-      // Find writable characteristic in known services
-      let targetChar = null;
-      for (const serviceUuid of PRINTER_SERVICES) {
-        try {
-          const service = await server.getPrimaryService(serviceUuid);
-          const chars = await service.getCharacteristics();
-          for (const c of chars) {
-            if (c.properties.write || c.properties.writeWithoutResponse) {
-              targetChar = c;
-              console.log(`[Hardware] Characteristic printer ditemukan pada service ${serviceUuid}`);
-              break;
-            }
-          }
-          if (targetChar) break;
-        } catch {
-          // Continue searching other services
-        }
-      }
-
-      // If not in known services, inspect all services available
-      if (!targetChar) {
-        try {
-          const services = await server.getPrimaryServices();
-          for (const service of services) {
-            try {
-              const chars = await service.getCharacteristics();
-              for (const c of chars) {
-                if (c.properties.write || c.properties.writeWithoutResponse) {
-                  targetChar = c;
-                  console.log(`[Hardware] Characteristic alternatif ditemukan pada ${service.uuid}`);
-                  break;
-                }
-              }
-              if (targetChar) break;
-            } catch {
-              // Ignore service access error
-            }
-          }
-        } catch (e) {
-          console.warn('[Hardware] Gagal auto-discover services:', e);
-        }
-      }
-
-      if (!targetChar) {
-        throw new Error('Gagal menemukan jalur cetak (write characteristic) pada perangkat ini. Pastikan printer dalam mode Bluetooth aktif.');
-      }
-
-      this.characteristic = targetChar;
-      this.isConnected = true;
-      this.isConnecting = false;
-      this.saveConfig({ lastDeviceName: device.name || 'Printer Thermal' });
-      this.notifyState();
-      return { success: true, deviceName: device.name || 'Printer Thermal' };
+      return res;
     } catch (err) {
       this.isConnected = false;
       this.isConnecting = false;
@@ -195,18 +265,169 @@ class HardwareManager {
     }
   }
 
+  // Auto-Reconnect Watcher: Otomatis mencari dan menyambung ulang ketika terputus
+  startAutoReconnectWatcher() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (!this.config.isLocked || this.isConnected || this.manualDisconnect) {
+      this.isReconnecting = false;
+      this.notifyState();
+      return;
+    }
+
+    this.isReconnecting = true;
+    this.notifyState();
+
+    const doReconnect = async () => {
+      if (this.isConnected || !this.config.isLocked || this.manualDisconnect) {
+        this.isReconnecting = false;
+        this.notifyState();
+        return;
+      }
+
+      console.log(`[Hardware] Auto-reconnect: Mencoba menyambung ke ${this.config.lockedDeviceName || 'Printer'}...`);
+
+      try {
+        let device = this.bluetoothDevice;
+        if (!device && typeof navigator !== 'undefined' && 'bluetooth' in navigator && navigator.bluetooth.getDevices) {
+          const devices = await navigator.bluetooth.getDevices();
+          if (devices && devices.length > 0) {
+            device = devices.find(d => d.id === this.config.lockedDeviceId) ||
+                     devices.find(d => d.name === this.config.lockedDeviceName) ||
+                     devices[0];
+            if (device) {
+              this.bluetoothDevice = device;
+              this.bindDeviceEvents(device);
+            }
+          }
+        }
+
+        if (device) {
+          await this.connectToDeviceGatt(device);
+          console.log('[Hardware] Berhasil auto-reconnect ke printer!');
+          this.isReconnecting = false;
+          this.notifyState();
+          return;
+        }
+      } catch (e) {
+        console.warn('[Hardware] Auto-reconnect mencoba kembali dalam 3.5 detik:', e.message);
+      }
+
+      if (this.config.isLocked && !this.isConnected && !this.manualDisconnect) {
+        this.reconnectTimer = setTimeout(doReconnect, 3500);
+      } else {
+        this.isReconnecting = false;
+        this.notifyState();
+      }
+    };
+
+    this.reconnectTimer = setTimeout(doReconnect, 1000);
+  }
+
+  async initAutoConnect() {
+    if (!this.config.isLocked || this.isConnected) return;
+    if (typeof navigator === 'undefined' || !('bluetooth' in navigator)) return;
+
+    try {
+      if (navigator.bluetooth.getDevices) {
+        const devices = await navigator.bluetooth.getDevices();
+        if (devices && devices.length > 0) {
+          const target = devices.find(d => d.id === this.config.lockedDeviceId) ||
+                         devices.find(d => d.name === this.config.lockedDeviceName) ||
+                         devices[0];
+          if (target) {
+            console.log('[Hardware] Menemukan printer terdaftar untuk auto-connect:', target.name);
+            this.bluetoothDevice = target;
+            this.bindDeviceEvents(target);
+            await this.connectToDeviceGatt(target);
+            console.log('[Hardware] Berhasil auto-connect printer saat aplikasi dibuka!');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Hardware] Auto-connect on startup skipped:', e.message);
+      // Fallback to auto-reconnect watcher
+      this.startAutoReconnectWatcher();
+    }
+  }
+
+  // Putuskan manual tanpa menghapus kunci
   async disconnectBluetooth() {
-    if (this.bluetoothDevice && this.bluetoothDevice.gatt.connected) {
-      this.bluetoothDevice.gatt.disconnect();
+    this.manualDisconnect = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.bluetoothDevice && this.bluetoothDevice.gatt && this.bluetoothDevice.gatt.connected) {
+      try {
+        this.bluetoothDevice.gatt.disconnect();
+      } catch (e) {}
     }
     this.isConnected = false;
+    this.isConnecting = false;
+    this.isReconnecting = false;
+    this.characteristic = null;
+    this.notifyState();
+  }
+
+  // Hapus kunci printer (agar kasir dapat mengganti ke printer lain)
+  async unlockPrinter() {
+    this.manualDisconnect = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.bluetoothDevice && this.bluetoothDevice.gatt && this.bluetoothDevice.gatt.connected) {
+      try {
+        this.bluetoothDevice.gatt.disconnect();
+      } catch (e) {}
+    }
+    this.isConnected = false;
+    this.isConnecting = false;
+    this.isReconnecting = false;
     this.characteristic = null;
     this.bluetoothDevice = null;
+    this.saveConfig({
+      lockedDeviceId: null,
+      lockedDeviceName: null,
+      isLocked: false
+    });
     this.notifyState();
+    return { success: true };
+  }
+
+  // Pastikan printer tersambung sebelum kirim data cetak / sinyal laci
+  async ensureConnection() {
+    if (this.config.mode !== 'bluetooth') return true;
+    if (this.isConnected && this.characteristic) return true;
+
+    if (this.bluetoothDevice || this.config.isLocked) {
+      try {
+        let device = this.bluetoothDevice;
+        if (!device && typeof navigator !== 'undefined' && 'bluetooth' in navigator && navigator.bluetooth.getDevices) {
+          const devices = await navigator.bluetooth.getDevices();
+          device = devices.find(d => d.id === this.config.lockedDeviceId) || devices[0];
+          if (device) this.bluetoothDevice = device;
+        }
+        if (device) {
+          const connectPromise = this.connectToDeviceGatt(device);
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout koneksi printer')), 2500));
+          await Promise.race([connectPromise, timeoutPromise]);
+          return this.isConnected;
+        }
+      } catch (e) {
+        console.warn('[Hardware] Sambung cepat sebelum cetak gagal:', e.message);
+      }
+    }
+    return this.isConnected;
   }
 
   // Send raw bytes to Bluetooth in safe BLE chunks (max 100 bytes chunk)
   async sendBluetoothBytes(bytes) {
+    await this.ensureConnection();
     if (!this.isConnected || !this.characteristic) {
       throw new Error('Printer Bluetooth belum terhubung. Silakan hubungkan printer terlebih dahulu.');
     }
@@ -232,6 +453,7 @@ class HardwareManager {
     const drawerBytes = new Uint8Array(COMMANDS.DRAWER_KICK);
 
     if (this.config.mode === 'bluetooth') {
+      await this.ensureConnection();
       if (this.isConnected) {
         await this.sendBluetoothBytes(drawerBytes);
         return { success: true, method: 'bluetooth' };
@@ -448,6 +670,7 @@ class HardwareManager {
     }
 
     if (this.config.mode === 'bluetooth') {
+      await this.ensureConnection();
       if (this.isConnected) {
         await this.sendBluetoothBytes(bytes);
         return { success: true, mode: 'bluetooth' };
@@ -471,6 +694,7 @@ class HardwareManager {
     const bytes = this.buildTestReceiptBytes();
 
     if (this.config.mode === 'bluetooth') {
+      await this.ensureConnection();
       if (!this.isConnected) {
         throw new Error('Printer Bluetooth belum terhubung. Klik "Hubungkan Printer" terlebih dahulu.');
       }
@@ -612,6 +836,7 @@ class HardwareManager {
     }
 
     if (this.config.mode === 'bluetooth') {
+      await this.ensureConnection();
       if (this.isConnected) {
         await this.sendBluetoothBytes(bytes);
         return { success: true, mode: 'bluetooth' };
@@ -839,6 +1064,7 @@ class HardwareManager {
     }
 
     if (this.config.mode === 'bluetooth') {
+      await this.ensureConnection();
       if (this.isConnected) {
         await this.sendBluetoothBytes(bytes);
         return { success: true, mode: 'bluetooth' };

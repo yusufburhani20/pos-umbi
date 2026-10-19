@@ -250,12 +250,15 @@ const el = {
   btnChangeOwnerPin: document.getElementById('btnChangeOwnerPin'),
   liveReceiptPreview: document.getElementById('liveReceiptPreview'),
 
-  // Hardware Kios: Printer Panda & Cash Drawer RJ-11
   ownerHwPrinterIndicator: document.getElementById('ownerHwPrinterIndicator'),
   ownerHwDeviceNameDisplay: document.getElementById('ownerHwDeviceNameDisplay'),
   ownerHwDeviceStatusText: document.getElementById('ownerHwDeviceStatusText'),
   ownerBtnConnectBluetooth: document.getElementById('ownerBtnConnectBluetooth'),
   ownerBtnDisconnectBluetooth: document.getElementById('ownerBtnDisconnectBluetooth'),
+  ownerHwLockActive: document.getElementById('ownerHwLockActive'),
+  ownerHwLockInactive: document.getElementById('ownerHwLockInactive'),
+  ownerHwLockedName: document.getElementById('ownerHwLockedName'),
+  ownerBtnUnlockPrinter: document.getElementById('ownerBtnUnlockPrinter'),
   ownerHwPrintMode: document.getElementById('ownerHwPrintMode'),
   ownerHwPaperSize: document.getElementById('ownerHwPaperSize'),
   ownerHwAutoDrawer: document.getElementById('ownerHwAutoDrawer'),
@@ -4871,12 +4874,58 @@ function updateOwnerHardwareUI(hwState) {
   if (el.ownerHwDeviceStatusText) {
     el.ownerHwDeviceStatusText.textContent = hwState.isConnected ? 'Siap mencetak & kick laci kasir' : 'Nyalakan Bluetooth printer & tablet';
   }
+  if (el.ownerHwPrinterIndicator) {
+    if (hwState.isConnected) {
+      el.ownerHwPrinterIndicator.className = 'status-indicator-circle connected';
+    } else if (hwState.isReconnecting) {
+      el.ownerHwPrinterIndicator.className = 'status-indicator-circle reconnecting';
+    } else {
+      el.ownerHwPrinterIndicator.className = 'status-indicator-circle';
+    }
+  }
+  if (el.ownerHwDeviceNameDisplay) {
+    if (hwState.isConnected) {
+      el.ownerHwDeviceNameDisplay.textContent = hwState.deviceName || 'Printer Thermal';
+    } else if (hwState.isReconnecting) {
+      el.ownerHwDeviceNameDisplay.textContent = `Menyambung ke ${hwState.lockedDeviceName || 'Printer'}...`;
+    } else if (hwState.isLocked) {
+      el.ownerHwDeviceNameDisplay.textContent = `${hwState.lockedDeviceName || 'Printer Thermal'} (Offline)`;
+    } else {
+      el.ownerHwDeviceNameDisplay.textContent = 'Belum Terhubung';
+    }
+  }
+  if (el.ownerHwDeviceStatusText) {
+    if (hwState.isConnected) {
+      el.ownerHwDeviceStatusText.textContent = '🟢 Siap mencetak nota & kick laci kasir';
+    } else if (hwState.isReconnecting) {
+      el.ownerHwDeviceStatusText.textContent = '🟡 Mencari printer otomatis...';
+    } else if (hwState.isLocked) {
+      el.ownerHwDeviceStatusText.textContent = '🔒 Terkunci. Otomatis menyambung jika printer dinyalakan.';
+    } else {
+      el.ownerHwDeviceStatusText.textContent = 'Siapkan printer (nyalakan Bluetooth printer & tablet)';
+    }
+  }
   if (el.ownerBtnConnectBluetooth) {
     el.ownerBtnConnectBluetooth.style.display = hwState.isConnected ? 'none' : 'inline-block';
   }
   if (el.ownerBtnDisconnectBluetooth) {
     el.ownerBtnDisconnectBluetooth.style.display = hwState.isConnected ? 'inline-block' : 'none';
   }
+
+  // Lock status
+  if (el.ownerHwLockActive && el.ownerHwLockInactive) {
+    if (hwState.isLocked) {
+      el.ownerHwLockActive.style.display = 'flex';
+      el.ownerHwLockInactive.style.display = 'none';
+      if (el.ownerHwLockedName) {
+        el.ownerHwLockedName.textContent = hwState.lockedDeviceName || hwState.deviceName || 'Printer Thermal';
+      }
+    } else {
+      el.ownerHwLockActive.style.display = 'none';
+      el.ownerHwLockInactive.style.display = 'flex';
+    }
+  }
+
   if (el.ownerHwPrintMode) el.ownerHwPrintMode.value = hwState.config.mode;
   if (el.ownerHwPaperSize) el.ownerHwPaperSize.value = hwState.config.paperSize;
   if (el.ownerHwAutoDrawer) el.ownerHwAutoDrawer.checked = hwState.config.autoDrawer;
@@ -4891,9 +4940,11 @@ function initOwnerHardwareSupport() {
       el.ownerBtnConnectBluetooth.textContent = '⏳ Mencari Printer...';
       try {
         const res = await hardwareManager.connectBluetooth();
-        showToast(`Terhubung ke ${res.deviceName}!`, 'success');
+        showToast(`Terhubung & terkunci ke ${res.deviceName}!`, 'success');
       } catch (err) {
-        showToast('Gagal konek Bluetooth: ' + err.message, 'error');
+        if (err.name !== 'NotFoundError') {
+          showToast('Gagal konek Bluetooth: ' + err.message, 'error');
+        }
       } finally {
         el.ownerBtnConnectBluetooth.disabled = false;
         el.ownerBtnConnectBluetooth.textContent = '🔵 Hubungkan Printer';
@@ -4905,6 +4956,15 @@ function initOwnerHardwareSupport() {
     el.ownerBtnDisconnectBluetooth.addEventListener('click', async () => {
       await hardwareManager.disconnectBluetooth();
       showToast('Printer Bluetooth diputuskan', 'info');
+    });
+  }
+
+  if (el.ownerBtnUnlockPrinter) {
+    el.ownerBtnUnlockPrinter.addEventListener('click', async () => {
+      if (confirm('Hapus kunci printer? Anda dapat menghubungkan printer baru setelah ini.')) {
+        await hardwareManager.unlockPrinter();
+        showToast('Kunci printer dihapus. Anda dapat menghubungkan printer baru.', 'info');
+      }
     });
   }
 

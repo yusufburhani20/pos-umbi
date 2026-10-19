@@ -2658,28 +2658,33 @@
 
   <!-- MODAL: Pengaturan Hardware (Printer Thermal & Cash Drawer) -->
   <div class="modal-backdrop" id="hardwareModal" style="display:none; z-index: 10030;">
-    <div class="modal-dialog modal-md">
+    <div class="modal-dialog modal-hardware">
       <div class="modal-header">
         <h2>🖨️ Hardware: Printer & Laci Kasir</h2>
         <button class="modal-close" id="btnCloseHardwareModal">✕</button>
       </div>
       <div class="modal-body">
-        <!-- Tablet Redmi Pad SE Device Banner -->
+        <!-- Tablet Device Banner -->
         <div class="hardware-device-banner">
           <div class="banner-icon">📱</div>
           <div class="banner-info">
-            <strong>Optimal untuk Tablet Android (Redmi Pad SE)</strong>
-            <p>Mendukung cetak cepat ESC/POS via Bluetooth langsung & pemicu laci kasir otomatis RJ-11.</p>
+            <strong>Optimal untuk Tablet Android & Ponsel Kasir</strong>
+            <p>Mendukung cetak cepat ESC/POS via Bluetooth langsung & sinyal buka laci otomatis RJ-11.</p>
           </div>
         </div>
 
-        <!-- Section 1: Bluetooth Connection -->
+        <!-- Section 1: Bluetooth Connection & Locking -->
         <div class="hardware-section">
-          <label class="hardware-section-title">1. Sambungan Printer Bluetooth (ESC/POS)</label>
+          <div class="hardware-section-header">
+            <label class="hardware-section-title">1. Sambungan Printer Bluetooth (ESC/POS)</label>
+            <span class="hw-badge-lock" id="hwLockBadge" style="display:none;">🔒 Terkunci</span>
+          </div>
+
+          <!-- Printer Main Status Card -->
           <div class="printer-card">
             <div class="printer-card-status">
               <span class="status-indicator-circle" id="hwPrinterIndicator"></span>
-              <div>
+              <div class="printer-card-info">
                 <strong id="hwDeviceNameDisplay">Belum Terhubung</strong>
                 <p id="hwDeviceStatusText" class="text-muted">Nyalakan Bluetooth printer & tablet</p>
               </div>
@@ -2689,27 +2694,83 @@
               <button type="button" class="btn-secondary" id="btnDisconnectBluetooth" style="display:none;">Putuskan</button>
             </div>
           </div>
+
+          <!-- Printer Lock & Auto-Reconnect Container -->
+          <div class="printer-lock-container" id="hwLockContainer" style="margin-top: 10px;">
+            <!-- State: Terkunci (Active Lock) -->
+            <div class="printer-lock-card locked" id="hwLockActive" style="display:none;">
+              <div class="lock-card-main">
+                <span class="lock-card-icon">🔒</span>
+                <div class="lock-card-details">
+                  <div class="lock-card-headline">
+                    <strong>Koneksi Terkunci ke: <span class="lock-device-highlight" id="hwLockedName">-</span></strong>
+                    <span class="lock-active-badge">Auto-Reconnect Aktif</span>
+                  </div>
+                  <p class="lock-card-hint">
+                    Setiap sambungan terputus atau tablet dimatikan, aplikasi akan otomatis mencari dan menghubungkan printer ini tanpa perlu pairing manual lagi.
+                  </p>
+                </div>
+              </div>
+              <button type="button" class="btn-unlock-danger" id="btnUnlockPrinter">
+                🔓 Hapus Kunci Printer
+              </button>
+            </div>
+
+            <!-- State: Belum Terkunci (Inactive Lock) -->
+            <div class="printer-lock-card unlocked" id="hwLockInactive">
+              <div class="lock-card-main">
+                <span class="lock-card-icon">🔓</span>
+                <div class="lock-card-details">
+                  <strong>Belum Ada Printer yang Dikunci</strong>
+                  <p class="lock-card-hint">
+                    Hubungkan printer satu kali di atas. Aplikasi akan otomatis mengunci perangkat tersebut sehingga selalu terhubung otomatis selanjutnya.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Section 2: Mode Cetak & Ukuran Kertas -->
+        <!-- Section 2: Konfigurasi Cetak Thermal (Responsive Card Grid) -->
         <div class="hardware-section">
           <label class="hardware-section-title">2. Konfigurasi Cetak Thermal</label>
-          <div class="form-row-2col">
-            <div class="form-group">
-              <label for="hwPrintMode">Metode Cetak:</label>
-              <select id="hwPrintMode" class="form-select">
+          <div class="hw-thermal-grid">
+            <!-- Mode Cetak -->
+            <div class="hw-field-card">
+              <div class="hw-field-header">
+                <span class="hw-field-icon">⚡</span>
+                <label for="hwPrintMode" class="hw-field-label">Metode Cetak:</label>
+              </div>
+              <select id="hwPrintMode" class="form-select hw-select">
                 <option value="bluetooth">Bluetooth Langsung (Web Bluetooth / Chrome)</option>
                 <option value="rawbt">Aplikasi RawBT (Android Bluetooth Classic / SPP)</option>
                 <option value="system">System Print (Dialog Cetak Android Default)</option>
               </select>
+              <p class="hw-field-hint">
+                Disarankan: <strong>Bluetooth Langsung</strong> untuk tablet Android / Chrome.
+              </p>
             </div>
-            <div class="form-group">
-              <label for="hwPaperSize">Ukuran Kertas Thermal:</label>
-              <select id="hwPaperSize" class="form-select">
-                <option value="58mm">58 mm (Thermal Standar / 32 Kolom)</option>
-                <option value="80mm">80 mm (Thermal Standar / 48 Kolom)</option>
+
+            <!-- Ukuran Kertas -->
+            <div class="hw-field-card">
+              <div class="hw-field-header">
+                <span class="hw-field-icon">🧾</span>
+                <label for="hwPaperSize" class="hw-field-label">Ukuran Kertas Thermal:</label>
+              </div>
+              <select id="hwPaperSize" class="form-select hw-select">
+                <option value="58mm">58 mm (Standar Kasir / 32 Kolom)</option>
+                <option value="80mm">80 mm (Lebar Toko Besar / 48 Kolom)</option>
               </select>
+              <p class="hw-field-hint">
+                Pilih 58mm untuk printer mini/portable (Panda PRJ-58D / RPP02N).
+              </p>
             </div>
+          </div>
+
+          <!-- Responsive Live Status Ribbon -->
+          <div class="hw-preview-ribbon">
+            <span class="hw-preview-chip" id="hwPreviewModeChip">⚡ Mode: Bluetooth Langsung</span>
+            <span class="hw-preview-chip" id="hwPreviewPaperChip">🧾 Lebar: 58 mm (32 Kolom)</span>
           </div>
         </div>
 
@@ -2724,10 +2785,10 @@
               </label>
               <div>
                 <strong>Buka Laci Otomatis saat Bayar Tunai</strong>
-                <p class="text-muted">Mengirim sinyal pulsa 24V/12V (Pin 2 & 5) ke port RJ-11 printer saat transaksi tunai selesai.</p>
+                <p class="text-muted">Kirim sinyal pulsa 24V/12V (Pin 2 & 5) ke port RJ-11 printer saat transaksi tunai selesai.</p>
               </div>
             </div>
-            <div class="drawer-action-row" style="margin-top: 10px;">
+            <div class="drawer-action-row" style="margin-top: 12px;">
               <button type="button" class="btn-secondary" id="btnTestDrawer">💰 Test Buka Laci Kasir (Kick RJ-11)</button>
             </div>
           </div>
