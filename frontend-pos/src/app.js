@@ -416,6 +416,7 @@ const el = {
   dashTotalOmset: document.getElementById('dashTotalOmset'),
   dashExpensesListContainer: document.getElementById('dashExpensesListContainer'),
   dashD100k: document.getElementById('dashD100k'),
+  dashD75k: document.getElementById('dashD75k'),
   dashD50k: document.getElementById('dashD50k'),
   dashD20k: document.getElementById('dashD20k'),
   dashD10k: document.getElementById('dashD10k'),
@@ -424,6 +425,7 @@ const el = {
   dashD1k: document.getElementById('dashD1k'),
   dashDKoin: document.getElementById('dashDKoin'),
   dashSub100k: document.getElementById('dashSub100k'),
+  dashSub75k: document.getElementById('dashSub75k'),
   dashSub50k: document.getElementById('dashSub50k'),
   dashSub20k: document.getElementById('dashSub20k'),
   dashSub10k: document.getElementById('dashSub10k'),
@@ -2238,7 +2240,7 @@ function bindEvents() {
   }
   if (el.btnDashResetDenom) {
     el.btnDashResetDenom.addEventListener('click', () => {
-      ['dashD100k', 'dashD50k', 'dashD20k', 'dashD10k', 'dashD5k', 'dashD2k', 'dashD1k', 'dashDKoin'].forEach(id => {
+      ['dashD100k', 'dashD75k', 'dashD50k', 'dashD20k', 'dashD10k', 'dashD5k', 'dashD2k', 'dashD1k', 'dashDKoin'].forEach(id => {
         const inp = document.getElementById(id);
         if (inp) inp.value = '0';
       });
@@ -2255,7 +2257,7 @@ function bindEvents() {
       if (el.modalCashierIncome) el.modalCashierIncome.style.display = 'flex';
     });
   }
-  ['dashD100k', 'dashD50k', 'dashD20k', 'dashD10k', 'dashD5k', 'dashD2k', 'dashD1k', 'dashDKoin'].forEach(id => {
+  ['dashD100k', 'dashD75k', 'dashD50k', 'dashD20k', 'dashD10k', 'dashD5k', 'dashD2k', 'dashD1k', 'dashDKoin'].forEach(id => {
     const inp = document.getElementById(id);
     if (inp) {
       inp.addEventListener('input', recalculateDashboardDenominations);
@@ -2273,8 +2275,9 @@ function bindEvents() {
   el.btnCloseCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   el.btnCancelCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   
-  ['d100k', 'd50k', 'd20k', 'd10k', 'dKoin'].forEach(id => {
-    document.getElementById(id).addEventListener('input', recalculateBlindCashTotal);
+  ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'dKoin'].forEach(id => {
+    const elInp = document.getElementById(id);
+    if (elInp) elInp.addEventListener('input', recalculateBlindCashTotal);
   });
   el.btnSubmitBlindClose.addEventListener('click', handleSubmitBlindClose);
 
@@ -3804,28 +3807,33 @@ function openCloseShiftModal() {
     showToast('Tidak ada shift aktif yang bisa ditutup.', 'warning');
     return;
   }
-  ['d100k', 'd50k', 'd20k', 'd10k', 'dKoin'].forEach(id => document.getElementById(id).value = '0');
+  ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'dKoin'].forEach(id => {
+    const elInp = document.getElementById(id);
+    if (elInp) elInp.value = '0';
+  });
   el.closingNotes.value = '';
   recalculateBlindCashTotal();
   el.closeShiftModal.style.display = 'flex';
 }
 
 function recalculateBlindCashTotal() {
-  const d100 = (Number(document.getElementById('d100k').value) || 0) * 100000;
-  const d50 = (Number(document.getElementById('d50k').value) || 0) * 50000;
-  const d20 = (Number(document.getElementById('d20k').value) || 0) * 20000;
-  const d10 = (Number(document.getElementById('d10k').value) || 0) * 10000;
-  const dKoin = Number(document.getElementById('dKoin').value) || 0;
+  const d100 = (Number(document.getElementById('d100k')?.value) || 0) * 100000;
+  const d75 = (Number(document.getElementById('d75k')?.value) || 0) * 75000;
+  const d50 = (Number(document.getElementById('d50k')?.value) || 0) * 50000;
+  const d20 = (Number(document.getElementById('d20k')?.value) || 0) * 20000;
+  const d10 = (Number(document.getElementById('d10k')?.value) || 0) * 10000;
+  const dKoin = Number(document.getElementById('dKoin')?.value) || 0;
 
-  document.getElementById('sub100k').textContent = formatRupiah(d100);
-  document.getElementById('sub50k').textContent = formatRupiah(d50);
-  document.getElementById('sub20k').textContent = formatRupiah(d20);
-  document.getElementById('sub10k').textContent = formatRupiah(d10);
-  document.getElementById('subKoin').textContent = formatRupiah(dKoin);
+  if (document.getElementById('sub100k')) document.getElementById('sub100k').textContent = formatRupiah(d100);
+  if (document.getElementById('sub75k')) document.getElementById('sub75k').textContent = formatRupiah(d75);
+  if (document.getElementById('sub50k')) document.getElementById('sub50k').textContent = formatRupiah(d50);
+  if (document.getElementById('sub20k')) document.getElementById('sub20k').textContent = formatRupiah(d20);
+  if (document.getElementById('sub10k')) document.getElementById('sub10k').textContent = formatRupiah(d10);
+  if (document.getElementById('subKoin')) document.getElementById('subKoin').textContent = formatRupiah(dKoin);
 
-  const total = d100 + d50 + d20 + d10 + dKoin;
+  const total = d100 + d75 + d50 + d20 + d10 + dKoin;
   el.totalCountedText.textContent = formatRupiah(total);
-  return { total, breakdown: { d100, d50, d20, d10, dKoin } };
+  return { total, breakdown: { d100, d75, d50, d20, d10, dKoin } };
 }
 
 async function handleSubmitBlindClose() {
@@ -7014,6 +7022,7 @@ async function refreshCashierDashboardData() {
 
 function recalculateDashboardDenominations() {
   const d100 = (Number(el.dashD100k ? el.dashD100k.value : 0) || 0) * 100000;
+  const d75 = (Number(el.dashD75k ? el.dashD75k.value : 0) || 0) * 75000;
   const d50 = (Number(el.dashD50k ? el.dashD50k.value : 0) || 0) * 50000;
   const d20 = (Number(el.dashD20k ? el.dashD20k.value : 0) || 0) * 20000;
   const d10 = (Number(el.dashD10k ? el.dashD10k.value : 0) || 0) * 10000;
@@ -7023,6 +7032,7 @@ function recalculateDashboardDenominations() {
   const dKoin = Number(el.dashDKoin ? el.dashDKoin.value : 0) || 0;
 
   if (el.dashSub100k) el.dashSub100k.textContent = formatRupiah(d100);
+  if (el.dashSub75k) el.dashSub75k.textContent = formatRupiah(d75);
   if (el.dashSub50k) el.dashSub50k.textContent = formatRupiah(d50);
   if (el.dashSub20k) el.dashSub20k.textContent = formatRupiah(d20);
   if (el.dashSub10k) el.dashSub10k.textContent = formatRupiah(d10);
@@ -7031,7 +7041,7 @@ function recalculateDashboardDenominations() {
   if (el.dashSub1k) el.dashSub1k.textContent = formatRupiah(d1);
   if (el.dashSubKoin) el.dashSubKoin.textContent = formatRupiah(dKoin);
 
-  const total = d100 + d50 + d20 + d10 + d5 + d2 + d1 + dKoin;
+  const total = d100 + d75 + d50 + d20 + d10 + d5 + d2 + d1 + dKoin;
   if (el.dashTotalCounted) el.dashTotalCounted.textContent = formatRupiah(total);
 
   // Expected cash
@@ -7078,7 +7088,7 @@ function recalculateDashboardDenominations() {
     }
   }
 
-  const breakdown = { d100k: d100, d50k: d50, d20k: d20, d10k: d10, d5k: d5, d2k: d2, d1k: d1, dKoin };
+  const breakdown = { d100k: d100, d75k: d75, d50k: d50, d20k: d20, d10k: d10, d5k: d5, d2k: d2, d1k: d1, dKoin };
   return { total, breakdown, diff, expected };
 }
 
@@ -7239,6 +7249,7 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
     const b = breakdownObj;
     const bRows = [];
     if (b.d100k) bRows.push(`<span>Rp 100.000 x ${Math.round(b.d100k / 100000)}</span><span style="font-family:monospace;">${formatRupiah(b.d100k)}</span>`);
+    if (b.d75k)  bRows.push(`<span>Rp 75.000 x ${Math.round(b.d75k / 75000)}</span><span style="font-family:monospace;">${formatRupiah(b.d75k)}</span>`);
     if (b.d50k)  bRows.push(`<span>Rp 50.000 x ${Math.round(b.d50k / 50000)}</span><span style="font-family:monospace;">${formatRupiah(b.d50k)}</span>`);
     if (b.d20k)  bRows.push(`<span>Rp 20.000 x ${Math.round(b.d20k / 20000)}</span><span style="font-family:monospace;">${formatRupiah(b.d20k)}</span>`);
     if (b.d10k)  bRows.push(`<span>Rp 10.000 x ${Math.round(b.d10k / 10000)}</span><span style="font-family:monospace;">${formatRupiah(b.d10k)}</span>`);

@@ -765,6 +765,7 @@ class HardwareManager {
       append(COMMANDS.BOLD_OFF);
       const b = shiftData.breakdown;
       if (b.d100k) append(formatLine('  100.000 x ' + Math.round(b.d100k / 100000), formatCurrency(b.d100k)) + '\n');
+      if (b.d75k)  append(formatLine('   75.000 x ' + Math.round(b.d75k / 75000), formatCurrency(b.d75k)) + '\n');
       if (b.d50k)  append(formatLine('   50.000 x ' + Math.round(b.d50k / 50000), formatCurrency(b.d50k)) + '\n');
       if (b.d20k)  append(formatLine('   20.000 x ' + Math.round(b.d20k / 20000), formatCurrency(b.d20k)) + '\n');
       if (b.d10k)  append(formatLine('   10.000 x ' + Math.round(b.d10k / 10000), formatCurrency(b.d10k)) + '\n');

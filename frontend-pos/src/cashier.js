@@ -132,6 +132,7 @@ const el = {
 
   btnResetDenom: document.getElementById('btnResetDenom'),
   d100k: document.getElementById('d100k'),
+  d75k: document.getElementById('d75k'),
   d50k: document.getElementById('d50k'),
   d20k: document.getElementById('d20k'),
   d10k: document.getElementById('d10k'),
@@ -140,6 +141,7 @@ const el = {
   d1k: document.getElementById('d1k'),
   dKoin: document.getElementById('dKoin'),
   sub100k: document.getElementById('sub100k'),
+  sub75k: document.getElementById('sub75k'),
   sub50k: document.getElementById('sub50k'),
   sub20k: document.getElementById('sub20k'),
   sub10k: document.getElementById('sub10k'),
@@ -619,6 +621,7 @@ async function loadActiveShiftData() {
 // -----------------------------------------------------------------------------
 function recalculateDenominations() {
   const d100 = (Number(el.d100k ? el.d100k.value : 0) || 0) * 100000;
+  const d75 = (Number(el.d75k ? el.d75k.value : 0) || 0) * 75000;
   const d50 = (Number(el.d50k ? el.d50k.value : 0) || 0) * 50000;
   const d20 = (Number(el.d20k ? el.d20k.value : 0) || 0) * 20000;
   const d10 = (Number(el.d10k ? el.d10k.value : 0) || 0) * 10000;
@@ -628,6 +631,7 @@ function recalculateDenominations() {
   const dKoin = Number(el.dKoin ? el.dKoin.value : 0) || 0;
 
   if (el.sub100k) el.sub100k.textContent = formatRupiah(d100);
+  if (el.sub75k) el.sub75k.textContent = formatRupiah(d75);
   if (el.sub50k) el.sub50k.textContent = formatRupiah(d50);
   if (el.sub20k) el.sub20k.textContent = formatRupiah(d20);
   if (el.sub10k) el.sub10k.textContent = formatRupiah(d10);
@@ -636,7 +640,7 @@ function recalculateDenominations() {
   if (el.sub1k) el.sub1k.textContent = formatRupiah(d1);
   if (el.subKoin) el.subKoin.textContent = formatRupiah(dKoin);
 
-  const total = d100 + d50 + d20 + d10 + d5 + d2 + d1 + dKoin;
+  const total = d100 + d75 + d50 + d20 + d10 + d5 + d2 + d1 + dKoin;
   if (el.totalCounted) el.totalCounted.textContent = formatRupiah(total);
 
   // Expected
@@ -683,7 +687,7 @@ function recalculateDenominations() {
     }
   }
 
-  const breakdown = { d100k: d100, d50k: d50, d20k: d20, d10k: d10, d5k: d5, d2k: d2, d1k: d1, dKoin };
+  const breakdown = { d100k: d100, d75k: d75, d50k: d50, d20k: d20, d10k: d10, d5k: d5, d2k: d2, d1k: d1, dKoin };
   return { total, breakdown, diff, expected };
 }
 
@@ -943,6 +947,7 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
     const b = breakdownObj;
     const bRows = [];
     if (b.d100k) bRows.push(`<span>Rp 100.000 x ${Math.round(b.d100k / 100000)}</span><span style="font-family:monospace;">${formatRupiah(b.d100k)}</span>`);
+    if (b.d75k)  bRows.push(`<span>Rp 75.000 x ${Math.round(b.d75k / 75000)}</span><span style="font-family:monospace;">${formatRupiah(b.d75k)}</span>`);
     if (b.d50k)  bRows.push(`<span>Rp 50.000 x ${Math.round(b.d50k / 50000)}</span><span style="font-family:monospace;">${formatRupiah(b.d50k)}</span>`);
     if (b.d20k)  bRows.push(`<span>Rp 20.000 x ${Math.round(b.d20k / 20000)}</span><span style="font-family:monospace;">${formatRupiah(b.d20k)}</span>`);
     if (b.d10k)  bRows.push(`<span>Rp 10.000 x ${Math.round(b.d10k / 10000)}</span><span style="font-family:monospace;">${formatRupiah(b.d10k)}</span>`);
@@ -1240,7 +1245,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (el.btnResetDenom) {
     el.btnResetDenom.addEventListener('click', () => {
-      ['d100k', 'd50k', 'd20k', 'd10k', 'd5k', 'd2k', 'd1k', 'dKoin'].forEach(id => {
+      ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'd5k', 'd2k', 'd1k', 'dKoin'].forEach(id => {
         const inp = document.getElementById(id);
         if (inp) inp.value = '0';
       });
@@ -1248,7 +1253,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  ['d100k', 'd50k', 'd20k', 'd10k', 'd5k', 'd2k', 'd1k', 'dKoin'].forEach(id => {
+  ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'd5k', 'd2k', 'd1k', 'dKoin'].forEach(id => {
     const inp = document.getElementById(id);
     if (inp) {
       inp.addEventListener('input', recalculateDenominations);
