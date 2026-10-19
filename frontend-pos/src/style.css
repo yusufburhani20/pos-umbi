@@ -5535,3 +5535,31 @@ body.cashier-body {
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch !important;
 }
+
+/* Embedded Mode for In-Page Cashier Modals */
+html.is-embedded,
+body.is-embedded {
+  background: transparent !important;
+  background-color: transparent !important;
+  overflow: hidden !important;
+}
+
+body.is-embedded #app {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+body.is-embedded .top-bar,
+body.is-embedded .header-dropdown-backdrop,
+body.is-embedded .tablet-view-switcher,
+body.is-embedded .pos-container,
+body.is-embedded #loginModal,
+body.is-embedded #openShiftModal {
+  display: none !important;
+}
+
+body.is-embedded .modal-backdrop {
+  background-color: rgba(15, 23, 42, 0.72) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}

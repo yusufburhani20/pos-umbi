@@ -1616,3 +1616,65 @@ function initCashierLockScreen() {
     });
   }
 }
+
+// -----------------------------------------------------------------------------
+// EMBEDDED IN-PAGE MODAL CONTROLLER (Riwayat, Katalog, Piutang, Opname, dll.)
+// -----------------------------------------------------------------------------
+function openEmbeddedModal(modalName) {
+  const overlay = document.getElementById('cashierModalOverlay');
+  const iframe = document.getElementById('cashierModalIframe');
+  const userDropdown = document.getElementById('userMenuDropdown');
+  if (userDropdown) userDropdown.classList.remove('active');
+
+  if (!overlay || !iframe) return;
+
+  overlay.style.display = 'block';
+  iframe.src = `/?modal=${encodeURIComponent(modalName)}&embed=1`;
+}
+
+function closeEmbeddedModal() {
+  const overlay = document.getElementById('cashierModalOverlay');
+  const iframe = document.getElementById('cashierModalIframe');
+  if (overlay) overlay.style.display = 'none';
+  if (iframe) iframe.src = 'about:blank';
+  loadActiveShiftData();
+}
+
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'closeCashierModal') {
+    closeEmbeddedModal();
+  }
+});
+
+const btnCloseOverlay = document.getElementById('btnCloseEmbeddedModalOverlay');
+if (btnCloseOverlay) {
+  btnCloseOverlay.addEventListener('click', closeEmbeddedModal);
+}
+
+// Hook all data-modal buttons in cashier dashboard
+document.querySelectorAll('[data-modal]').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const modalName = btn.dataset.modal;
+    if (modalName) {
+      openEmbeddedModal(modalName);
+    }
+  });
+});
+
+// Also hook printer settings icon in header
+if (el.btnHardwareModalTrigger) {
+  el.btnHardwareModalTrigger.addEventListener('click', (e) => {
+    e.preventDefault();
+    openEmbeddedModal('hardware');
+  });
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('cashierModalOverlay');
+    if (overlay && overlay.style.display !== 'none') {
+      closeEmbeddedModal();
+    }
+  }
+});

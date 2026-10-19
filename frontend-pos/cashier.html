@@ -508,13 +508,13 @@
             <span>Kasir & Transaksi</span>
           </div>
 
-          <a class="header-dropdown-item" href="/?modal=history" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="history">
             <span class="dropdown-item-icon icon-blue">📋</span>
             <div class="dropdown-item-text">
               <span class="item-title">Riwayat Transaksi Kasir</span>
               <span class="item-desc">Semua nota penjualan, cetak ulang struk & batalkan nota</span>
             </div>
-          </a>
+          </button>
 
           <a class="header-dropdown-item active-menu-item" id="btnDropdownCashierDashboard" href="/cashier.html" style="text-decoration: none; color: inherit; background: rgba(37, 99, 235, 0.12); border-left: 3px solid #2563eb;">
             <span class="dropdown-item-icon icon-emerald">📊</span>
@@ -537,58 +537,58 @@
             <span>Komoditas & Stok Gudang</span>
           </div>
 
-          <a class="header-dropdown-item" href="/?modal=catalog" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="catalog">
             <span class="dropdown-item-icon icon-purple">🏷️</span>
             <div class="dropdown-item-text">
               <span class="item-title">Katalog & Margin Harga</span>
               <span class="item-desc">Kelola harga modal, ecer, karung & profit margin</span>
             </div>
-          </a>
+          </button>
 
-          <a class="header-dropdown-item" href="/?modal=stockOpname" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="stockOpname">
             <span class="dropdown-item-icon icon-emerald">📦</span>
             <div class="dropdown-item-text">
               <span class="item-title">Audit Stok Opname</span>
               <span class="item-desc">Penyesuaian timbangan fisik gudang & selisih</span>
             </div>
-          </a>
+          </button>
 
-          <a class="header-dropdown-item" href="/?modal=waste" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="waste">
             <span class="dropdown-item-icon icon-orange">📉</span>
             <div class="dropdown-item-text">
               <span class="item-title">Pencatatan Susut & Rusak</span>
               <span class="item-desc">Catat komoditas busuk, sortiran & susut bobot</span>
             </div>
-          </a>
+          </button>
 
           <!-- BAGIAN 3: KEUANGAN, PIUTANG & KULAKAN -->
           <div class="dropdown-section-header" style="margin-top: 10px;">
             <span>Keuangan, Piutang & Kulakan</span>
           </div>
 
-          <a class="header-dropdown-item" href="/?modal=debts" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="debts">
             <span class="dropdown-item-icon icon-amber">📒</span>
             <div class="dropdown-item-text">
               <span class="item-title">Buku Piutang & Kasbon</span>
               <span class="item-desc">Catat utang langganan kios, jatuh tempo & bayar</span>
             </div>
-          </a>
+          </button>
 
-          <a class="header-dropdown-item" href="/?modal=suppliers" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="suppliers">
             <span class="dropdown-item-icon icon-emerald">🚛</span>
             <div class="dropdown-item-text">
               <span class="item-title">Pemasok & Buku Kulakan</span>
               <span class="item-desc">Data juragan petani, kontak WA, riwayat pasokan</span>
             </div>
-          </a>
+          </button>
 
-          <a class="header-dropdown-item" href="/?modal=supplierDebt" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="supplierDebt">
             <span class="dropdown-item-icon icon-amber">⏳</span>
             <div class="dropdown-item-text">
               <span class="item-title">Hutang Tempo Toko (Kulakan)</span>
               <span class="item-desc">Pantau jatuh tempo nota pasokan & bayar tempo</span>
             </div>
-          </a>
+          </button>
 
           <button class="header-dropdown-item" id="btnExpensesQuickModal" type="button">
             <span class="dropdown-item-icon icon-rose">💸</span>
@@ -603,21 +603,21 @@
             <span>Pengaturan & Perangkat</span>
           </div>
 
-          <a class="header-dropdown-item" href="/?modal=hardware" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="hardware">
             <span class="dropdown-item-icon icon-blue">🖨️</span>
             <div class="dropdown-item-text">
               <span class="item-title">Printer & Laci Kasir</span>
               <span class="item-desc">Atur Bluetooth, ukuran thermal & cash drawer RJ-11</span>
             </div>
-          </a>
+          </button>
 
-          <a class="header-dropdown-item" href="/?modal=identity" style="text-decoration: none; color: inherit;">
+          <button class="header-dropdown-item" type="button" data-modal="identity">
             <span class="dropdown-item-icon icon-blue">⚙️</span>
             <div class="dropdown-item-text">
               <span class="item-title">Identitas Toko & Profil</span>
               <span class="item-desc">Ubah nama kios, alamat nota & profil kasir</span>
             </div>
-          </a>
+          </button>
 
           <a class="header-dropdown-item item-owner" href="/owner.html" style="text-decoration: none; color: inherit;">
             <span class="dropdown-item-icon icon-gold">👑</span>
@@ -1186,6 +1186,14 @@
 
   <!-- Hidden Thermal Receipt Canvas for System Print -->
   <div id="thermalReceipt" style="display: none;"></div>
+
+  <!-- Seamless In-Page Embedded Modal Overlay (Buka Riwayat, Katalog, Piutang, Opname langsung di halaman ini) -->
+  <div id="cashierModalOverlay" style="display: none; position: fixed; inset: 0; z-index: 100000; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); width: 100vw; height: 100vh; overflow: hidden;">
+    <button id="btnCloseEmbeddedModalOverlay" type="button" title="Tutup Modal & Kembali ke Dashboard Kasir" style="position: absolute; top: 12px; right: 16px; z-index: 100002; background: #0f172a; color: #ffffff; border: 1.5px solid rgba(255,255,255,0.35); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); transition: all 0.2s;">
+      <span>✕</span> Tutup
+    </button>
+    <iframe id="cashierModalIframe" src="about:blank" style="width: 100%; height: 100%; border: none; background: transparent;" allow="clipboard-read; clipboard-write; bluetooth"></iframe>
+  </div>
 
   <script type="module" src="/src/cashier.js"></script>
 </body>

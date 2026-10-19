@@ -861,17 +861,23 @@ async function initApp() {
   // Check if session exists in memory/storage
   const urlParams = new URLSearchParams(window.location.search);
   const isPosMode = urlParams.get('mode') === 'pos';
+  const isEmbedMode = urlParams.get('embed') === '1';
+
+  if (isEmbedMode) {
+    document.documentElement.classList.add('is-embedded');
+    document.body.classList.add('is-embedded');
+  }
 
   if (api.user && api.token) {
     state.user = api.user;
-    if (state.user && state.user.role === 'owner' && !isPosMode) {
+    if (state.user && state.user.role === 'owner' && !isPosMode && !isEmbedMode) {
       window.location.href = '/owner.html';
       return;
     }
     el.activeCashierName.textContent = state.user.name;
     updateRoleUI();
   } else if (!api.token) {
-    showLoginModal();
+    if (!isEmbedMode) showLoginModal();
     return;
   }
 
@@ -880,7 +886,7 @@ async function initApp() {
       const meRes = await api.getMe().catch(() => null);
       if (meRes && meRes.user) {
         state.user = meRes.user;
-        if (state.user && state.user.role === 'owner' && !isPosMode) {
+        if (state.user && state.user.role === 'owner' && !isPosMode && !isEmbedMode) {
           window.location.href = '/owner.html';
           return;
         }
@@ -931,9 +937,38 @@ async function initApp() {
       }
     }, 250);
   }
+
+  // Embedded mode close listener
+  if (isEmbedMode) {
+    const notifyCloseToParent = () => {
+      setTimeout(() => {
+        const visibleModals = Array.from(document.querySelectorAll('.modal-backdrop')).filter(m => {
+          return window.getComputedStyle(m).display !== 'none';
+        });
+        if (visibleModals.length === 0) {
+          window.parent.postMessage({ action: 'closeCashierModal' }, '*');
+        }
+      }, 150);
+    };
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.modal-close') || e.target.classList.contains('modal-backdrop') || e.target.closest('.btn-secondary') || e.target.closest('.btn-cancel') || e.target.closest('.btn-modal-close')) {
+        notifyCloseToParent();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        notifyCloseToParent();
+      }
+    });
+  }
 }
 
 async function syncShift() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const isEmbedMode = urlParams.get('embed') === '1';
+
   try {
     if (navigator.onLine) {
       const shiftRes = await api.getCurrentShift().catch(() => null);
@@ -947,7 +982,9 @@ async function syncShift() {
         await clearActiveShiftLocal();
         state.shift = null;
         el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
-        showOpenShiftModal();
+        if (!isEmbedMode) {
+          showOpenShiftModal();
+        }
         return;
       }
     }
