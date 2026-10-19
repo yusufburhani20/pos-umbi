@@ -64,6 +64,34 @@ function showToast(msg, type = 'info') {
 
 // DOM References
 const el = {
+  // Top-Bar Unified POS Header Elements
+  cashierBrandTitle: document.getElementById('cashierBrandTitle'),
+  cashierBrandSubtitle: document.getElementById('cashierBrandSubtitle'),
+  liveDayDate: document.getElementById('liveDayDate'),
+  liveClockTime: document.getElementById('liveClockTime'),
+  syncStatusPill: document.getElementById('syncStatusPill'),
+  syncStatusLabel: document.getElementById('syncStatusLabel'),
+  syncSubLabel: document.getElementById('syncSubLabel'),
+  btnManualSync: document.getElementById('btnManualSync'),
+  printerStatusPill: document.getElementById('printerStatusPill'),
+  printerStatusLabel: document.getElementById('printerStatusLabel'),
+  printerSubLabel: document.getElementById('printerSubLabel'),
+  btnHardwareModalTrigger: document.getElementById('btnHardwareModalTrigger'),
+
+  btnToggleFullscreen: document.getElementById('btnToggleFullscreen'),
+  btnQuickOpenDrawer: document.getElementById('btnQuickOpenDrawer'),
+  btnHeaderPrintX: document.getElementById('btnHeaderPrintX'),
+  btnExpensesQuickModal: document.getElementById('btnExpensesQuickModal'),
+  btnHeaderCloseShift: document.getElementById('btnHeaderCloseShift'),
+  btnLogout: document.getElementById('btnLogout'),
+
+  activeCashierName: document.getElementById('activeCashierName'),
+  activeShiftMeta: document.getElementById('activeShiftMeta'),
+  dropdownUserDisplayName: document.getElementById('dropdownUserDisplayName'),
+  dropdownUserRole: document.getElementById('dropdownUserRole'),
+  cashierStatusDot: document.getElementById('cashierStatusDot'),
+
+  // Content Area Elements
   pageStoreName: document.getElementById('pageStoreName'),
   pageShiftSubtitle: document.getElementById('pageShiftSubtitle'),
   badgeShiftText: document.getElementById('badgeShiftText'),
@@ -151,14 +179,175 @@ const el = {
 };
 
 // -----------------------------------------------------------------------------
+// TOP-BAR HEADER HELPERS (Synced with POS Register)
+// -----------------------------------------------------------------------------
+function initHeaderClock() {
+  function updateTime() {
+    const now = new Date();
+    if (el.liveClockTime) {
+      el.liveClockTime.textContent = now.toLocaleTimeString('id-ID') + ' WIB';
+    }
+    if (el.liveDayDate) {
+      el.liveDayDate.textContent = now.toLocaleDateString('id-ID', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+  }
+  updateTime();
+  setInterval(updateTime, 1000);
+}
+
+function updateHeaderStatusPills() {
+  function updateSyncPill() {
+    if (!el.syncStatusPill) return;
+    if (navigator.onLine) {
+      el.syncStatusPill.className = 'sync-status-pill online';
+      if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🟢 Online';
+      if (el.syncSubLabel) el.syncSubLabel.textContent = 'Tersinkron (1 mnt)';
+    } else {
+      el.syncStatusPill.className = 'sync-status-pill offline';
+      if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🔴 Offline';
+      if (el.syncSubLabel) el.syncSubLabel.textContent = 'Mode Mandiri';
+    }
+  }
+
+  function updatePrinterPill() {
+    if (!el.printerStatusPill) return;
+    if (hardwareManager && hardwareManager.connectedDevice) {
+      el.printerStatusPill.className = 'printer-status-pill online';
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hardwareManager.connectedDevice.name || 'Printer OK'}`;
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'Bluetooth / Laci RJ-11';
+    } else {
+      el.printerStatusPill.className = 'printer-status-pill offline';
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ Printer: Putus';
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'Bluetooth / Laci RJ-11';
+    }
+  }
+
+  updateSyncPill();
+  updatePrinterPill();
+  window.addEventListener('online', updateSyncPill);
+  window.addEventListener('offline', updateSyncPill);
+}
+
+function initHeaderDropdowns() {
+  const storeTrigger = document.getElementById('btnStoreMenuTrigger');
+  const storeDropdown = document.getElementById('storeMenuDropdown');
+  const userTrigger = document.getElementById('shiftIndicator');
+  const userDropdown = document.getElementById('userMenuDropdown');
+  const backdrop = document.getElementById('headerDropdownBackdrop');
+
+  function positionDropdownOnMobile(dropdownEl) {
+    if (!dropdownEl) return;
+    const menu = dropdownEl.querySelector('.header-dropdown-menu');
+    if (!menu) return;
+    if (window.innerWidth <= 900) {
+      const topBar = document.querySelector('.top-bar');
+      if (topBar) {
+        const rect = topBar.getBoundingClientRect();
+        menu.style.top = `${Math.round(rect.bottom + 6)}px`;
+      }
+    } else {
+      menu.style.top = '';
+    }
+  }
+
+  function closeAllDropdowns() {
+    const topBar = document.querySelector('.top-bar');
+    if (topBar) topBar.classList.remove('has-active-dropdown');
+
+    if (storeDropdown) {
+      storeDropdown.classList.remove('active');
+      if (storeTrigger) storeTrigger.setAttribute('aria-expanded', 'false');
+      const storeMenu = storeDropdown.querySelector('.header-dropdown-menu');
+      if (storeMenu && window.innerWidth <= 900) storeMenu.style.top = '';
+    }
+    if (userDropdown) {
+      userDropdown.classList.remove('active');
+      if (userTrigger) userTrigger.setAttribute('aria-expanded', 'false');
+      const userMenu = userDropdown.querySelector('.header-dropdown-menu');
+      if (userMenu && window.innerWidth <= 900) userMenu.style.top = '';
+    }
+    if (backdrop) {
+      backdrop.classList.remove('active');
+      setTimeout(() => {
+        if (!storeDropdown?.classList.contains('active') && !userDropdown?.classList.contains('active')) {
+          backdrop.style.display = 'none';
+        }
+      }, 180);
+    }
+  }
+
+  function openDropdown(dropdown, trigger) {
+    const isAlreadyOpen = dropdown.classList.contains('active');
+    closeAllDropdowns();
+    if (!isAlreadyOpen) {
+      const topBar = document.querySelector('.top-bar');
+      if (topBar) topBar.classList.add('has-active-dropdown');
+
+      dropdown.classList.add('active');
+      if (trigger) trigger.setAttribute('aria-expanded', 'true');
+      positionDropdownOnMobile(dropdown);
+      if (backdrop) {
+        backdrop.style.display = 'block';
+        void backdrop.offsetHeight;
+        backdrop.classList.add('active');
+      }
+    }
+  }
+
+  if (storeTrigger && storeDropdown) {
+    storeTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDropdown(storeDropdown, storeTrigger);
+    });
+  }
+
+  if (userTrigger && userDropdown) {
+    userTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDropdown(userDropdown, userTrigger);
+    });
+  }
+
+  if (backdrop) {
+    backdrop.addEventListener('click', closeAllDropdowns);
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.header-dropdown')) {
+      closeAllDropdowns();
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (storeDropdown?.classList.contains('active')) positionDropdownOnMobile(storeDropdown);
+    if (userDropdown?.classList.contains('active')) positionDropdownOnMobile(userDropdown);
+  });
+}
+
+// -----------------------------------------------------------------------------
 // LOAD DATA
 // -----------------------------------------------------------------------------
 async function initCashierPage() {
   try {
+    initHeaderClock();
+    initHeaderDropdowns();
+    updateHeaderStatusPills();
+
     // 1. Load Store Settings
     const setRes = await api.getSettings().catch(() => null);
     if (setRes && setRes.settings) {
       state.settings = setRes.settings;
+      if (el.cashierBrandTitle) {
+        el.cashierBrandTitle.textContent = state.settings.store_name || 'PD. HASIL BUMI RAYA 1';
+      }
+      if (el.cashierBrandSubtitle) {
+        el.cashierBrandSubtitle.textContent = state.settings.store_tagline || 'Kassa POS • Kasir & Admin';
+      }
       if (el.pageStoreName) {
         el.pageStoreName.textContent = state.settings.store_name || 'PD. HASIL BUMI RAYA 1';
       }
@@ -207,6 +396,20 @@ async function loadActiveShiftData() {
     const cashierName = resolveCashierName(s, state.user);
     state.resolvedCashierName = cashierName;
     const startTimeStr = parseSafeDate(s.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    // Update Header User & Shift Info (Synced with POS Register Header)
+    if (el.activeCashierName) {
+      el.activeCashierName.textContent = cashierName;
+    }
+    if (el.activeShiftMeta) {
+      el.activeShiftMeta.textContent = `Shift Aktif #${s.id}`;
+    }
+    if (el.dropdownUserDisplayName) {
+      el.dropdownUserDisplayName.textContent = cashierName;
+    }
+    if (el.dropdownUserRole) {
+      el.dropdownUserRole.textContent = state.user?.role === 'owner' ? 'Owner & Admin Kios' : 'Kasir & Admin Kios';
+    }
 
     if (el.badgeShiftText) {
       el.badgeShiftText.textContent = `Shift Aktif #${s.id} • ${cashierName}`;
@@ -794,13 +997,70 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
 window.addEventListener('DOMContentLoaded', () => {
   initCashierPage();
 
-  if (el.btnKickDrawerTop) {
-    el.btnKickDrawerTop.addEventListener('click', async () => {
-      try {
-        await hardwareManager.kickCashDrawer();
-        showToast('💰 Sinyal buka laci kasir (Kick RJ-11) terkirim!', 'success');
-      } catch (err) {
-        showToast('Gagal membuka laci: ' + err.message, 'warning');
+  // Fullscreen Mode Toggle
+  if (el.btnToggleFullscreen) {
+    el.btnToggleFullscreen.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+  }
+
+  // Quick Open Drawer (POS Register Header)
+  const kickDrawerAction = async () => {
+    try {
+      await hardwareManager.kickCashDrawer();
+      showToast('💰 Sinyal buka laci kasir (Kick RJ-11) terkirim!', 'success');
+    } catch (err) {
+      showToast('Gagal membuka laci: ' + err.message, 'warning');
+    }
+  };
+  if (el.btnQuickOpenDrawer) el.btnQuickOpenDrawer.addEventListener('click', kickDrawerAction);
+  if (el.btnKickDrawerTop) el.btnKickDrawerTop.addEventListener('click', kickDrawerAction);
+
+  // Manual Sync Button
+  if (el.btnManualSync) {
+    el.btnManualSync.addEventListener('click', async () => {
+      showToast('🔄 Menyinkronkan data shift kasir...', 'info');
+      await loadActiveShiftData();
+      showToast('✅ Data kasir berhasil disinkronkan!', 'success');
+    });
+  }
+
+  // Header Print X Button
+  if (el.btnHeaderPrintX) {
+    el.btnHeaderPrintX.addEventListener('click', handlePrintReportX);
+  }
+
+  // Header Dropdown Quick Expense Modal Trigger
+  if (el.btnExpensesQuickModal) {
+    el.btnExpensesQuickModal.addEventListener('click', () => {
+      const storeDropdown = document.getElementById('storeMenuDropdown');
+      if (storeDropdown) storeDropdown.classList.remove('active');
+      if (el.inputExpenseAmount) el.inputExpenseAmount.value = '';
+      if (el.inputExpenseNotes) el.inputExpenseNotes.value = '';
+      if (el.modalAddExpense) el.modalAddExpense.style.display = 'flex';
+      if (el.inputExpenseAmount) el.inputExpenseAmount.focus();
+    });
+  }
+
+  // Header Close Shift Button
+  if (el.btnHeaderCloseShift) {
+    el.btnHeaderCloseShift.addEventListener('click', () => {
+      const userDropdown = document.getElementById('userMenuDropdown');
+      if (userDropdown) userDropdown.classList.remove('active');
+      handleCloseShiftZ();
+    });
+  }
+
+  // Logout Button
+  if (el.btnLogout) {
+    el.btnLogout.addEventListener('click', () => {
+      if (confirm('Apakah Anda yakin ingin keluar dari akun kasir?')) {
+        api.clearAuth();
+        window.location.href = '/';
       }
     });
   }

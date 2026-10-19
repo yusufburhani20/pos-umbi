@@ -53,139 +53,25 @@
       flex-direction: column;
     }
 
-    /* Cashier Top Bar (Matches Cashier Register Theme) */
-    .cashier-header {
-      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%) !important;
-      color: #ffffff;
-      padding: 10px 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 4px 20px -2px rgba(30, 58, 138, 0.35);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+    /* Pinned top-bar at the top when scrolling */
+    .top-bar {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 1000 !important;
     }
 
-    .cashier-header-inner {
-      max-width: 1280px;
-      margin: 0 auto;
+    .cashier-content-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-    }
-
-    .cashier-header-left {
-      display: flex;
-      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
       gap: 14px;
-    }
-
-    .btn-back-pos {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      text-decoration: none;
-      padding: 8px 16px;
-      border-radius: 9px;
-      background: rgba(255, 255, 255, 0.16);
-      border: 1.5px solid rgba(255, 255, 255, 0.3);
-      color: #ffffff;
-      font-weight: 700;
-      font-size: 13px;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .btn-back-pos:hover {
-      background: rgba(255, 255, 255, 0.28);
-      border-color: #ffffff;
-      transform: translateX(-2px);
-    }
-
-    .cashier-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .brand-icon-box {
-      padding: 2px;
-      background: rgba(0, 0, 0, 0.25);
-      border: 1.5px solid rgba(234, 179, 8, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
-      flex-shrink: 0;
-    }
-
-    .cashier-brand-title {
-      font-size: 15.5px;
-      font-weight: 800;
-      margin: 0;
-      color: #ffffff;
-      letter-spacing: -0.2px;
-    }
-
-    .cashier-brand-sub {
-      font-size: 11.5px;
-      color: #bfdbfe;
-      margin: 2px 0 0;
-    }
-
-    .cashier-header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-header-act {
-      height: 36px;
-      padding: 0 12px;
-      font-size: 12.5px;
-      font-weight: 700;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1.5px solid rgba(255, 255, 255, 0.3);
-      color: #ffffff;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .btn-header-act:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: #ffffff;
-    }
-
-    .shift-status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1.5px solid rgba(255, 255, 255, 0.3);
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 12.5px;
-      font-weight: 700;
-      color: #ffffff;
-    }
-
-    .shift-status-badge .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 8px #22c55e;
-      animation: pulseDot 2s infinite;
-    }
-
-    @keyframes pulseDot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(1.15); }
+      background: #ffffff;
+      padding: 16px 20px;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 
     .cashier-main-container {
@@ -503,71 +389,281 @@
       .kpi-row-4col {
         grid-template-columns: 1fr;
       }
-      .cashier-header-inner {
-        flex-direction: column;
-        align-items: flex-start;
-      }
     }
   </style>
 </head>
 <body class="cashier-body">
 
-  <!-- Header (POS Register Harmonized Theme) -->
-  <header class="cashier-header">
-    <div class="cashier-header-inner">
-      <div class="cashier-header-left">
-        <a href="/" class="btn-back-pos" title="Kembali ke Layar Kasir / Penjualan Utama">
-          <span>←</span>
-          <span>Kembali ke Kasir</span>
-        </a>
-
-        <div class="cashier-brand">
-          <span class="brand-icon-box" title="Kassa POS - Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="30" height="30" class="brand-logo-svg">
-              <defs>
-                <linearGradient id="hdrBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#064e3b"/>
-                  <stop offset="100%" stop-color="#022c22"/>
-                </linearGradient>
-                <linearGradient id="hdrGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#fef08a"/>
-                  <stop offset="100%" stop-color="#eab308"/>
-                </linearGradient>
-              </defs>
-              <rect width="40" height="40" rx="9" fill="url(#hdrBgGrad)" stroke="url(#hdrGoldGrad)" stroke-width="1.5"/>
-              <path d="M20 7 L32 11 C32 23 24 31 20 34 C16 31 8 23 8 11 Z" fill="#022c22" stroke="#10b981" stroke-width="1.2"/>
-              <path d="M14 14 L17.5 14 L17.5 27 L14 27 Z" fill="#34d399"/>
-              <path d="M16 20 L23 14 L27 14 L19 21.5 Z" fill="#34d399"/>
-              <path d="M18 20 L25.5 27 L22 27 L16 22 Z" fill="url(#hdrGoldGrad)"/>
-              <path d="M26 8 C29 8 30.5 11 28.5 13 C27 11 25 10 26 8 Z" fill="#34d399"/>
-            </svg>
-          </span>
-          <div>
-            <h1 class="cashier-brand-title" id="pageStoreName">PD. HASIL BUMI RAYA 1</h1>
-            <p class="cashier-brand-sub" id="pageShiftSubtitle">Dashboard Kasir & Rekonsiliasi Kas Harian</p>
-          </div>
+  <!-- Top Navigation Bar (Unified POS Register Header) -->
+  <header class="top-bar">
+    <!-- Left Section: Brand + Status Group -->
+    <div class="top-bar-header">
+      <div class="brand-section">
+        <span class="brand-icon" title="Kassa POS - Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar" style="padding: 2px; background: rgba(0,0,0,0.3); border: 1.5px solid rgba(234, 179, 8, 0.4); display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="30" height="30" class="brand-logo-svg">
+            <defs>
+              <linearGradient id="hdrBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#064e3b"/>
+                <stop offset="100%" stop-color="#022c22"/>
+              </linearGradient>
+              <linearGradient id="hdrGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#fef08a"/>
+                <stop offset="100%" stop-color="#eab308"/>
+              </linearGradient>
+            </defs>
+            <rect width="40" height="40" rx="9" fill="url(#hdrBgGrad)" stroke="url(#hdrGoldGrad)" stroke-width="1.5"/>
+            <path d="M20 7 L32 11 C32 23 24 31 20 34 C16 31 8 23 8 11 Z" fill="#022c22" stroke="#10b981" stroke-width="1.2"/>
+            <path d="M14 14 L17.5 14 L17.5 27 L14 27 Z" fill="#34d399"/>
+            <path d="M16 20 L23 14 L27 14 L19 21.5 Z" fill="#34d399"/>
+            <path d="M18 20 L25.5 27 L22 27 L16 22 Z" fill="url(#hdrGoldGrad)"/>
+            <path d="M26 8 C29 8 30.5 11 28.5 13 C27 11 25 10 26 8 Z" fill="#34d399"/>
+          </svg>
+        </span>
+        <div class="brand-text">
+          <h1 class="brand-title" id="cashierBrandTitle">PD. HASIL BUMI RAYA 1</h1>
+          <p class="brand-subtitle" id="cashierBrandSubtitle">Kassa POS • Kasir & Admin</p>
         </div>
       </div>
 
-      <div class="cashier-header-actions">
-        <div class="shift-status-badge" id="badgeShiftStatus">
-          <span class="dot"></span>
-          <span id="badgeShiftText">Memuat shift...</span>
+      <div class="header-divider"></div>
+
+      <!-- Live Day, Date & Clock Badge -->
+      <div class="header-datetime-badge" title="Waktu Operasional Real-Time">
+        <span class="datetime-icon">📅</span>
+        <div class="datetime-text">
+          <span class="day-date" id="liveDayDate">Memuat tanggal...</span>
+          <span class="clock-time" id="liveClockTime">00:00:00 WIB</span>
+        </div>
+      </div>
+
+      <div class="header-status-group">
+        <!-- Live Sync Status Pill (Offline-First 1-Min Auto Sync) -->
+        <div class="sync-status-pill online" id="syncStatusPill" title="Status Sinkronisasi Cloud (Interval 1 Menit)">
+          <span class="sync-dot" id="syncStatusDot"></span>
+          <div class="sync-text-wrap">
+            <span class="sync-status-label" id="syncStatusLabel">🟢 Online</span>
+            <span class="sync-sub-label" id="syncSubLabel">Tersinkron (1 mnt)</span>
+          </div>
+          <button class="btn-sync-trigger" id="btnManualSync" title="Sinkronkan Sekarang">🔄</button>
         </div>
 
-        <button type="button" class="btn-header-act" id="btnKickDrawerTop" title="Buka Laci Uang Kasir (Kick RJ-11)">
-          <span>💰</span> Buka Laci
-        </button>
+        <!-- Live Hardware & Printer Bluetooth Pill -->
+        <div class="printer-status-pill offline" id="printerStatusPill" title="Status Printer Bluetooth & Laci Kasir (Cash Drawer)">
+          <span class="printer-dot" id="printerStatusDot"></span>
+          <div class="printer-text-wrap">
+            <span class="printer-status-label" id="printerStatusLabel">🖨️ Printer: Putus</span>
+            <span class="printer-sub-label" id="printerSubLabel">Bluetooth / Laci RJ-11</span>
+          </div>
+          <button class="btn-printer-trigger" id="btnHardwareModalTrigger" type="button" title="Atur Printer & Laci">⚙️</button>
+        </div>
+      </div>
+    </div>
 
-        <button type="button" class="btn-header-act" id="btnRefreshPageData" title="Segarkan Data Shift">
-          <span>🔄</span> Segarkan
+    <!-- Right Section: Navigation Bar (Identical to POS Register with Kasir POS Direct Button) -->
+    <div class="top-actions">
+      <!-- Direct Quick Action: Layar Kasir POS (Shortcut Kembali ke Penjualan) -->
+      <a class="btn-nav btn-pos-direct" id="btnGoToPos" href="/" title="Kembali ke Layar Kasir & Keranjang Penjualan" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.22); border: 1.5px solid rgba(255, 255, 255, 0.35);">
+        <span class="icon">🛒</span>
+        <span class="nav-label">Kasir POS</span>
+      </a>
+
+      <!-- Direct Quick Action: Layar Penuh -->
+      <button class="btn-nav btn-fullscreen-direct" id="btnToggleFullscreen" type="button" title="Mode Layar Penuh">
+        <span class="icon" id="fullscreenIcon">⛶</span>
+        <span class="nav-label" id="fullscreenLabel">Layar Penuh</span>
+      </button>
+
+      <!-- Direct Quick Action: Buka Laci Kasir -->
+      <button class="btn-nav btn-drawer-direct" id="btnQuickOpenDrawer" type="button" title="Buka Laci Uang Kasir (Cash Drawer Kick RJ-11)">
+        <span class="icon">💰</span>
+        <span class="nav-label">Buka Laci</span>
+      </button>
+
+      <!-- Sub Menu 1: Kelola Kios Dropdown -->
+      <div class="header-dropdown" id="storeMenuDropdown">
+        <button class="btn-nav btn-store-menu" id="btnStoreMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Manajemen & Operasional Kios" style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10b981; color: #f8fafc;">
+          <span class="icon">📦</span>
+          <span class="nav-label">Kelola Kios</span>
+          <span class="dropdown-chevron">▾</span>
         </button>
+        <div class="header-dropdown-menu" id="storeDropdownContent">
+          <div class="dropdown-section-header">
+            <span>Operasional & Rekonsiliasi Kasir</span>
+          </div>
+
+          <a class="header-dropdown-item active-menu-item" id="btnDropdownCashierDashboard" href="/cashier.html" style="text-decoration: none; color: inherit; background: rgba(37, 99, 235, 0.12); border-left: 3px solid #2563eb;">
+            <span class="dropdown-item-icon icon-emerald">📊</span>
+            <div class="dropdown-item-text">
+              <span class="item-title" style="font-weight: 800; color: #1d4ed8;">Dashboard Kasir & Rekonsiliasi Kas</span>
+              <span class="item-desc">Hitung fisik laci, balance kas, cetak Laporan X & Z (Halaman Ini)</span>
+            </div>
+          </a>
+
+          <div class="dropdown-section-header" style="margin-top: 6px;">
+            <span>Manajemen Toko & Komoditas</span>
+          </div>
+          
+          <a class="header-dropdown-item" href="/?modal=catalog" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-purple">🏷️</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Katalog & Margin</span>
+              <span class="item-desc">Kelola harga modal, ecer, karung & profit margin</span>
+            </div>
+          </a>
+
+          <a class="header-dropdown-item" href="/?modal=debts" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-amber">📒</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Buku Piutang & Kasbon</span>
+              <span class="item-desc">Catat utang langganan kios, jatuh tempo & bayar</span>
+            </div>
+          </a>
+
+          <a class="header-dropdown-item" href="/?modal=stockOpname" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-emerald">📦</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Audit Stok Opname</span>
+              <span class="item-desc">Penyesuaian timbangan fisik gudang & selisih</span>
+            </div>
+          </a>
+
+          <a class="header-dropdown-item" href="/?modal=waste" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-orange">📉</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Pencatatan Susut & Rusak</span>
+              <span class="item-desc">Catat komoditas busuk, sortiran & susut bobot</span>
+            </div>
+          </a>
+
+          <a class="header-dropdown-item" href="/?modal=suppliers" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-emerald">🚛</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Pemasok & Buku Kulakan</span>
+              <span class="item-desc">Data juragan petani, kontak WA, riwayat barang masuk</span>
+            </div>
+          </a>
+
+          <a class="header-dropdown-item" href="/?modal=supplierDebt" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-amber">⏳</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Hutang Tempo Toko (Kulakan)</span>
+              <span class="item-desc">Pantau jatuh tempo nota pasokan & bayar tempo</span>
+            </div>
+          </a>
+
+          <button class="header-dropdown-item" id="btnExpensesQuickModal" type="button">
+            <span class="dropdown-item-icon icon-rose">💸</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Input Biaya Keluar Laci</span>
+              <span class="item-desc">Uang makan, rokok, parkir, kuli, operasional shift</span>
+            </div>
+          </button>
+
+          <div class="dropdown-divider"></div>
+
+          <a class="header-dropdown-item item-owner" href="/owner.html" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-gold">👑</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Panel Owner & Laporan</span>
+              <span class="item-desc">Laba bersih, rekap eksekutif & audit keseluruhan</span>
+            </div>
+            <span class="dropdown-badge-owner">VIP</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="nav-divider"></div>
+
+      <!-- Sub Menu 2: Akun Kasir & Sesi Shift Dropdown -->
+      <div class="header-dropdown" id="userMenuDropdown">
+        <button class="btn-nav btn-user-menu shift-indicator" id="shiftIndicator" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Akun & Sesi Shift Kasir">
+          <div class="user-status-avatar">
+            <span class="status-dot green" id="cashierStatusDot"></span>
+          </div>
+          <div class="shift-text">
+            <span class="shift-name" id="activeCashierName">Kasir (Admin)</span>
+            <span class="shift-meta" id="activeShiftMeta">Shift Aktif</span>
+          </div>
+          <span class="dropdown-chevron">▾</span>
+        </button>
+        <div class="header-dropdown-menu header-dropdown-menu-right" id="userDropdownContent">
+          <div class="dropdown-user-header">
+            <div class="dropdown-user-avatar">👤</div>
+            <div class="dropdown-user-details">
+              <span class="dropdown-user-name" id="dropdownUserDisplayName">Kasir (Admin)</span>
+              <span class="dropdown-user-role" id="dropdownUserRole">Kasir & Admin Kios</span>
+            </div>
+          </div>
+
+          <div class="dropdown-divider"></div>
+
+          <a class="header-dropdown-item" href="/?modal=identity" style="text-decoration: none; color: inherit;">
+            <span class="dropdown-item-icon icon-blue">⚙️</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Identitas Toko & Profil</span>
+              <span class="item-desc">Ubah nama kios, alamat nota & profil kasir</span>
+            </div>
+          </a>
+
+          <a class="header-dropdown-item" href="/cashier.html" style="text-decoration: none; color: inherit; background: rgba(37, 99, 235, 0.08);">
+            <span class="dropdown-item-icon icon-emerald">📊</span>
+            <div class="dropdown-item-text">
+              <span class="item-title" style="font-weight: 700; color: #1d4ed8;">Dashboard Kasir & Rekap Shift</span>
+              <span class="item-desc">Balance kas laci, hitung lembaran & cetak Laporan X/Z</span>
+            </div>
+          </a>
+
+          <button class="header-dropdown-item item-shift" id="btnHeaderCloseShift" type="button">
+            <span class="dropdown-item-icon icon-rose">🔒</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Tutup Shift Kasir</span>
+              <span class="item-desc">Blind cash count, setoran kas harian & rekap</span>
+            </div>
+          </button>
+
+          <div class="dropdown-divider"></div>
+
+          <button class="header-dropdown-item item-logout" id="btnLogout" type="button">
+            <span class="dropdown-item-icon icon-slate">🚪</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Keluar Akun</span>
+              <span class="item-desc">Ganti akun atau akhiri sesi bertugas</span>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   </header>
 
+  <!-- Mobile Header Dropdown Backdrop Overlay -->
+  <div class="header-dropdown-backdrop" id="headerDropdownBackdrop"></div>
+
   <!-- Main Content (Full scrollable container) -->
   <main class="cashier-main-container">
+
+    <!-- Header Banner Konten Dashboard Kasir & Rekonsiliasi -->
+    <div class="cashier-content-header">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">📊</span>
+          <div>
+            <h1 style="margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px;">Dashboard Kasir & Rekonsiliasi Kas</h1>
+            <p id="pageShiftSubtitle" style="margin: 2px 0 0; font-size: 12.5px; color: #64748b; font-weight: 500;">
+              Petugas: Memuat... • Buka: --:-- WIB • Modal Awal: Rp 0
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary" id="btnRefreshPageData" style="height: 38px; padding: 0 14px; font-size: 13px; font-weight: 700; border-radius: 8px; background: #f8fafc; border: 1.5px solid #cbd5e1; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: #334155; transition: all 0.15s ease;">
+          <span>🔄</span> Segarkan Data
+        </button>
+        <button type="button" class="btn btn-primary" id="btnHeaderPrintX" style="height: 38px; padding: 0 16px; font-size: 13px; font-weight: 800; border-radius: 8px; background: #2563eb; color: #ffffff; border: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25); transition: all 0.15s ease;">
+          <span>🖨️</span> Cetak Laporan X
+        </button>
+      </div>
+    </div>
     
     <!-- 4 KPI Cards -->
     <div class="kpi-row-4col">

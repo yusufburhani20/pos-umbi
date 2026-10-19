@@ -862,6 +862,40 @@ async function initApp() {
     console.error('Session error, fallback to offline:', err);
     await loadInitialData();
   }
+
+  // Handle URL modal parameter (e.g. from cashier.html header dropdown)
+  const targetModal = urlParams.get('modal');
+  if (targetModal) {
+    setTimeout(() => {
+      try {
+        if (targetModal === 'catalog') openCatalogMarginModal();
+        else if (targetModal === 'debts') openCashierDebtsModal();
+        else if (targetModal === 'stockOpname') openStockOpnameModal();
+        else if (targetModal === 'waste') openWasteModal();
+        else if (targetModal === 'suppliers') {
+          if (el.modalCashierSuppliers) el.modalCashierSuppliers.style.display = 'flex';
+          switchCashierSupplierTab('juragan');
+          loadCashierSuppliers();
+        }
+        else if (targetModal === 'supplierDebt') {
+          if (el.modalCashierSuppliers) el.modalCashierSuppliers.style.display = 'flex';
+          switchCashierSupplierTab('tempo');
+          loadCashierSuppliers();
+        }
+        else if (targetModal === 'expenses') {
+          if (el.modalCashierExpenses) el.modalCashierExpenses.style.display = 'flex';
+          switchCashierExpenseTab('record');
+          loadCashierExpenses();
+        }
+        else if (targetModal === 'identity') openEditIdentityModal();
+        else if (targetModal === 'hardware') {
+          if (el.hardwareModal) el.hardwareModal.style.display = 'flex';
+        }
+      } catch (err) {
+        console.warn('Gagal membuka modal dari parameter URL:', err);
+      }
+    }, 250);
+  }
 }
 
 async function syncShift() {
