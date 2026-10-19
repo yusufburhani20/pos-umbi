@@ -8,9 +8,9 @@ const { authenticateToken, requireOwner, logAudit } = require('../middleware/aut
 router.get('/current', authenticateToken, async (req, res) => {
   try {
     const shift = await dbQuery.get(
-      `SELECT s.id, s.cashier_id, u.name as cashier_name, s.start_time, s.starting_cash, s.status
+      `SELECT s.id, s.cashier_id, COALESCE(u.name, 'Kasir Bertugas') as cashier_name, s.start_time, s.starting_cash, s.status
        FROM shifts s
-       JOIN users u ON s.cashier_id = u.id
+       LEFT JOIN users u ON s.cashier_id = u.id
        WHERE s.status = 'open'
        ORDER BY s.id DESC LIMIT 1`
     );

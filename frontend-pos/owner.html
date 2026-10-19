@@ -664,6 +664,7 @@
             <div class="preset-filter-group" id="reportPresetGroup">
               <span class="filter-group-lbl">Periode:</span>
               <button class="btn-period-chip active" data-period="today">Hari Ini</button>
+              <button class="btn-period-chip" data-period="active_shift">⚡ Shift Kasir Aktif</button>
               <button class="btn-period-chip" data-period="yesterday">Kemarin</button>
               <button class="btn-period-chip" data-period="7days">7 Hari Terakhir</button>
               <button class="btn-period-chip" data-period="this_month">Bulan Ini</button>
@@ -831,8 +832,8 @@
               </div>
               <span class="subcard-tag" id="repOrdersCountBadge">0 Transaksi</span>
             </div>
-            <div class="table-responsive-clean">
-              <table class="report-table">
+            <div class="table-responsive-clean" style="-webkit-overflow-scrolling: touch; overflow-x: auto;">
+              <table class="report-table" id="repOrdersTable" style="min-width: 840px;">
                 <thead>
                   <tr>
                     <th>No. Nota</th>
@@ -1112,8 +1113,9 @@
 
           <!-- VIEW 1: SUPPLIERS TABLE -->
           <div id="viewSuppliersContainer" class="table-card" style="margin-top: 16px;">
-            <div class="table-responsive">
-              <table class="report-table">
+            <div class="mobile-table-scroll-hint">👈 Geser tabel ke samping untuk melihat rincian lengkap 👉</div>
+            <div class="table-responsive" style="-webkit-overflow-scrolling: touch; overflow-x: auto;">
+              <table class="report-table" style="min-width: 760px;">
                 <thead>
                   <tr>
                     <th>Nama Juragan / Pemasok</th>
@@ -1134,8 +1136,9 @@
 
           <!-- VIEW 2: PURCHASES / NOTA KULAKAN TABLE -->
           <div id="viewPurchasesContainer" class="table-card" style="display:none; margin-top: 16px;">
-            <div class="table-responsive">
-              <table class="report-table">
+            <div class="mobile-table-scroll-hint">👈 Geser tabel ke samping untuk melihat rincian lengkap 👉</div>
+            <div class="table-responsive" style="-webkit-overflow-scrolling: touch; overflow-x: auto;">
+              <table class="report-table" style="min-width: 840px;">
                 <thead>
                   <tr>
                     <th>No. Nota Kulakan</th>
@@ -1261,8 +1264,9 @@
             </div>
 
             <!-- EXPENSES TABLE -->
-            <div class="table-responsive" style="max-height: 420px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
-              <table class="report-table" style="width: 100%; border-collapse: collapse;">
+            <div class="mobile-table-scroll-hint">👈 Geser tabel ke samping untuk melihat rincian lengkap 👉</div>
+            <div class="table-responsive-clean table-scrollable" style="max-height: 480px; overflow-x: auto; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; -webkit-overflow-scrolling: touch;">
+              <table class="report-table" id="ownerExpensesTable" style="min-width: 800px; border-collapse: collapse;">
                 <thead>
                   <tr style="position: sticky; top: 0; background: #f8fafc; z-index: 5;">
                     <th style="padding: 10px 12px;">No. Bukti</th>
@@ -1300,6 +1304,8 @@
                   <option value="ALL">Semua Aktivitas</option>
                   <option value="VOID">Hanya Pembatalan Transaksi</option>
                   <option value="SHORTAGE">Hanya Selisih Kasir</option>
+                  <option value="EXPENSE">Biaya Operasional & Kas</option>
+                  <option value="DEBT">Pelunasan Piutang Kasbon</option>
                   <option value="RESTOCK">Hanya Kulakan Stok</option>
                   <option value="CASHIER">Aktivitas Kasir & PIN</option>
                 </select>
@@ -1957,17 +1963,47 @@
       <div class="sheet-header">
         <div class="sheet-header-title">
           <h3>Menu Eksekutif Owner</h3>
-          <p>Navigasi cepat keamanan toko & konfigurasi</p>
+          <p>Navigasi cepat operasional, biaya, kasir & konfigurasi</p>
         </div>
         <button class="sheet-close-btn" id="btnCloseMobileSheet" aria-label="Tutup">✕</button>
       </div>
 
       <div class="sheet-items-grid">
+        <button class="sheet-tile-btn" data-tab="tab-expenses" type="button">
+          <div class="tile-icon-wrap rose">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1v22"></path>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+          <div class="tile-info">
+            <strong class="tile-title">Biaya & Pengeluaran Toko</strong>
+            <span class="tile-desc">Catat biaya laci, makan, retribusi & uang keluar</span>
+          </div>
+          <span class="tile-badge alert" id="sheetExpenseBadge" style="display:none;">0</span>
+        </button>
+
+        <button class="sheet-tile-btn" data-tab="tab-cashiers" type="button">
+          <div class="tile-icon-wrap amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div class="tile-info">
+            <strong class="tile-title">Kelola Kasir & Reset PIN</strong>
+            <span class="tile-desc">Daftar petugas kasir, status aktif & otorisasi PIN</span>
+          </div>
+          <span class="tile-badge" id="sheetCashierBadge">0</span>
+        </button>
+
         <button class="sheet-tile-btn" data-tab="tab-suppliers" type="button">
           <div class="tile-icon-wrap emerald">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="1" y="3" width="15" height="13"></rect>
-              <polygon points="16 8 20 8 23 11 23 16 16 16 8"></polygon>
+              <polygon points="16 8 20 8 23 11 23 16 16 8"></polygon>
               <circle cx="5.5" cy="18.5" r="2.5"></circle>
               <circle cx="18.5" cy="18.5" r="2.5"></circle>
             </svg>
@@ -1988,17 +2024,6 @@
             <span class="tile-desc">Log kecurangan, void & pembatalan nota</span>
           </div>
           <span class="tile-badge alert" id="sheetAuditBadge">0</span>
-        </button>
-
-        <button class="sheet-tile-btn" data-tab="tab-cashiers" type="button">
-          <div class="tile-icon-wrap teal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          </div>
-          <div class="tile-info">
-            <strong class="tile-title">Kelola Kasir & Reset PIN</strong>
-            <span class="tile-desc">Akun kasir aktif & hak otorisasi</span>
-          </div>
-          <span class="tile-badge" id="sheetCashierBadge">0</span>
         </button>
 
         <button class="sheet-tile-btn" data-tab="tab-settings" type="button">
@@ -2553,8 +2578,9 @@
 
         <!-- Table Container -->
         <div class="table-card" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-          <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
-            <table class="report-table" id="prodRestockTable">
+          <div class="mobile-table-scroll-hint">👈 Geser tabel ke samping untuk melihat rincian lengkap 👉</div>
+          <div class="table-responsive" style="max-height: 380px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+            <table class="report-table" id="prodRestockTable" style="min-width: 820px;">
               <thead>
                 <tr style="position: sticky; top: 0; background: #f8fafc; z-index: 5;">
                   <th>Waktu Masuk</th>

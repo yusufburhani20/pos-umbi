@@ -56,14 +56,24 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
 
     // 4. Active Shift status
     const activeShift = await dbQuery.get(
-      `SELECT s.id, u.name as cashier_name, s.start_time, s.starting_cash,
+      `SELECT s.id, COALESCE(u.name, 'Kasir Bertugas') as cashier_name, s.start_time, s.starting_cash,
          COALESCE((
            SELECT SUM(total_amount) 
            FROM orders 
            WHERE shift_id = s.id AND payment_method = 'cash' AND status = 'completed'
-         ), 0) as current_cash_sales
+         ), 0) as current_cash_sales,
+         COALESCE((
+           SELECT SUM(total_amount) 
+           FROM orders 
+           WHERE shift_id = s.id AND status = 'completed'
+         ), 0) as current_total_sales,
+         COALESCE((
+           SELECT COUNT(id) 
+           FROM orders 
+           WHERE shift_id = s.id AND status = 'completed'
+         ), 0) as current_order_count
        FROM shifts s
-       JOIN users u ON s.cashier_id = u.id
+       LEFT JOIN users u ON s.cashier_id = u.id
        WHERE s.status = 'open'
        ORDER BY s.id DESC LIMIT 1`
     );
@@ -332,6 +342,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         total_transfer: Number(salesSummary.total_transfer) || 0,
         total_tempo: Number(salesSummary.total_tempo) || 0,
         total_orders: Number(salesSummary.total_orders) || 0,
+        active_shift_sales: activeShift ? Number(activeShift.current_total_sales) : 0,
+        active_shift_orders: activeShift ? Number(activeShift.current_order_count) : 0,
         void_count: Number(voidSummary.void_count) || 0,
         void_total_amount: Number(voidSummary.void_total_amount) || 0,
         total_expenses_today: totalStoreExpenses,
@@ -391,6 +403,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         start_time: activeShift.start_time,
         starting_cash: activeShift.starting_cash,
         cash_collected: activeShift.current_cash_sales,
+        total_sales: Number(activeShift.current_total_sales) || 0,
+        order_count: Number(activeShift.current_order_count) || 0,
         cash_expenses: activeShiftCashExpenses,
         cash_income: activeShiftCashIncome,
         cash_debt_collected: activeShiftCashDebtCollected,
@@ -433,24 +447,59 @@ router.get('/audit-logs', authenticateToken, requireStrictOwner, async (req, res
 
 
 // GET /api/reports/sales
-// Comprehensive Sales & Profit Report with Date Range Filtering & Export
+// Comprehensive Sales & Profit Report with Date Range / Shift Filtering & Export
 router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
   try {
     const { 
       start_date, 
       end_date, 
       cashier_id, 
-      payment_method 
+      payment_method,
+      period,
+      shift_id
     } = req.query;
 
-    // Default to today if not provided
     const today = new Date().toISOString().split('T')[0];
+    let isShiftMode = false;
+    let targetShift = null;
+
+    if (period === 'active_shift' || shift_id === 'active') {
+      targetShift = await dbQuery.get(
+        `SELECT s.id, COALESCE(u.name, 'Kasir') as cashier_name, s.start_time, s.starting_cash
+         FROM shifts s
+         LEFT JOIN users u ON s.cashier_id = u.id
+         WHERE s.status = 'open'
+         ORDER BY s.id DESC LIMIT 1`
+      );
+      if (targetShift) {
+        isShiftMode = true;
+      }
+    } else if (shift_id && Number(shift_id) > 0) {
+      targetShift = await dbQuery.get(
+        `SELECT s.id, COALESCE(u.name, 'Kasir') as cashier_name, s.start_time, s.starting_cash
+         FROM shifts s
+         LEFT JOIN users u ON s.cashier_id = u.id
+         WHERE s.id = ?`,
+        [Number(shift_id)]
+      );
+      if (targetShift) {
+        isShiftMode = true;
+      }
+    }
+
     const startDate = start_date || today;
     const endDate = end_date || today;
 
-    // Filter conditions for orders
-    let orderFilter = "WHERE date(o.created_at) >= date(?) AND date(o.created_at) <= date(?)";
-    const orderParams = [startDate, endDate];
+    let orderFilter = "";
+    const orderParams = [];
+
+    if (isShiftMode && targetShift) {
+      orderFilter = "WHERE o.shift_id = ?";
+      orderParams.push(targetShift.id);
+    } else {
+      orderFilter = "WHERE date(o.created_at) >= date(?) AND date(o.created_at) <= date(?)";
+      orderParams.push(startDate, endDate);
+    }
 
     if (cashier_id) {
       orderFilter += " AND s.cashier_id = ?";
@@ -461,25 +510,35 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
       orderParams.push(payment_method);
     }
 
-    // 1. Overall Completed Sales & Profit Summary
+    // 1a. Completed Sales Totals strictly from orders table (No Cartesian duplication from order_items!)
     const salesSummary = await dbQuery.get(
       `SELECT 
          COALESCE(SUM(o.total_amount), 0) as total_revenue,
          COALESCE(SUM(CASE WHEN o.payment_method = 'cash' THEN o.total_amount ELSE 0 END), 0) as cash_revenue,
          COALESCE(SUM(CASE WHEN o.payment_method = 'qris' THEN o.total_amount ELSE 0 END), 0) as qris_revenue,
          COALESCE(SUM(CASE WHEN o.payment_method = 'transfer' THEN o.total_amount ELSE 0 END), 0) as transfer_revenue,
-         COUNT(DISTINCT o.id) as total_orders,
+         COALESCE(SUM(CASE WHEN o.payment_method = 'tempo' THEN o.total_amount ELSE 0 END), 0) as tempo_revenue,
+         COUNT(o.id) as total_orders
+       FROM orders o
+       LEFT JOIN shifts s ON o.shift_id = s.id
+       ${orderFilter} AND o.status = 'completed'`,
+      orderParams
+    );
+
+    // 1b. COGS & Volume Sold strictly from order_items
+    const itemsSummary = await dbQuery.get(
+      `SELECT 
          COALESCE(SUM(oi.qty), 0) as total_kg_sold,
          COALESCE(SUM(oi.cost_price * oi.qty), 0) as total_cogs
-       FROM orders o
-       JOIN shifts s ON o.shift_id = s.id
-       LEFT JOIN order_items oi ON o.id = oi.order_id
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       LEFT JOIN shifts s ON o.shift_id = s.id
        ${orderFilter} AND o.status = 'completed'`,
       orderParams
     );
 
     const totalRevenue = Number(salesSummary.total_revenue) || 0;
-    const totalCogs = Number(salesSummary.total_cogs) || 0;
+    const totalCogs = Number(itemsSummary ? itemsSummary.total_cogs : 0) || 0;
     const grossProfit = totalRevenue - totalCogs;
     const marginPercentage = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : 0;
     const totalOrders = Number(salesSummary.total_orders) || 0;
@@ -488,36 +547,61 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
     // 2. Voided / Cancelled Orders Summary
     const voidSummary = await dbQuery.get(
       `SELECT 
-         COUNT(DISTINCT o.id) as void_count,
+         COUNT(o.id) as void_count,
          COALESCE(SUM(o.total_amount), 0) as void_total_amount
        FROM orders o
-       JOIN shifts s ON o.shift_id = s.id
+       LEFT JOIN shifts s ON o.shift_id = s.id
        ${orderFilter} AND o.status = 'void'`,
       orderParams
     );
 
-    // 3. Susut & Busuk (Waste Loss) in the same period
-    const wasteSummary = await dbQuery.get(
-      `SELECT 
-         COALESCE(SUM(sa.qty_kg), 0) as total_waste_kg,
-         COALESCE(SUM(sa.qty_kg * p.cost_price), 0) as total_waste_loss
-       FROM stock_adjustments sa
-       JOIN products p ON sa.product_id = p.id
-       WHERE date(sa.created_at) >= date(?) AND date(sa.created_at) <= date(?)`,
-      [startDate, endDate]
-    );
+    // 3. Susut & Busuk (Waste Loss) in the same period / shift
+    let wasteSummary = { total_waste_kg: 0, total_waste_loss: 0 };
+    let expenseSummary = { total_expenses: 0, total_other_income: 0, cash_expenses: 0, transfer_expenses: 0 };
 
-    // 3b. Store Operational Expenses in the same period
-    const expenseSummary = await dbQuery.get(
-      `SELECT 
-         COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses,
-         COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_other_income,
-         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses,
-         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_expenses
-       FROM store_expenses
-       WHERE date(created_at) >= date(?) AND date(created_at) <= date(?)`,
-      [startDate, endDate]
-    );
+    if (isShiftMode && targetShift) {
+      wasteSummary = await dbQuery.get(
+        `SELECT 
+           COALESCE(SUM(sa.qty_kg), 0) as total_waste_kg,
+           COALESCE(SUM(sa.qty_kg * p.cost_price), 0) as total_waste_loss
+         FROM stock_adjustments sa
+         JOIN products p ON sa.product_id = p.id
+         WHERE sa.created_at >= ?`,
+        [targetShift.start_time]
+      );
+
+      expenseSummary = await dbQuery.get(
+        `SELECT 
+           COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses,
+           COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_other_income,
+           COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses,
+           COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_expenses
+         FROM store_expenses
+         WHERE shift_id = ?`,
+        [targetShift.id]
+      );
+    } else {
+      wasteSummary = await dbQuery.get(
+        `SELECT 
+           COALESCE(SUM(sa.qty_kg), 0) as total_waste_kg,
+           COALESCE(SUM(sa.qty_kg * p.cost_price), 0) as total_waste_loss
+         FROM stock_adjustments sa
+         JOIN products p ON sa.product_id = p.id
+         WHERE date(sa.created_at) >= date(?) AND date(sa.created_at) <= date(?)`,
+        [startDate, endDate]
+      );
+
+      expenseSummary = await dbQuery.get(
+        `SELECT 
+           COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses,
+           COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_other_income,
+           COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses,
+           COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_expenses
+         FROM store_expenses
+         WHERE date(created_at) >= date(?) AND date(created_at) <= date(?)`,
+        [startDate, endDate]
+      );
+    }
 
     const totalExpenses = Number(expenseSummary.total_expenses) || 0;
     const totalOtherIncome = Number(expenseSummary.total_other_income) || 0;
@@ -535,7 +619,7 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
          (COALESCE(SUM(oi.subtotal), 0) - COALESCE(SUM(oi.cost_price * oi.qty), 0)) as gross_profit
        FROM order_items oi
        JOIN orders o ON oi.order_id = o.id
-       JOIN shifts s ON o.shift_id = s.id
+       LEFT JOIN shifts s ON o.shift_id = s.id
        LEFT JOIN products p ON oi.product_id = p.id
        ${orderFilter} AND o.status = 'completed'
        GROUP BY oi.product_id, oi.product_name
@@ -556,42 +640,78 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
          o.cash_tendered,
          o.change_due,
          o.status,
-         u.name as cashier_name,
-         COALESCE(SUM(oi.cost_price * oi.qty), 0) as total_cogs,
-         (o.total_amount - COALESCE(SUM(oi.cost_price * oi.qty), 0)) as gross_profit,
-         COUNT(oi.id) as item_count,
-         COALESCE(SUM(oi.qty), 0) as total_kg
+         COALESCE(u.name, 'Kasir') as cashier_name,
+         COALESCE((SELECT SUM(cost_price * qty) FROM order_items WHERE order_id = o.id), 0) as total_cogs,
+         (o.total_amount - COALESCE((SELECT SUM(cost_price * qty) FROM order_items WHERE order_id = o.id), 0)) as gross_profit,
+         (SELECT COUNT(id) FROM order_items WHERE order_id = o.id) as item_count,
+         COALESCE((SELECT SUM(qty) FROM order_items WHERE order_id = o.id), 0) as total_kg
        FROM orders o
-       JOIN shifts s ON o.shift_id = s.id
-       JOIN users u ON s.cashier_id = u.id
-       LEFT JOIN order_items oi ON o.id = oi.order_id
+       LEFT JOIN shifts s ON o.shift_id = s.id
+       LEFT JOIN users u ON s.cashier_id = u.id
        ${orderFilter}
-       GROUP BY o.id
        ORDER BY o.id DESC`,
       orderParams
     );
 
-    // 6. Daily trend for the selected period
-    const dailyTrend = await dbQuery.all(
+    // 6. Daily trend for the selected period (No Cartesian duplication)
+    const rawDailyOrders = await dbQuery.all(
       `SELECT date(o.created_at) as date,
               COALESCE(SUM(o.total_amount), 0) as revenue,
-              COALESCE(SUM(oi.cost_price * oi.qty), 0) as cogs,
-              (COALESCE(SUM(o.total_amount), 0) - COALESCE(SUM(oi.cost_price * oi.qty), 0)) as profit,
-              COUNT(DISTINCT o.id) as orders_count
+              COUNT(o.id) as orders_count
        FROM orders o
-       JOIN shifts s ON o.shift_id = s.id
-       LEFT JOIN order_items oi ON o.id = oi.order_id
+       LEFT JOIN shifts s ON o.shift_id = s.id
        ${orderFilter} AND o.status = 'completed'
        GROUP BY date(o.created_at)
        ORDER BY date(o.created_at) ASC`,
       orderParams
     );
 
+    const rawDailyCogs = await dbQuery.all(
+      `SELECT date(o.created_at) as date,
+              COALESCE(SUM(oi.cost_price * oi.qty), 0) as cogs
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       LEFT JOIN shifts s ON o.shift_id = s.id
+       ${orderFilter} AND o.status = 'completed'
+       GROUP BY date(o.created_at)`,
+      orderParams
+    );
+
+    const cogsByDate = {};
+    for (const c of rawDailyCogs) {
+      cogsByDate[c.date] = Number(c.cogs) || 0;
+    }
+
+    const dailyTrend = rawDailyOrders.map(d => {
+      const cogs = cogsByDate[d.date] || 0;
+      const rev = Number(d.revenue) || 0;
+      return {
+        date: d.date,
+        revenue: rev,
+        cogs: cogs,
+        profit: rev - cogs,
+        orders_count: Number(d.orders_count) || 0
+      };
+    });
+
     return res.json({
       success: true,
+      is_shift_mode: isShiftMode,
+      target_shift: targetShift ? {
+        id: targetShift.id,
+        cashier_name: targetShift.cashier_name,
+        start_time: targetShift.start_time,
+        starting_cash: targetShift.starting_cash
+      } : null,
+      shift: targetShift ? {
+        id: targetShift.id,
+        cashier_name: targetShift.cashier_name,
+        start_time: targetShift.start_time,
+        starting_cash: targetShift.starting_cash
+      } : null,
       period: {
-        start_date: startDate,
-        end_date: endDate
+        start_date: isShiftMode && targetShift ? targetShift.start_time.split(' ')[0] : startDate,
+        end_date: isShiftMode && targetShift ? targetShift.start_time.split(' ')[0] : endDate
       },
       summary: {
         total_revenue: totalRevenue,
@@ -599,17 +719,18 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
         gross_profit: grossProfit,
         margin_percentage: marginPercentage,
         total_orders: totalOrders,
-        total_kg_sold: Math.round(Number(salesSummary.total_kg_sold) * 100) / 100,
+        total_kg_sold: Math.round(Number(itemsSummary ? itemsSummary.total_kg_sold : 0) * 100) / 100,
         avg_basket: avgBasket,
         by_payment: {
           cash: Number(salesSummary.cash_revenue) || 0,
           qris: Number(salesSummary.qris_revenue) || 0,
-          transfer: Number(salesSummary.transfer_revenue) || 0
+          transfer: Number(salesSummary.transfer_revenue) || 0,
+          tempo: Number(salesSummary.tempo_revenue) || 0
         },
         void_count: Number(voidSummary.void_count) || 0,
         void_total_amount: Number(voidSummary.void_total_amount) || 0,
-        waste_kg: Math.round(Number(wasteSummary.total_waste_kg) * 100) / 100,
-        waste_loss_cost: Math.round(Number(wasteSummary.total_waste_loss)),
+        waste_kg: Math.round(Number(wasteSummary ? wasteSummary.total_waste_kg : 0) * 100) / 100,
+        waste_loss_cost: Math.round(Number(wasteSummary ? wasteSummary.total_waste_loss : 0)),
         total_expenses: totalExpenses,
         total_other_income: totalOtherIncome,
         cash_expenses: Number(expenseSummary.cash_expenses) || 0,

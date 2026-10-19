@@ -326,6 +326,7 @@ const el = {
   bnavProductBadge: document.getElementById('bnavProductBadge'),
   sheetAuditBadge: document.getElementById('sheetAuditBadge'),
   sheetCashierBadge: document.getElementById('sheetCashierBadge'),
+  sheetExpenseBadge: document.getElementById('sheetExpenseBadge'),
 
   // Mobile Header Telemetry Elements (Hari, Waktu & Kasir Online)
   mobileDayDate: document.getElementById('mobileDayDate'),
@@ -917,7 +918,13 @@ function switchTab(tabId) {
   }
 
   if (el.btnApplyReportFilter) {
-    el.btnApplyReportFilter.addEventListener('click', loadSalesReport);
+    el.btnApplyReportFilter.addEventListener('click', () => {
+      state.activeReportPeriod = null;
+      if (el.reportPresetGroup) {
+        el.reportPresetGroup.querySelectorAll('.btn-period-chip').forEach(btn => btn.classList.remove('active'));
+      }
+      loadSalesReport();
+    });
   }
 
   if (el.btnExportCSV) {
@@ -1331,8 +1338,9 @@ async function loadAllData() {
     el.auditCountBadge.textContent = state.auditLogs.length;
     if (el.sheetAuditBadge) el.sheetAuditBadge.textContent = state.auditLogs.length;
 
-    if (el.cashierCountBadge) el.cashierCountBadge.textContent = state.users.length;
-    if (el.sheetCashierBadge) el.sheetCashierBadge.textContent = state.users.length;
+    const activeCashiers = state.users.filter(u => u.role === 'cashier' && (u.is_active === 1 || u.is_active === true || u.is_active === undefined));
+    if (el.cashierCountBadge) el.cashierCountBadge.textContent = activeCashiers.length;
+    if (el.sheetCashierBadge) el.sheetCashierBadge.textContent = activeCashiers.length;
 
     renderKPIs();
     renderLiquiditySnapshot();
@@ -1349,6 +1357,7 @@ async function loadAllData() {
     renderCashiers();
     await loadDebtsData();
     await loadSuppliersData();
+    await loadOwnerExpensesData();
     populateSettingsForm();
     renderLiveReceiptPreview();
     await loadOwnerLicenseCard();
@@ -1398,11 +1407,15 @@ function renderKPIs() {
   const shiftDot = document.getElementById('quickShiftDot');
   if (state.dashboard.active_shift) {
     const act = state.dashboard.active_shift;
-    if (el.quickCashierName) el.quickCashierName.textContent = act.cashier_name;
+    const displayName = act.cashier_name === 'Owner' ? 'Owner (Kasir Bertugas)' : (act.cashier_name || 'Kasir Bertugas');
+    if (el.quickCashierName) el.quickCashierName.textContent = displayName;
     if (shiftDot) shiftDot.classList.add('active');
-    if (el.mobileCashierName) el.mobileCashierName.textContent = act.cashier_name;
+    if (el.mobileCashierName) el.mobileCashierName.textContent = displayName;
     if (el.mobileShiftDot) el.mobileShiftDot.classList.add('active');
-    if (el.kpiDrawerStatus) el.kpiDrawerStatus.innerHTML = `<span class="sub-dot green"></span> Shift #${act.id} Aktif: ${act.cashier_name} (Modal: ${formatRupiah(act.starting_cash)})`;
+    if (el.kpiDrawerStatus) el.kpiDrawerStatus.innerHTML = `<span class="sub-dot green"></span> Shift #${act.id} Aktif: ${displayName} (Modal: ${formatRupiah(act.starting_cash)})`;
+    if (act.current_total_sales !== undefined && act.current_order_count !== undefined && el.kpiOrdersCount) {
+      el.kpiOrdersCount.textContent = `${s.total_orders || 0} Nota Hari Ini (Shift Aktif: ${act.current_order_count} Nota / ${formatRupiah(act.current_total_sales)})`;
+    }
   } else {
     if (el.quickCashierName) el.quickCashierName.textContent = 'Tidak Ada Shift Aktif';
     if (shiftDot) shiftDot.classList.remove('active');
@@ -2340,10 +2353,14 @@ function filterAuditLogs() {
     state.filteredLogs = state.auditLogs.filter(a => a.action.includes('VOID'));
   } else if (type === 'SHORTAGE') {
     state.filteredLogs = state.auditLogs.filter(a => a.action.includes('SHORTAGE') || a.action.includes('SHIFT'));
+  } else if (type === 'EXPENSE') {
+    state.filteredLogs = state.auditLogs.filter(a => a.action.includes('EXPENSE') || a.action.includes('INCOME'));
+  } else if (type === 'DEBT') {
+    state.filteredLogs = state.auditLogs.filter(a => a.action.includes('DEBT'));
   } else if (type === 'RESTOCK') {
-    state.filteredLogs = state.auditLogs.filter(a => a.action.includes('RESTOCK'));
+    state.filteredLogs = state.auditLogs.filter(a => a.action.includes('RESTOCK') || a.action.includes('PURCHASE') || a.action.includes('SUPPLIER'));
   } else if (type === 'CASHIER') {
-    state.filteredLogs = state.auditLogs.filter(a => a.action.includes('CASHIER'));
+    state.filteredLogs = state.auditLogs.filter(a => a.action.includes('CASHIER') || a.action.includes('LOGIN') || a.action.includes('USER'));
   }
   renderAuditTimeline();
 }
@@ -2356,7 +2373,7 @@ function parseAuditToNarrative(log) {
 
   let d = {};
   try {
-    d = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+    d = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details || {});
   } catch (e) {
     d = { raw: log.details };
   }
@@ -2380,7 +2397,49 @@ function parseAuditToNarrative(log) {
       icon = '📦';
       badgeClass = 'blue';
       badgeTitle = 'Barang Masuk / Kulakan';
-      narrative = `Penambahan stok komoditas <strong>${d.product_name}</strong> sebanyak <strong>+${d.added_qty} kg</strong>. Stok baru: <strong>${d.new_stock} kg</strong>. ${d.notes ? '(Catatan: ' + d.notes + ')' : ''}`;
+      narrative = `Penambahan stok komoditas <strong>${d.product_name || ''}</strong> sebanyak <strong>+${d.added_qty || 0} kg</strong>. Stok baru: <strong>${d.new_stock || 0} kg</strong>. ${d.notes ? '(Catatan: ' + d.notes + ')' : ''}`;
+      break;
+
+    case 'PURCHASE_RESTOCK_CREATED':
+      icon = '🚛';
+      badgeClass = 'blue';
+      badgeTitle = 'Kulakan dari Pemasok';
+      narrative = `Kulakan komoditas <strong>${d.product_name || ''}</strong> dari juragan <strong>${d.supplier_name || 'Pemasok'}</strong> (${d.purchase_no || ''}) sebanyak <strong>${d.qty_kg || 0} kg</strong> senilai <strong>${formatRupiah(d.total_cost || 0)}</strong>. Status: <strong>${d.payment_status === 'lunas' ? 'LUNAS' : `TEMPO (Sisa ${formatRupiah(d.remaining_amount || 0)})`}</strong>.`;
+      break;
+
+    case 'SUPPLIER_PAYMENT_RECORDED':
+      icon = '💳';
+      badgeClass = 'emerald';
+      badgeTitle = 'Bayar Utang Kulakan';
+      narrative = `Pembayaran nota kulakan <strong>${d.purchase_no || ''}</strong> kepada <strong>${d.supplier_name || 'Juragan'}</strong> sebesar <strong>${formatRupiah(d.amount_paid || 0)}</strong>. Sisa utang kulakan: <strong>${formatRupiah(d.remaining_amount || 0)}</strong>.`;
+      break;
+
+    case 'EXPENSE_RECORDED':
+      icon = '💸';
+      badgeClass = 'rose';
+      badgeTitle = 'Biaya Operasional Toko';
+      narrative = `Biaya pengeluaran dicatat: <strong>${d.category_name || 'Operasional Toko'}</strong> (${d.expense_no || ''}) senilai <strong>${formatRupiah(d.amount || 0)}</strong> diambil dari <strong>${d.source === 'cash' ? '💵 Uang Kas Laci' : '🏦 Rekening Bank'}</strong>.`;
+      break;
+
+    case 'CASH_INCOME_RECORDED':
+      icon = '💵';
+      badgeClass = 'emerald';
+      badgeTitle = 'Kas Masuk / Tambah Modal';
+      narrative = `Penerimaan kas dicatat: <strong>${d.category_name || 'Kas Masuk'}</strong> (${d.expense_no || ''}) senilai <strong>${formatRupiah(d.amount || 0)}</strong> dimasukkan ke <strong>${d.source === 'cash' ? '💵 Laci Kasir' : '🏦 Bank Toko'}</strong>.`;
+      break;
+
+    case 'DEBT_PAYMENT_COLLECTED':
+      icon = '💰';
+      badgeClass = 'emerald';
+      badgeTitle = 'Pelunasan Kasbon Pelanggan';
+      narrative = `Pelanggan <strong>${d.customer_name || 'Pelanggan'}</strong> mencicil kasbon nota <strong>${d.order_no || ''}</strong> sebesar <strong>${formatRupiah(d.amount_paid || 0)}</strong> via <strong>${(d.payment_method || 'cash').toUpperCase()}</strong>. Sisa piutang: <strong>${formatRupiah(d.remaining_after || 0)}</strong>.`;
+      break;
+
+    case 'DEBT_UPDATED':
+      icon = '📝';
+      badgeClass = 'amber';
+      badgeTitle = 'Update Status Piutang';
+      narrative = `Status piutang kasbon nota <strong>${d.order_no || ''}</strong> diperbarui menjadi <strong>${d.status || 'Berjalan'}</strong>.`;
       break;
 
     case 'SHIFT_OPENED':
@@ -2419,7 +2478,14 @@ function parseAuditToNarrative(log) {
       narrative = `Pencatatan barang susut pada <strong>${d.product_name}</strong> sebesar <strong>-${d.qty_kg} kg</strong>. Keterangan: "<em>${d.notes || '-'}</em>".`;
       break;
 
-        case 'CASHIER_CREATED':
+    case 'STOCK_OPNAME_APPLIED':
+      icon = '📋';
+      badgeClass = 'amber';
+      badgeTitle = 'Stock Opname Gudang';
+      narrative = `Penyesuaian fisik hasil stock opname gudang berhasil diterapkan ke sistem.`;
+      break;
+
+    case 'CASHIER_CREATED':
       icon = '👤';
       badgeClass = 'blue';
       badgeTitle = 'Kasir Baru';
@@ -2440,6 +2506,49 @@ function parseAuditToNarrative(log) {
       badgeClass = 'blue';
       badgeTitle = 'Komoditas Baru';
       narrative = `Komoditas baru <strong>"${d.name}"</strong> didaftarkan ke katalog (Eceran: ${formatRupiah(d.retail_price)}, Grosir: ${formatRupiah(d.reseller_price)}).`;
+      break;
+
+    case 'PRODUCT_UPDATED':
+      icon = '🏷️';
+      badgeClass = 'amber';
+      badgeTitle = 'Update Harga Produk';
+      narrative = `Harga komoditas #${d.product_id || ''} diperbarui. Eceran: <strong>${formatRupiah(d.new ? d.new.retail : 0)}</strong>, Grosir: <strong>${formatRupiah(d.new ? d.new.reseller : 0)}</strong>.`;
+      break;
+
+    case 'STORE_SETTINGS_UPDATED':
+      icon = '⚙️';
+      badgeClass = 'blue';
+      badgeTitle = 'Konfigurasi Profil Toko';
+      narrative = `Data toko <strong>"${d.store_name || ''}"</strong> dan footer struk kasir diperbarui oleh Owner.`;
+      break;
+
+    case 'USER_PROFILE_UPDATED':
+      icon = '👤';
+      badgeClass = 'blue';
+      badgeTitle = 'Update Profil Pengguna';
+      narrative = `Profil pengguna toko berhasil diperbarui.`;
+      break;
+
+    case 'LOGIN_SUCCESS':
+      icon = '🔑';
+      badgeClass = 'emerald';
+      badgeTitle = 'Masuk Aplikasi Berhasil';
+      narrative = `Pengguna berhasil login ke sistem sebagai <strong>${d.role === 'owner' ? 'Owner / Pemilik Toko' : 'Petugas Kasir'}</strong>.`;
+      break;
+
+    case 'LOGIN_FAILED':
+    case 'LOGIN_FAILED_PIN':
+      icon = '🚫';
+      badgeClass = 'rose';
+      badgeTitle = 'Percobaan Login Ditolak';
+      narrative = `Percobaan masuk ditolak karena PIN atau kredensial yang dimasukkan tidak cocok.`;
+      break;
+
+    case 'SYNC_BATCH_PROCESSED':
+      icon = '🔄';
+      badgeClass = 'blue';
+      badgeTitle = 'Sinkronisasi Tablet POS';
+      narrative = `Perangkat <strong>${d.device_id || 'Tablet Kasir'}</strong> menyinkronkan <strong>${d.orders_synced || 0} nota penjualan</strong>, <strong>${d.debt_payments_synced || 0} pembayaran kasbon</strong>, dan <strong>${d.adjustments_synced || 0} susut komoditas</strong>.`;
       break;
 
     default:
@@ -2857,6 +2966,18 @@ function setReportPeriod(periodKey) {
   let start = new Date();
   let end = new Date();
 
+  if (periodKey === 'active_shift') {
+    state.activeReportPeriod = 'active_shift';
+    if (el.reportPresetGroup) {
+      el.reportPresetGroup.querySelectorAll('.btn-period-chip').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.period === 'active_shift');
+      });
+    }
+    loadSalesReport();
+    return;
+  }
+
+  state.activeReportPeriod = null;
   if (periodKey === 'today') {
     start = now;
     end = now;
@@ -2901,18 +3022,32 @@ async function loadSalesReport() {
   }
 
   try {
-    const res = await api.getSalesReport({
-      start_date: startDate,
-      end_date: endDate,
+    const queryParams = {
       payment_method: paymentMethod
-    });
+    };
+
+    if (state.activeReportPeriod === 'active_shift') {
+      queryParams.period = 'active_shift';
+    } else {
+      queryParams.start_date = startDate;
+      queryParams.end_date = endDate;
+    }
+
+    const res = await api.getSalesReport(queryParams);
 
     state.salesReport = res;
 
     // 1. Render Financial KPIs
     const s = res.summary;
     if (el.repKpiRevenue) el.repKpiRevenue.textContent = formatRupiah(s.total_revenue);
-    if (el.repKpiOrdersCount) el.repKpiOrdersCount.textContent = `${s.total_orders} Nota Selesai (${s.total_kg_sold} kg terjual)`;
+    if (el.repKpiOrdersCount) {
+      const activeShiftInfo = res.target_shift || res.shift;
+      if (state.activeReportPeriod === 'active_shift' && activeShiftInfo) {
+        el.repKpiOrdersCount.textContent = `Shift #${activeShiftInfo.id} Aktif: ${s.total_orders} Nota (${s.total_kg_sold} kg) • Kasir: ${activeShiftInfo.cashier_name || 'Kasir Bertugas'}`;
+      } else {
+        el.repKpiOrdersCount.textContent = `${s.total_orders} Nota Selesai (${s.total_kg_sold} kg terjual)`;
+      }
+    }
 
     if (el.repKpiProfit) el.repKpiProfit.textContent = formatRupiah(s.gross_profit);
     if (el.repKpiMargin) el.repKpiMargin.textContent = `Margin Laba: ${s.margin_percentage}% dari Omzet`;
@@ -4565,6 +4700,10 @@ async function loadOwnerExpensesData() {
       if (el.expenseCountBadge) {
         el.expenseCountBadge.textContent = state.ownerExpenses.length;
         el.expenseCountBadge.style.display = state.ownerExpenses.length > 0 ? 'inline-block' : 'none';
+      }
+      if (el.sheetExpenseBadge) {
+        el.sheetExpenseBadge.textContent = state.ownerExpenses.length;
+        el.sheetExpenseBadge.style.display = state.ownerExpenses.length > 0 ? 'inline-block' : 'none';
       }
 
       renderOwnerExpenseCategoryBars(summary.category_breakdown || []);

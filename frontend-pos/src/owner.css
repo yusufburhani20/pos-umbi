@@ -2247,6 +2247,9 @@ body.executive-body {
   .mobile-sheet-panel {
     width: 100%;
     max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: #ffffff;
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.18);
@@ -2344,6 +2347,9 @@ body.executive-body {
   .sheet-tile-btn .tile-icon-wrap.indigo { background: #e0e7ff; color: #4338ca; }
   .sheet-tile-btn .tile-icon-wrap.teal { background: #ccfbf1; color: #0f766e; }
   .sheet-tile-btn .tile-icon-wrap.blue { background: #dbeafe; color: #1d4ed8; }
+  .sheet-tile-btn .tile-icon-wrap.rose { background: #ffe4e6; color: #e11d48; }
+  .sheet-tile-btn .tile-icon-wrap.emerald { background: #d1fae5; color: #059669; }
+  .sheet-tile-btn .tile-icon-wrap.amber { background: #fef3c7; color: #d97706; }
 
   .sheet-tile-btn .tile-info {
     flex: 1;
@@ -4772,4 +4778,45 @@ body.executive-body {
     gap: 14px !important;
   }
 }
+
+@media (max-width: 560px) {
+  .feed-item-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+  .feed-item-card > div:last-child {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-top: 1px dashed #e2e8f0 !important;
+    padding-top: 6px !important;
+    margin-left: 0 !important;
+    text-align: left !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   MOBILE TABLE SCROLL HINT
+   -------------------------------------------------------------------------- */
+.mobile-table-scroll-hint {
+  display: none;
+  font-size: 11px;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .mobile-table-scroll-hint {
+    display: block;
+  }
+}
+
 
