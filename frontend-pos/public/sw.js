@@ -1,5 +1,5 @@
 // Service Worker for Kassa POS (Offline-First PWA)
-const CACHE_NAME = 'kassa-pos-cache-v14';
+const CACHE_NAME = 'kassa-pos-cache-v15';
 
 const STATIC_ASSETS = [
   '/',
@@ -12,16 +12,7 @@ const STATIC_ASSETS = [
   '/icon-kassa.svg',
   '/icon-kassa-192.png',
   '/icon-kassa-512.png',
-  '/manifest.webmanifest',
-  '/src/style.css',
-  '/src/owner.css',
-  '/src/api.js',
-  '/src/app.js',
-  '/src/cashier.js',
-  '/src/owner.js',
-  '/src/offline-db.js',
-  '/src/sync-engine.js',
-  '/src/hardware.js'
+  '/manifest.webmanifest'
 ];
 
 self.addEventListener('install', (event) => {
