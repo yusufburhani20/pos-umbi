@@ -460,6 +460,7 @@ const el = {
   btnConfirmVoid: document.getElementById('btnConfirmVoid'),
 
   btnLogout: document.getElementById('btnLogout'),
+  btnReloadApp: document.getElementById('btnReloadApp'),
   toastContainer: document.getElementById('toastContainer'),
 
   // Sync Status & Modal Elements
@@ -2252,6 +2253,24 @@ function bindEvents() {
   // Void Auth Modal
   el.btnCancelVoid.addEventListener('click', () => el.voidAuthModal.style.display = 'none');
   el.btnConfirmVoid.addEventListener('click', handleConfirmVoid);
+
+  // Hard Reload PWA
+  if (el.btnReloadApp) {
+    el.btnReloadApp.addEventListener('click', async () => {
+      showToast('Memperbarui dan memuat ulang PWA...', 'info');
+      if ('serviceWorker' in navigator) {
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            await reg.update();
+          }
+        } catch (e) {}
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
+    });
+  }
 
   // Logout
   el.btnLogout.addEventListener('click', () => {
