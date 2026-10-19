@@ -419,6 +419,23 @@ F:\POS
 - [x] **Service Worker v21 & Deploy Server**:
   - Service worker dinaikkan ke `kassa-pos-cache-v21` dan seluruh kode dideploy ke server produksi `192.168.18.32` (`kassa.konfigin.my.id`).
 
+### 15. 🧹 Pembersihan Header & Integrasi Menu Kelola Kios & Riwayat ke Dropdown Profil (v1.9.2 - 19 Oktober 2026)
+- [x] **Pembersihan Header Utama (`index.html` & `cashier.html`)**:
+  - Menghapus tombol langsung `Kelola Kios` dan `Riwayat` dari header agar tampilan lebih bersih, lega, dan minimalis di semua ukuran layar (Desktop, Tablet, PWA).
+  - Header kini hanya menyisakan tombol fungsi cepat esensial: Mode Layar Penuh (⛶), Buka Laci RJ-11 (💰), dan Menu Akun Profil Kasir.
+- [x] **Penyatuan Menu ke Dropdown Profil Terkategori Sesuai Fungsinya**:
+  - Seluruh menu operasional dan data dipindahkan ke dalam satu dropdown profil yang rapi dengan pembagian seksi:
+    1. **Kasir & Transaksi**: Riwayat Transaksi Kasir, Dashboard Kasir & Rekon Kas, Tutup Shift Kasir.
+    2. **Komoditas & Stok Gudang**: Katalog & Margin Harga, Audit Stok Opname, Pencatatan Susut & Rusak.
+    3. **Keuangan, Piutang & Kulakan**: Buku Piutang & Kasbon, Pemasok & Buku Kulakan, Hutang Tempo Toko (Kulakan), Biaya & Kas Operasional Toko.
+    4. **Pengaturan & Perangkat**: Printer & Laci Kasir, Identitas Toko & Profil, Panel Owner & Laporan (VIP).
+    5. **Keamanan & Sistem**: Kunci Layar (Lock POS), Segarkan / Muat Ulang PWA, Keluar Akun.
+- [x] **Tanggal & Waktu Lengkap pada Riwayat Transaksi**:
+  - Kolom riwayat nota kini menampilkan tanggal lengkap (e.g. `19 Okt 2026`) dan jam lengkap (`14:25:30 WIB`) secara terpisah dan rapi.
+- [x] **Service Worker Cache v24 & Deploy Produksi**:
+  - Cache Service Worker dinaikkan ke `kassa-pos-cache-v24`.
+  - Bundle terbaru dideploy langsung ke server live `192.168.18.32` (`kassa.konfigin.my.id`) dan Nginx direload.
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
 
