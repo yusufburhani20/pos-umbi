@@ -223,6 +223,15 @@ export async function getActiveShiftLocal() {
   });
 }
 
+export async function clearActiveShiftLocal() {
+  const store = await getStore('active_shift', 'readwrite');
+  return new Promise((resolve, reject) => {
+    const req = store.delete('current');
+    req.onsuccess = () => resolve(true);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 // ==========================================
 // 5. OUTBOX ORDERS (Offline Transactions)
 // ==========================================
@@ -231,7 +240,7 @@ export async function enqueueOrderLocal(orderData) {
   const record = {
     order_no: orderData.order_no,
     payload: orderData,
-    status: 'pending', // 'pending' | 'synced'
+    status: orderData.status || 'pending', // 'pending' | 'synced'
     created_at: orderData.created_at || new Date().toISOString()
   };
 
@@ -278,12 +287,45 @@ export async function markOrdersSyncedLocal(orderNos = []) {
   });
 }
 
-export async function getAllLocalOrders(limit = 50) {
+export async function clearSyncedLocalOrders() {
+  const db = await openOfflineDB();
+  const tx = db.transaction('outbox_orders', 'readwrite');
+  const store = tx.objectStore('outbox_orders');
+
+  return new Promise((resolve, reject) => {
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const items = req.result || [];
+      for (const item of items) {
+        if (item.status === 'synced') {
+          store.delete(item.order_no);
+        }
+      }
+    };
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function clearAllLocalOrders() {
+  const store = await getStore('outbox_orders', 'readwrite');
+  return new Promise((resolve, reject) => {
+    const req = store.clear();
+    req.onsuccess = () => resolve(true);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getAllLocalOrders(limit = 50, onlyPending = false) {
   const store = await getStore('outbox_orders', 'readonly');
   return new Promise((resolve, reject) => {
     const req = store.getAll();
     req.onsuccess = () => {
-      const items = (req.result || [])
+      let raw = req.result || [];
+      if (onlyPending) {
+        raw = raw.filter(i => i.status === 'pending');
+      }
+      const items = raw
         .map(i => ({ ...i.payload, is_local_synced: i.status === 'synced' }))
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       resolve(items.slice(0, limit));

@@ -11,11 +11,14 @@ import {
   getSettingsLocal,
   saveActiveShiftLocal,
   getActiveShiftLocal,
+  clearActiveShiftLocal,
   enqueueOrderLocal,
   deductProductStockLocal,
   enqueueAdjustmentLocal,
   enqueueDebtPaymentLocal,
-  getAllLocalOrders
+  getAllLocalOrders,
+  clearSyncedLocalOrders,
+  clearAllLocalOrders
 } from './offline-db.js';
 
 // Local storage helper for cart persistence
@@ -437,6 +440,7 @@ const el = {
   btnFilterToday: document.getElementById('btnFilterToday'),
   btnFilterYesterday: document.getElementById('btnFilterYesterday'),
   btnFilterAllDates: document.getElementById('btnFilterAllDates'),
+  btnRefreshHistory: document.getElementById('btnRefreshHistory'),
 
   // Lock Screen & Fullscreen Elements
   modalLockScreen: document.getElementById('modalLockScreen'),
@@ -929,6 +933,13 @@ async function syncShift() {
         state.shift = shiftRes.shift;
         await saveActiveShiftLocal(state.shift);
         el.activeShiftMeta.textContent = `Shift Aktif #${state.shift.id} (Modal: ${formatRupiah(state.shift.starting_cash)})`;
+        return;
+      } else if (shiftRes && !shiftRes.has_active_shift) {
+        // Server confirms no active shift: purge stale local shift
+        await clearActiveShiftLocal();
+        state.shift = null;
+        el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
+        showOpenShiftModal();
         return;
       }
     }
@@ -2211,6 +2222,21 @@ function bindEvents() {
   if (el.historySearchInput) {
     el.historySearchInput.addEventListener('input', () => {
       renderFilteredHistoryTable();
+    });
+  }
+  if (el.btnRefreshHistory) {
+    el.btnRefreshHistory.addEventListener('click', async () => {
+      el.btnRefreshHistory.disabled = true;
+      el.btnRefreshHistory.innerHTML = '<span>⏳</span> Memuat...';
+      try {
+        await openHistoryModal();
+        showToast('Riwayat transaksi berhasil disegarkan & cache lokal disinkronkan', 'success');
+      } catch (e) {
+        showToast('Gagal menyegarkan: ' + e.message, 'error');
+      } finally {
+        el.btnRefreshHistory.disabled = false;
+        el.btnRefreshHistory.innerHTML = '<span>🔄</span> Segarkan';
+      }
     });
   }
 
@@ -3840,22 +3866,33 @@ async function openHistoryModal() {
 
   try {
     let orders = [];
+    let isOnlineFetchSuccess = false;
     if (navigator.onLine) {
       try {
         const res = await api.getOrders();
         orders = res.orders || [];
+        isOnlineFetchSuccess = true;
       } catch (e) {
         console.warn('Gagal ambil riwayat online, membaca lokal...');
       }
     }
 
-    // Merge with local offline orders
-    const localOrders = await getAllLocalOrders();
-    const existingOrderNos = new Set(orders.map(o => o.order_no));
-    for (const lo of localOrders) {
-      if (!existingOrderNos.has(lo.order_no)) {
-        orders.unshift(lo);
+    if (isOnlineFetchSuccess) {
+      // Clear out synced local orders from IndexedDB so they don't linger as phantom/zombie orders
+      await clearSyncedLocalOrders();
+
+      // Only merge genuine PENDING offline orders (not yet synced to server)
+      const pendingLocalOrders = await getAllLocalOrders(50, true);
+      const existingOrderNos = new Set(orders.map(o => o.order_no));
+      for (const lo of pendingLocalOrders) {
+        if (!existingOrderNos.has(lo.order_no)) {
+          orders.unshift(lo);
+        }
       }
+    } else {
+      // Offline fallback: load all available local orders from outbox
+      const localOrders = await getAllLocalOrders(50, false);
+      orders = localOrders;
     }
 
     state.allOrdersHistory = orders;

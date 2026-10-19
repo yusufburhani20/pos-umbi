@@ -7,6 +7,7 @@ import {
   saveSettingsLocal,
   getPendingOrdersLocal,
   markOrdersSyncedLocal,
+  clearSyncedLocalOrders,
   getPendingAdjustmentsLocal,
   markAdjustmentsSyncedLocal,
   getPendingDebtPaymentsLocal,
@@ -158,9 +159,13 @@ class SyncEngine {
             markAdjustmentsSyncedLocal(adjIds),
             markDebtPaymentsSyncedLocal(debtIds)
           ]);
+          await clearSyncedLocalOrders();
 
           console.log(`[SyncEngine] Berhasil push ${pendingOrders.length} nota ke cloud server.`);
         }
+      } else {
+        // Even if no items were pending, keep outbox clean of any lingering synced orders
+        await clearSyncedLocalOrders();
       }
 
       // 4. PULL: Fetch latest master catalog & settings from Cloud Server

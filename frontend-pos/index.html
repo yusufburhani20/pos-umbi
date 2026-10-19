@@ -859,7 +859,10 @@
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <input type="text" id="historySearchInput" placeholder="Cari No. Nota / Pembeli..." style="padding: 6px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px; width: 200px; background: #ffffff;">
+            <input type="text" id="historySearchInput" placeholder="Cari No. Nota / Pembeli..." style="padding: 6px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px; width: 190px; background: #ffffff;">
+            <button type="button" id="btnRefreshHistory" title="Segarkan data riwayat dan bersihkan cache lokal" style="padding: 6px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
+              <span>🔄</span> Segarkan
+            </button>
           </div>
         </div>
 
@@ -2845,6 +2848,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').then((reg) => {
           console.log('[PWA] Service Worker registered:', reg.scope);
+          reg.update();
         }).catch((err) => {
           console.log('[PWA] Service Worker registration failed:', err);
         });

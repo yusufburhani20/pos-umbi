@@ -1,5 +1,6 @@
 import { api } from './api.js';
 import { hardwareManager } from './hardware.js';
+import { clearActiveShiftLocal } from './offline-db.js';
 
 // State
 const state = {
@@ -397,6 +398,7 @@ async function loadActiveShiftData() {
     if (!res || !res.has_active_shift) {
       // BELUM ADA SHIFT: Tampilkan kartu bersih ramah pengguna di cashier.html
       state.shift = null;
+      await clearActiveShiftLocal().catch(() => {});
       if (el.activeShiftDashboard) el.activeShiftDashboard.style.display = 'none';
       if (el.stickyActionBar) el.stickyActionBar.style.display = 'none';
       if (el.noShiftSection) el.noShiftSection.style.display = 'block';
