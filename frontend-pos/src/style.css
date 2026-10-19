@@ -131,13 +131,13 @@ input, select, textarea {
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 4px 20px -2px rgba(30, 58, 138, 0.35);
   position: relative;
-  z-index: 100;
+  z-index: 1000;
 }
 
 /* Elevate top-bar above backdrop when dropdown is active */
 .top-bar:has(.header-dropdown.active),
 .top-bar.has-active-dropdown {
-  z-index: 950 !important;
+  z-index: 1050 !important;
 }
 
 .top-bar-header {
@@ -505,14 +505,15 @@ input, select, textarea {
   pointer-events: none;
   transform: translateY(-8px) scale(0.97);
   transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
-  z-index: 1000;
+  z-index: 2000;
 }
 
 .header-dropdown.active .header-dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateY(0) scale(1) !important;
+  display: block !important;
 }
 
 /* Mobile Header Dropdown Backdrop Overlay */
@@ -522,7 +523,7 @@ input, select, textarea {
   background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
-  z-index: 940;
+  z-index: 990;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -2695,18 +2696,35 @@ input, select, textarea {
     display: none !important;
   }
 
+  .top-bar {
+    overflow: visible !important;
+  }
+
   .top-actions {
-    gap: 4px !important;
+    gap: 6px !important;
     display: flex !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow: visible !important;
   }
 
-  .top-actions::-webkit-scrollbar {
-    display: none !important;
+  .header-dropdown {
+    position: relative !important;
+  }
+
+  .header-dropdown-menu {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    right: 0 !important;
+    z-index: 10000 !important;
+  }
+
+  .header-dropdown.active .header-dropdown-menu {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateY(0) scale(1) !important;
+    display: block !important;
   }
 
   .btn-nav {
@@ -2892,8 +2910,11 @@ input, select, textarea {
   }
 
   .header-dropdown.active .header-dropdown-menu {
+    opacity: 1 !important;
+    visibility: visible !important;
     transform: translateY(0) scale(1) !important;
     pointer-events: auto !important;
+    display: block !important;
   }
 
   .header-dropdown-menu-right {
