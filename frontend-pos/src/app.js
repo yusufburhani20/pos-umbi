@@ -1938,19 +1938,28 @@ function bindEvents() {
   }
   if (el.btnDropdownCashierDashboard) {
     el.btnDropdownCashierDashboard.addEventListener('click', () => {
-      closeAllHeaderDropdowns();
+      const storeDropdown = document.getElementById('storeMenuDropdown');
+      if (storeDropdown) storeDropdown.classList.remove('active');
       openCashierDashboard();
     });
   }
   if (el.btnUserDropdownShiftDashboard) {
     el.btnUserDropdownShiftDashboard.addEventListener('click', () => {
-      closeAllHeaderDropdowns();
+      const userDropdown = document.getElementById('userMenuDropdown');
+      if (userDropdown) userDropdown.classList.remove('active');
       openCashierDashboard();
     });
   }
   if (el.btnCloseCashierDashboard) {
     el.btnCloseCashierDashboard.addEventListener('click', () => {
       if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
+    });
+  }
+  if (el.modalCashierDashboard) {
+    el.modalCashierDashboard.addEventListener('click', (e) => {
+      if (e.target === el.modalCashierDashboard) {
+        el.modalCashierDashboard.style.display = 'none';
+      }
     });
   }
   if (el.btnRefreshCashierDashboard) {
@@ -2000,7 +2009,8 @@ function bindEvents() {
 
   // Blind Close Shift (Fallback Modal)
   el.btnCloseShift.addEventListener('click', () => {
-    closeAllHeaderDropdowns();
+    const userDropdown = document.getElementById('userMenuDropdown');
+    if (userDropdown) userDropdown.classList.remove('active');
     openCashierDashboard();
   });
   el.btnCloseCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
@@ -6184,11 +6194,6 @@ async function handleDeleteCashierExpense(id) {
 // CASHIER DASHBOARD & DAILY BALANCING (REKONSILIASI KAS HARIAN)
 // -----------------------------------------------------------------------------
 async function openCashierDashboard() {
-  if (!state.shift) {
-    showToast('Shift kasir belum dibuka. Silakan buka shift terlebih dahulu.', 'warning');
-    showOpenShiftModal();
-    return;
-  }
   if (el.modalCashierDashboard) {
     el.modalCashierDashboard.style.display = 'flex';
   }
@@ -6204,8 +6209,9 @@ async function refreshCashierDashboardData() {
 
     const res = await api.getCurrentShift().catch(() => null);
     if (!res || !res.has_active_shift) {
-      showToast('Tidak ada shift aktif yang ditemukan.', 'warning');
       if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
+      showToast('Shift kasir belum dibuka. Silakan buka shift terlebih dahulu.', 'warning');
+      showOpenShiftModal();
       return;
     }
 
