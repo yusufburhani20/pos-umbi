@@ -2365,9 +2365,11 @@ input, select, textarea {
 }
 
 .receipt-title {
-  font-size: 13.5px;
-  font-weight: 800;
-  letter-spacing: -0.2px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #000000;
 }
 
 .receipt-divider {
