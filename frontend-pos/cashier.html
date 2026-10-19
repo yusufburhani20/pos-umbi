@@ -466,10 +466,9 @@
         <span class="icon" style="font-size: 17px;">🛒</span>
       </a>
 
-      <!-- Direct Quick Action: Layar Penuh -->
-      <button class="btn-nav btn-fullscreen-direct" id="btnToggleFullscreen" type="button" title="Mode Layar Penuh">
-        <span class="icon" id="fullscreenIcon">⛶</span>
-        <span class="nav-label" id="fullscreenLabel">Layar Penuh</span>
+      <!-- Direct Quick Action: Layar Penuh (Icon Only) -->
+      <button class="btn-nav btn-fullscreen-direct" id="btnToggleFullscreen" type="button" title="Mode Layar Penuh (Fullscreen)" style="width: 38px; height: 38px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px;">
+        <span class="icon" id="fullscreenIcon" style="font-size: 16px;">⛶</span>
       </button>
 
       <!-- Direct Quick Action: Buka Laci Kasir -->
@@ -617,6 +616,14 @@
             <div class="dropdown-item-text">
               <span class="item-title">Tutup Shift Kasir</span>
               <span class="item-desc">Blind cash count, setoran kas harian & rekap</span>
+            </div>
+          </button>
+
+          <button class="header-dropdown-item item-lock" id="btnManualLock" type="button">
+            <span class="dropdown-item-icon icon-amber">🔐</span>
+            <div class="dropdown-item-text">
+              <span class="item-title">Kunci Layar (Lock POS)</span>
+              <span class="item-desc">Kunci sementara kasir, buka kembali dengan PIN</span>
             </div>
           </button>
 
@@ -1052,6 +1059,50 @@
         </button>
         <button type="button" class="btn btn-primary" id="btnSubmitAddIncome" style="height: 40px; padding: 0 18px; border-radius: 8px; background: #2563eb; color: #ffffff; border: none; font-weight: 800; display: flex; align-items: center; gap: 6px; cursor: pointer;">
           <span>📥</span> Simpan & Pratinjau Struk
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Kunci Layar Kasir (Auto & Manual Lock Screen) -->
+  <div class="modal-backdrop lock-screen-backdrop" id="modalLockScreen" style="display: none; z-index: 99999; backdrop-filter: blur(8px); background: rgba(15, 23, 42, 0.92); align-items: center; justify-content: center;">
+    <div class="modal-dialog modal-sm" style="max-width: 360px; width: 90vw; background: #ffffff; border-radius: 20px; box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6); overflow: hidden; text-align: center; border: 1.5px solid #cbd5e1;">
+      <div style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); padding: 22px 18px 18px; color: #ffffff;">
+        <div style="width: 52px; height: 52px; background: rgba(255, 255, 255, 0.12); border: 2px solid rgba(255, 255, 255, 0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 10px;">
+          🔒
+        </div>
+        <h3 style="margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -0.3px;">Layar Kasir Terkunci</h3>
+        <p style="margin: 4px 0 0; font-size: 12px; color: #93c5fd;" id="lockCashierName">Sesi Aktif: Kasir Bertugas</p>
+      </div>
+
+      <div style="padding: 18px 20px 22px;">
+        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 8px;">
+          Masukkan PIN Kasir untuk Membuka:
+        </label>
+        <input type="password" id="inpLockPin" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="••••••" style="width: 100%; height: 46px; text-align: center; font-size: 24px; font-family: monospace; letter-spacing: 6px; border: 2px solid #cbd5e1; border-radius: 12px; margin-bottom: 12px; outline: none; background: #f8fafc; font-weight: 800; color: #0f172a;">
+        
+        <!-- Quick Touch Numpad -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px;" id="lockNumpad">
+          <button type="button" class="btn-lock-num" data-num="1" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">1</button>
+          <button type="button" class="btn-lock-num" data-num="2" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">2</button>
+          <button type="button" class="btn-lock-num" data-num="3" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">3</button>
+          <button type="button" class="btn-lock-num" data-num="4" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">4</button>
+          <button type="button" class="btn-lock-num" data-num="5" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">5</button>
+          <button type="button" class="btn-lock-num" data-num="6" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">6</button>
+          <button type="button" class="btn-lock-num" data-num="7" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">7</button>
+          <button type="button" class="btn-lock-num" data-num="8" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">8</button>
+          <button type="button" class="btn-lock-num" data-num="9" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">9</button>
+          <button type="button" class="btn-lock-num" data-action="clear" style="height: 40px; border-radius: 8px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; font-size: 13px; font-weight: 800; cursor: pointer;">C</button>
+          <button type="button" class="btn-lock-num" data-num="0" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; font-size: 16px; font-weight: 700; cursor: pointer;">0</button>
+          <button type="button" class="btn-lock-num" data-action="backspace" style="height: 40px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f1f5f9; font-size: 15px; font-weight: 700; cursor: pointer;">⌫</button>
+        </div>
+
+        <button type="button" id="btnUnlockScreen" style="width: 100%; height: 42px; background: #059669; color: #ffffff; border: none; border-radius: 10px; font-size: 13.5px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
+          <span>🔓</span> Buka Kunci Layar
+        </button>
+
+        <button type="button" id="btnLockLogout" style="width: 100%; margin-top: 8px; background: none; border: none; color: #64748b; font-size: 11.5px; cursor: pointer; padding: 4px; text-decoration: underline;">
+          Ganti Akun Kasir / Keluar
         </button>
       </div>
     </div>

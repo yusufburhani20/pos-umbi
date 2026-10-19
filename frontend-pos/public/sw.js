@@ -1,9 +1,10 @@
 // Service Worker for Kassa POS (Offline-First PWA)
-const CACHE_NAME = 'kassa-pos-cache-v6';
+const CACHE_NAME = 'kassa-pos-cache-v7';
 
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/cashier.html',
   '/owner.html',
   '/icon.svg',
   '/icon-192.png',
@@ -16,6 +17,7 @@ const STATIC_ASSETS = [
   '/src/owner.css',
   '/src/api.js',
   '/src/app.js',
+  '/src/cashier.js',
   '/src/owner.js',
   '/src/offline-db.js',
   '/src/sync-engine.js',

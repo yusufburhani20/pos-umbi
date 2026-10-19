@@ -564,14 +564,14 @@ class HardwareManager {
       append(divider + '\n');
     }
 
-    // 6. Signature Boxes (Kasir & Penerima)
+    // 6. Signature Boxes (Kasir & Penerima) - Compact Side-by-Side
     append(COMMANDS.ALIGN_CENTER);
     if (is80mm) {
-      append('       Kasir / Petugas,              Penerima Dana,      \n\n\n\n');
-      append('    ( .................... )      ( .................... )\n');
+      append('     Kasir / Petugas,              Penerima Dana,     \n\n');
+      append('  ( .................. )        ( .................. )\n');
     } else {
-      append('    Kasir,              Penerima,   \n\n\n\n');
-      append(' ( .......... )      ( .......... )\n');
+      append('  Kasir,            Penerima,   \n\n');
+      append(' ( ........ )     ( ........ )\n');
     }
 
     // 7. Footer
@@ -791,14 +791,14 @@ class HardwareManager {
       append(subDivider + '\n');
     }
 
-    // 9. Signatures
+    // 9. Signatures - Compact Side-by-Side
     append(COMMANDS.ALIGN_CENTER);
     if (is80mm) {
-      append('       Kasir Bertugas,               Supervisor / Penerima,  \n\n\n\n');
-      append('    ( .................... )      ( .................... )\n');
+      append('     Kasir Bertugas,             Supervisor / Penerima, \n\n');
+      append('  ( .................. )        ( .................. )\n');
     } else {
-      append('    Kasir,              Supervisor, \n\n\n\n');
-      append(' ( .......... )      ( .......... )\n');
+      append('  Kasir,            Supervisor, \n\n');
+      append(' ( ........ )     ( ........ )\n');
     }
     append(divider + '\n');
     append('Kassa POS • Sistem Kasir Pintar\n& Anti-Kecolongan Toko Pasar\n');

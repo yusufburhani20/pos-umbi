@@ -84,6 +84,15 @@ const el = {
   btnExpensesQuickModal: document.getElementById('btnExpensesQuickModal'),
   btnHeaderCloseShift: document.getElementById('btnHeaderCloseShift'),
   btnLogout: document.getElementById('btnLogout'),
+  btnManualLock: document.getElementById('btnManualLock'),
+
+  // Lock Screen Elements
+  modalLockScreen: document.getElementById('modalLockScreen'),
+  lockCashierName: document.getElementById('lockCashierName'),
+  inpLockPin: document.getElementById('inpLockPin'),
+  lockNumpad: document.getElementById('lockNumpad'),
+  btnUnlockScreen: document.getElementById('btnUnlockScreen'),
+  btnLockLogout: document.getElementById('btnLockLogout'),
 
   activeCashierName: document.getElementById('activeCashierName'),
   activeShiftMeta: document.getElementById('activeShiftMeta'),
@@ -910,20 +919,20 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
         <span>${escapeHtml(shiftData.closing_notes || shiftData.notes)}</span>
       </div>
     ` : ''}
-    <div class="receipt-divider" style="margin-top:12px;"></div>
-    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px; margin-top: 14px; padding: 0 8px;">
-      <div>
-        Kasir Bertugas,<br><br><br><br>
-        ( .................... )
+    <div class="receipt-divider" style="margin-top:8px;"></div>
+    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 10px; margin-top: 6px; padding: 0 4px;">
+      <div style="width: 48%;">
+        Kasir Bertugas,<br><br>
+        ( ............... )
       </div>
-      <div>
-        Supervisor / Penerima,<br><br><br><br>
-        ( .................... )
+      <div style="width: 48%;">
+        Supervisor / Penerima,<br><br>
+        ( ............... )
       </div>
     </div>
-    <div class="receipt-divider" style="margin-top: 16px;"></div>
-    <div class="receipt-footer">
-      <p>Kassa POS • Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar</p>
+    <div class="receipt-divider" style="margin-top: 8px;"></div>
+    <div class="receipt-footer" style="padding: 2px 0 0; font-size: 9.5px;">
+      <p style="margin: 0;">Kassa POS • Sistem Kasir Pintar Kios Pasar</p>
     </div>
   `;
 }
@@ -974,19 +983,20 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
       </div>
       <div class="receipt-divider"></div>
     ` : ''}
-    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px; margin-top: 14px; padding: 0 10px;">
-      <div>
-        Kasir Bertugas,<br><br><br><br>
-        ( .................... )
+    <div class="receipt-divider" style="margin-top:8px;"></div>
+    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 10px; margin-top: 6px; padding: 0 4px;">
+      <div style="width: 48%;">
+        Kasir Bertugas,<br><br>
+        ( ............... )
       </div>
-      <div>
-        Penerima Dana,<br><br><br><br>
-        ( .................... )
+      <div style="width: 48%;">
+        Penerima Dana,<br><br>
+        ( ............... )
       </div>
     </div>
-    <div class="receipt-divider" style="margin-top: 16px;"></div>
-    <div class="receipt-footer">
-      <p>Harap simpan struk ini sebagai bukti sah pembukuan keuangan kios.</p>
+    <div class="receipt-divider" style="margin-top: 8px;"></div>
+    <div class="receipt-footer" style="padding: 2px 0 0; font-size: 9.5px;">
+      <p style="margin: 0;">Harap simpan struk ini sebagai bukti sah pembukuan keuangan kios.</p>
     </div>
   `;
 }
@@ -997,16 +1007,55 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
 window.addEventListener('DOMContentLoaded', () => {
   initCashierPage();
 
-  // Fullscreen Mode Toggle
+  // Fullscreen Mode Toggle & Auto-Fullscreen on first touch
+  function syncFullscreenState() {
+    const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (el.btnToggleFullscreen) {
+      el.btnToggleFullscreen.textContent = isFS ? '🗗' : '⛶';
+      el.btnToggleFullscreen.title = isFS ? 'Keluar dari Mode Layar Penuh (F11)' : 'Mode Layar Penuh (F11)';
+    }
+  }
+
+  const tryAutoFullscreen = () => {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const docEl = document.documentElement;
+      const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+      if (req) {
+        req.call(docEl).catch(() => {});
+      }
+    }
+  };
+
+  tryAutoFullscreen();
+
+  const onFirstInteraction = () => {
+    tryAutoFullscreen();
+    document.removeEventListener('click', onFirstInteraction, true);
+    document.removeEventListener('touchstart', onFirstInteraction, true);
+  };
+  document.addEventListener('click', onFirstInteraction, { capture: true, once: true });
+  document.addEventListener('touchstart', onFirstInteraction, { capture: true, once: true });
+
   if (el.btnToggleFullscreen) {
     el.btnToggleFullscreen.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const docEl = document.documentElement;
+        const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+        if (req) req.call(docEl).catch(() => {});
       } else {
-        document.exitFullscreen().catch(() => {});
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document).catch(() => {});
       }
+      setTimeout(syncFullscreenState, 150);
     });
   }
+
+  document.addEventListener('fullscreenchange', syncFullscreenState);
+  document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+  syncFullscreenState();
+
+  // Initialize Lock Screen System
+  initCashierLockScreen();
 
   // Quick Open Drawer (POS Register Header)
   const kickDrawerAction = async () => {
@@ -1255,3 +1304,150 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// -----------------------------------------------------------------------------
+// INACTIVITY AUTO-LOCK & MANUAL LOCK SYSTEM (10 MENIT) - CASHIER DASHBOARD
+// -----------------------------------------------------------------------------
+let cashierLockTimer = null;
+const LOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 menit
+
+function resetCashierLockTimer() {
+  clearTimeout(cashierLockTimer);
+  if (state.user && el.modalLockScreen && el.modalLockScreen.style.display !== 'flex') {
+    cashierLockTimer = setTimeout(() => {
+      lockCashierScreen('auto');
+    }, LOCK_TIMEOUT_MS);
+  }
+}
+
+function lockCashierScreen(reason = 'manual') {
+  if (!state.user) return;
+  clearTimeout(cashierLockTimer);
+  if (el.modalLockScreen) {
+    if (el.lockCashierName) {
+      el.lockCashierName.textContent = `Sesi Aktif: ${state.user.name || 'Kasir Bertugas'}`;
+    }
+    if (el.inpLockPin) {
+      el.inpLockPin.value = '';
+    }
+    el.modalLockScreen.style.display = 'flex';
+    setTimeout(() => {
+      if (el.inpLockPin) el.inpLockPin.focus();
+    }, 100);
+  }
+}
+
+async function unlockCashierScreen() {
+  const pin = el.inpLockPin ? el.inpLockPin.value.trim() : '';
+  if (!pin) {
+    showToast('Masukkan PIN kasir untuk membuka', 'warning');
+    if (el.inpLockPin) el.inpLockPin.focus();
+    return;
+  }
+
+  try {
+    if (el.btnUnlockScreen) {
+      el.btnUnlockScreen.disabled = true;
+      el.btnUnlockScreen.innerHTML = '<span>⏳</span> Memeriksa PIN...';
+    }
+
+    let ok = false;
+    if (navigator.onLine) {
+      try {
+        const res = await api.login(pin);
+        if (res && res.user) {
+          ok = true;
+          state.user = res.user;
+        }
+      } catch (e) {
+        if (state.user && (state.user.pin === pin || localStorage.getItem('kassa_cashier_pin') === pin)) {
+          ok = true;
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      if (state.user && (state.user.pin === pin || localStorage.getItem('kassa_cashier_pin') === pin)) {
+        ok = true;
+      } else {
+        throw new Error('PIN tidak cocok');
+      }
+    }
+
+    if (ok) {
+      if (el.modalLockScreen) el.modalLockScreen.style.display = 'none';
+      if (el.inpLockPin) el.inpLockPin.value = '';
+      showToast('🔓 Layar berhasil dibuka. Selamat bertugas!', 'success');
+      resetCashierLockTimer();
+    }
+  } catch (err) {
+    showToast('PIN salah atau tidak valid: ' + (err.message || 'Periksa kembali'), 'error');
+    if (el.inpLockPin) {
+      el.inpLockPin.value = '';
+      el.inpLockPin.focus();
+    }
+  } finally {
+    if (el.btnUnlockScreen) {
+      el.btnUnlockScreen.disabled = false;
+      el.btnUnlockScreen.innerHTML = '<span>🔓</span> Buka Kunci Layar';
+    }
+  }
+}
+
+function initCashierLockScreen() {
+  const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
+  events.forEach(evt => {
+    window.addEventListener(evt, () => {
+      resetCashierLockTimer();
+    }, { passive: true });
+  });
+  resetCashierLockTimer();
+
+  if (el.btnManualLock) {
+    el.btnManualLock.addEventListener('click', () => {
+      const userDropdown = document.getElementById('userMenuDropdown');
+      if (userDropdown) userDropdown.classList.remove('active');
+      lockCashierScreen('manual');
+    });
+  }
+
+  if (el.btnUnlockScreen) {
+    el.btnUnlockScreen.addEventListener('click', unlockCashierScreen);
+  }
+
+  if (el.inpLockPin) {
+    el.inpLockPin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        unlockCashierScreen();
+      }
+    });
+  }
+
+  if (el.lockNumpad) {
+    el.lockNumpad.querySelectorAll('.btn-lock-num').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!el.inpLockPin) return;
+        const num = btn.dataset.num;
+        const action = btn.dataset.action;
+        if (num !== undefined) {
+          if (el.inpLockPin.value.length < 6) {
+            el.inpLockPin.value += num;
+          }
+        } else if (action === 'clear') {
+          el.inpLockPin.value = '';
+        } else if (action === 'backspace') {
+          el.inpLockPin.value = el.inpLockPin.value.slice(0, -1);
+        }
+      });
+    });
+  }
+
+  if (el.btnLockLogout) {
+    el.btnLockLogout.addEventListener('click', () => {
+      if (confirm('Keluar dari sesi kasir dan ganti akun?')) {
+        api.clearAuth();
+        window.location.href = '/';
+      }
+    });
+  }
+}

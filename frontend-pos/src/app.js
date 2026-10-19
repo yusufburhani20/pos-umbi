@@ -431,6 +431,22 @@ const el = {
   btnHistory: document.getElementById('btnHistory'),
   btnCloseHistoryModal: document.getElementById('btnCloseHistoryModal'),
   historyTableBody: document.getElementById('historyTableBody'),
+  historyDateFilter: document.getElementById('historyDateFilter'),
+  historySearchInput: document.getElementById('historySearchInput'),
+  historySummaryText: document.getElementById('historySummaryText'),
+  btnFilterToday: document.getElementById('btnFilterToday'),
+  btnFilterYesterday: document.getElementById('btnFilterYesterday'),
+  btnFilterAllDates: document.getElementById('btnFilterAllDates'),
+
+  // Lock Screen & Fullscreen Elements
+  modalLockScreen: document.getElementById('modalLockScreen'),
+  lockCashierName: document.getElementById('lockCashierName'),
+  inpLockPin: document.getElementById('inpLockPin'),
+  lockNumpad: document.getElementById('lockNumpad'),
+  btnUnlockScreen: document.getElementById('btnUnlockScreen'),
+  btnLockLogout: document.getElementById('btnLockLogout'),
+  btnManualLock: document.getElementById('btnManualLock'),
+  btnToggleFullscreen: document.getElementById('btnToggleFullscreen'),
 
   voidAuthModal: document.getElementById('voidAuthModal'),
   voidOrderNo: document.getElementById('voidOrderNo'),
@@ -762,13 +778,38 @@ function initFullscreenAndViewportSupport() {
     if (btnToggleFullscreen) {
       if (isFS) {
         btnToggleFullscreen.classList.add('active-fullscreen');
-        btnToggleFullscreen.title = 'Keluar dari Mode Layar Penuh';
+        btnToggleFullscreen.title = 'Keluar dari Mode Layar Penuh (F11)';
+        btnToggleFullscreen.textContent = '🗗';
       } else {
         btnToggleFullscreen.classList.remove('active-fullscreen');
-        btnToggleFullscreen.title = 'Mode Layar Penuh (Hilangkan bilah Chrome & bar tablet)';
+        btnToggleFullscreen.title = 'Mode Layar Penuh (F11)';
+        btnToggleFullscreen.textContent = '⛶';
       }
     }
   }
+
+  // Force auto-fullscreen on PWA launch / first user touch
+  const tryAutoFullscreen = () => {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const docEl = document.documentElement;
+      const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+      if (req) {
+        req.call(docEl).catch(() => {});
+      }
+    }
+  };
+
+  // Immediate attempt for standalone/PWA
+  tryAutoFullscreen();
+
+  // One-time gesture listener on first interaction
+  const onFirstInteraction = () => {
+    tryAutoFullscreen();
+    document.removeEventListener('click', onFirstInteraction, true);
+    document.removeEventListener('touchstart', onFirstInteraction, true);
+  };
+  document.addEventListener('click', onFirstInteraction, { capture: true, once: true });
+  document.addEventListener('touchstart', onFirstInteraction, { capture: true, once: true });
 
   if (btnToggleFullscreen) {
     btnToggleFullscreen.addEventListener('click', async () => {
@@ -2087,6 +2128,46 @@ function bindEvents() {
   el.btnHistory.addEventListener('click', openHistoryModal);
   el.btnCloseHistoryModal.addEventListener('click', () => el.historyModal.style.display = 'none');
 
+  // History Date Filters & Search
+  if (el.historyDateFilter) {
+    el.historyDateFilter.addEventListener('change', () => {
+      updateHistoryDatePills();
+      renderFilteredHistoryTable();
+    });
+  }
+  if (el.btnFilterToday) {
+    el.btnFilterToday.addEventListener('click', () => {
+      if (el.historyDateFilter) el.historyDateFilter.value = getLocalDateStr();
+      updateHistoryDatePills();
+      renderFilteredHistoryTable();
+    });
+  }
+  if (el.btnFilterYesterday) {
+    el.btnFilterYesterday.addEventListener('click', () => {
+      const yDate = new Date();
+      yDate.setDate(yDate.getDate() - 1);
+      if (el.historyDateFilter) el.historyDateFilter.value = getLocalDateStr(yDate);
+      updateHistoryDatePills();
+      renderFilteredHistoryTable();
+    });
+  }
+  if (el.btnFilterAllDates) {
+    el.btnFilterAllDates.addEventListener('click', () => {
+      if (el.historyDateFilter) el.historyDateFilter.value = '';
+      updateHistoryDatePills();
+      renderFilteredHistoryTable();
+    });
+  }
+  if (el.historySearchInput) {
+    el.historySearchInput.addEventListener('input', () => {
+      renderFilteredHistoryTable();
+    });
+  }
+
+  // Initialize Lock Screen System (Manual & 10 Min Inactivity Auto-Lock)
+  initLockScreenEvents();
+  initLockInactivityListeners();
+
   // Void Auth Modal
   el.btnCancelVoid.addEventListener('click', () => el.voidAuthModal.style.display = 'none');
   el.btnConfirmVoid.addEventListener('click', handleConfirmVoid);
@@ -2237,7 +2318,7 @@ function renderProductGrid() {
           <span class="product-emoji">${p.image_emoji || '🥔'}</span>
           ${tagHtml}
         </div>
-        <h3 class="product-name" title="${escapeHtml(productName)}" style="display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #0f172a !important; font-size: 14.5px !important; font-weight: 700 !important; line-height: 1.35 !important; min-height: 38px !important; max-height: 44px !important; margin: 4px 0 8px 0 !important; flex-shrink: 0 !important; visibility: visible !important;">${escapeHtml(productName)}</h3>
+        <h3 class="product-name" title="${escapeHtml(productName)}" style="display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #0f172a !important; font-size: 12.5px !important; font-weight: 700 !important; line-height: 1.25 !important; min-height: 30px !important; max-height: 33px !important; margin: 2px 0 4px 0 !important; flex-shrink: 0 !important; visibility: visible !important;">${escapeHtml(productName)}</h3>
         <div class="card-pricing">
           <div class="price-row price-row-retail">
             <span class="price-label">Ecer</span>
@@ -3597,9 +3678,50 @@ async function handleSubmitWaste() {
 // -----------------------------------------------------------------------------
 // HISTORY & STRICT VOID
 // -----------------------------------------------------------------------------
+function getLocalDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function updateHistoryDatePills() {
+  const currentVal = el.historyDateFilter ? el.historyDateFilter.value : '';
+  const todayStr = getLocalDateStr();
+  const yObj = new Date();
+  yObj.setDate(yObj.getDate() - 1);
+  const yesterdayStr = getLocalDateStr(yObj);
+
+  const setPillStyle = (btn, isActive) => {
+    if (!btn) return;
+    if (isActive) {
+      btn.style.background = '#3b82f6';
+      btn.style.color = '#ffffff';
+      btn.style.borderColor = '#3b82f6';
+      btn.style.fontWeight = '700';
+    } else {
+      btn.style.background = '#ffffff';
+      btn.style.color = '#475569';
+      btn.style.borderColor = '#cbd5e1';
+      btn.style.fontWeight = '600';
+    }
+  };
+
+  setPillStyle(el.btnFilterToday, currentVal === todayStr);
+  setPillStyle(el.btnFilterYesterday, currentVal === yesterdayStr);
+  setPillStyle(el.btnFilterAllDates, currentVal === '');
+}
+
 async function openHistoryModal() {
   el.historyModal.style.display = 'flex';
-  el.historyTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Memuat data riwayat...</td></tr>';
+  el.historyTableBody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 24px;">Memuat data riwayat...</td></tr>';
+
+  // Default to today's date if empty or not set
+  const todayStr = getLocalDateStr();
+  if (el.historyDateFilter && !el.historyDateFilter.value) {
+    el.historyDateFilter.value = todayStr;
+  }
+  updateHistoryDatePills();
 
   try {
     let orders = [];
@@ -3621,78 +3743,284 @@ async function openHistoryModal() {
       }
     }
 
-    if (orders.length === 0) {
-      el.historyTableBody.innerHTML = '<tr><td colspan="7" class="text-center">Belum ada transaksi</td></tr>';
-      return;
+    state.allOrdersHistory = orders;
+    renderFilteredHistoryTable();
+  } catch (err) {
+    el.historyTableBody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 24px; color: #dc2626;">Gagal memuat: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function renderFilteredHistoryTable() {
+  const allOrders = state.allOrdersHistory || [];
+  const selectedDate = el.historyDateFilter ? el.historyDateFilter.value : '';
+  const searchQ = (el.historySearchInput ? el.historySearchInput.value : '').toLowerCase().trim();
+
+  const filtered = allOrders.filter(o => {
+    if (selectedDate) {
+      const orderDate = getLocalDateStr(parseSafeDate(o.created_at));
+      if (orderDate !== selectedDate) return false;
+    }
+    if (searchQ) {
+      const noMatch = (o.order_no || '').toLowerCase().includes(searchQ);
+      const custMatch = (o.customer_name || '').toLowerCase().includes(searchQ);
+      const payMatch = (o.payment_method || '').toLowerCase().includes(searchQ);
+      if (!noMatch && !custMatch && !payMatch) return false;
+    }
+    return true;
+  });
+
+  // Calculate live summary
+  const totalAmount = filtered.reduce((acc, o) => acc + (Number(o.total_amount) || 0), 0);
+  const todayStr = getLocalDateStr();
+  const yObj = new Date();
+  yObj.setDate(yObj.getDate() - 1);
+  const yesterdayStr = getLocalDateStr(yObj);
+
+  let summaryLabel = '';
+  if (selectedDate === todayStr) {
+    summaryLabel = `Menampilkan ${filtered.length} transaksi Hari Ini • Total: ${formatRupiah(totalAmount)}`;
+  } else if (selectedDate === yesterdayStr) {
+    summaryLabel = `Menampilkan ${filtered.length} transaksi Kemarin • Total: ${formatRupiah(totalAmount)}`;
+  } else if (selectedDate) {
+    summaryLabel = `Menampilkan ${filtered.length} transaksi (${selectedDate}) • Total: ${formatRupiah(totalAmount)}`;
+  } else {
+    summaryLabel = `Menampilkan semua (${filtered.length} transaksi) • Total: ${formatRupiah(totalAmount)}`;
+  }
+  if (el.historySummaryText) {
+    el.historySummaryText.textContent = summaryLabel;
+  }
+
+  if (filtered.length === 0) {
+    el.historyTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" class="text-center" style="padding: 32px 16px; color: #94a3b8; font-size: 13px;">
+          Tidak ada transaksi ${selectedDate ? `pada tanggal ${selectedDate}` : ''} ${searchQ ? `dengan kata kunci "${escapeHtml(searchQ)}"` : ''}.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  el.historyTableBody.innerHTML = filtered.map(o => {
+    const isCompleted = o.status === 'completed';
+    const timeStr = parseSafeDate(o.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const statusLabel = o.status === 'completed' ? 'Selesai' : (o.status === 'void' ? 'Batal' : o.status);
+
+    return `
+      <tr>
+        <td><strong>${escapeHtml(o.order_no)}</strong></td>
+        <td>${timeStr}</td>
+        <td>${escapeHtml(o.customer_name || 'Umum')}</td>
+        <td>${escapeHtml((o.payment_method || 'cash').toUpperCase())}</td>
+        <td><strong>${formatRupiah(o.total_amount)}</strong></td>
+        <td><span class="status-badge ${o.status}">${statusLabel}</span></td>
+        <td>
+          <div style="display:inline-flex; gap:6px; align-items:center;">
+            <button class="btn-table-print" data-id="${o.id}" data-no="${escapeHtml(o.order_no)}" title="Cetak Ulang Struk Thermal">
+              🖨️ Cetak
+            </button>
+            ${isCompleted ? `<button class="btn-table-void" data-id="${o.id}" data-no="${escapeHtml(o.order_no)}">Batalkan</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Re-bind Reprint Receipt buttons
+  el.historyTableBody.querySelectorAll('.btn-table-print').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const orderId = btn.dataset.id;
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Memuat...';
+
+      try {
+        const res = await api.getOrder(orderId);
+        if (!res.order) throw new Error('Data transaksi tidak ditemukan');
+
+        state.lastCompletedOrder = res.order;
+        state.lastOrderIsReprint = true;
+        renderThermalReceipt(res.order, true);
+        if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Cetak Ulang Struk (Salinan)';
+        if (el.btnNextOrder) el.btnNextOrder.textContent = 'Kembali ke Riwayat';
+        el.receiptModal.style.zIndex = '1300';
+        el.receiptModal.style.display = 'flex';
+      } catch (err) {
+        showToast('Gagal memuat struk: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    });
+  });
+
+  el.historyTableBody.querySelectorAll('.btn-table-void').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.pendingVoidOrder = {
+        id: btn.dataset.id,
+        orderNo: btn.dataset.no
+      };
+      el.voidOrderNo.value = state.pendingVoidOrder.orderNo;
+      el.voidReasonInput.value = '';
+      el.voidOwnerPinInput.value = '';
+      el.voidAuthModal.style.display = 'flex';
+    });
+  });
+}
+
+// -----------------------------------------------------------------------------
+// INACTIVITY AUTO-LOCK & MANUAL LOCK SYSTEM (10 MENIT)
+// -----------------------------------------------------------------------------
+let lockInactivityTimer = null;
+const LOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 menit
+
+function resetLockTimer() {
+  clearTimeout(lockInactivityTimer);
+  if (state.user && el.modalLockScreen && el.modalLockScreen.style.display !== 'flex') {
+    lockInactivityTimer = setTimeout(() => {
+      lockPosScreen('auto');
+    }, LOCK_TIMEOUT_MS);
+  }
+}
+
+function initLockInactivityListeners() {
+  const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
+  events.forEach(evt => {
+    window.addEventListener(evt, () => {
+      resetLockTimer();
+    }, { passive: true });
+  });
+  resetLockTimer();
+}
+
+function lockPosScreen(reason = 'manual') {
+  if (!state.user) return;
+  clearTimeout(lockInactivityTimer);
+  if (el.modalLockScreen) {
+    if (el.lockCashierName) {
+      el.lockCashierName.textContent = `Sesi Aktif: ${state.user.name || 'Kasir Bertugas'}`;
+    }
+    if (el.inpLockPin) {
+      el.inpLockPin.value = '';
+    }
+    el.modalLockScreen.style.display = 'flex';
+    setTimeout(() => {
+      if (el.inpLockPin) el.inpLockPin.focus();
+    }, 100);
+  }
+}
+
+async function unlockPosScreen() {
+  const pin = el.inpLockPin ? el.inpLockPin.value.trim() : '';
+  if (!pin) {
+    showToast('Masukkan PIN kasir untuk membuka', 'warning');
+    if (el.inpLockPin) el.inpLockPin.focus();
+    return;
+  }
+
+  try {
+    if (el.btnUnlockScreen) {
+      el.btnUnlockScreen.disabled = true;
+      el.btnUnlockScreen.innerHTML = '<span>⏳</span> Memeriksa PIN...';
     }
 
-    el.historyTableBody.innerHTML = orders.map(o => {
-      const isCompleted = o.status === 'completed';
-      const timeStr = parseSafeDate(o.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      const statusLabel = o.status === 'completed' ? 'Selesai' : (o.status === 'void' ? 'Batal' : o.status);
+    let ok = false;
+    if (navigator.onLine) {
+      try {
+        const res = await api.login(pin);
+        if (res && res.user) {
+          ok = true;
+          state.user = res.user;
+          state.token = res.token;
+        }
+      } catch (e) {
+        if (state.user && (state.user.pin === pin || localStorage.getItem('kassa_cashier_pin') === pin)) {
+          ok = true;
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      if (state.user && (state.user.pin === pin || localStorage.getItem('kassa_cashier_pin') === pin)) {
+        ok = true;
+      } else {
+        throw new Error('PIN tidak cocok');
+      }
+    }
 
-      return `
-        <tr>
-          <td><strong>${o.order_no}</strong></td>
-          <td>${timeStr}</td>
-          <td>${o.customer_name || 'Umum'}</td>
-          <td>${o.payment_method.toUpperCase()}</td>
-          <td>${formatRupiah(o.total_amount)}</td>
-          <td><span class="status-badge ${o.status}">${statusLabel}</span></td>
-          <td>
-            <div style="display:inline-flex; gap:6px; align-items:center;">
-              <button class="btn-table-print" data-id="${o.id}" data-no="${o.order_no}" title="Cetak Ulang Struk Thermal">
-                🖨️ Cetak Struk
-              </button>
-              ${isCompleted ? `<button class="btn-table-void" data-id="${o.id}" data-no="${o.order_no}">Batalkan</button>` : ''}
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    if (ok) {
+      if (el.modalLockScreen) el.modalLockScreen.style.display = 'none';
+      if (el.inpLockPin) el.inpLockPin.value = '';
+      showToast('🔓 Layar berhasil dibuka. Selamat bertugas!', 'success');
+      resetLockTimer();
+    }
+  } catch (err) {
+    showToast('PIN salah atau tidak valid: ' + (err.message || 'Periksa kembali'), 'error');
+    if (el.inpLockPin) {
+      el.inpLockPin.value = '';
+      el.inpLockPin.focus();
+    }
+  } finally {
+    if (el.btnUnlockScreen) {
+      el.btnUnlockScreen.disabled = false;
+      el.btnUnlockScreen.innerHTML = '<span>🔓</span> Buka Kunci Layar';
+    }
+  }
+}
 
-    // Bind Reprint Receipt buttons
-    el.historyTableBody.querySelectorAll('.btn-table-print').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const orderId = btn.dataset.id;
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '⏳ Memuat...';
+function initLockScreenEvents() {
+  if (el.btnManualLock) {
+    el.btnManualLock.addEventListener('click', () => {
+      const userDropdown = document.getElementById('userMenuDropdown');
+      if (userDropdown) userDropdown.classList.remove('active');
+      lockPosScreen('manual');
+    });
+  }
 
-        try {
-          const res = await api.getOrder(orderId);
-          if (!res.order) throw new Error('Data transaksi tidak ditemukan');
+  if (el.btnUnlockScreen) {
+    el.btnUnlockScreen.addEventListener('click', unlockPosScreen);
+  }
 
-          state.lastCompletedOrder = res.order;
-          state.lastOrderIsReprint = true;
-          renderThermalReceipt(res.order, true);
-          if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Cetak Ulang Struk (Salinan)';
-          if (el.btnNextOrder) el.btnNextOrder.textContent = 'Kembali ke Riwayat';
-          el.receiptModal.style.zIndex = '1300';
-          el.receiptModal.style.display = 'flex';
-        } catch (err) {
-          showToast('Gagal memuat struk: ' + err.message, 'error');
-        } finally {
-          btn.disabled = false;
-          btn.innerHTML = originalText;
+  if (el.inpLockPin) {
+    el.inpLockPin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        unlockPosScreen();
+      }
+    });
+  }
+
+  if (el.lockNumpad) {
+    el.lockNumpad.querySelectorAll('.btn-lock-num').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!el.inpLockPin) return;
+        const num = btn.dataset.num;
+        const action = btn.dataset.action;
+        if (num !== undefined) {
+          if (el.inpLockPin.value.length < 6) {
+            el.inpLockPin.value += num;
+          }
+        } else if (action === 'clear') {
+          el.inpLockPin.value = '';
+        } else if (action === 'backspace') {
+          el.inpLockPin.value = el.inpLockPin.value.slice(0, -1);
         }
       });
     });
+  }
 
-    el.historyTableBody.querySelectorAll('.btn-table-void').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.pendingVoidOrder = {
-          id: btn.dataset.id,
-          orderNo: btn.dataset.no
-        };
-        el.voidOrderNo.value = state.pendingVoidOrder.orderNo;
-        el.voidReasonInput.value = '';
-        el.voidOwnerPinInput.value = '';
-        el.voidAuthModal.style.display = 'flex';
-      });
+  if (el.btnLockLogout) {
+    el.btnLockLogout.addEventListener('click', () => {
+      if (confirm('Keluar dari sesi kasir dan ganti akun?')) {
+        if (el.modalLockScreen) el.modalLockScreen.style.display = 'none';
+        api.clearSession();
+        state.user = null;
+        state.shift = null;
+        el.activeCashierName.textContent = 'Belum Login';
+        el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
+        showLoginModal();
+        showToast('Berhasil keluar. Silakan masukkan PIN untuk bertugas.', 'info');
+      }
     });
-  } catch (err) {
-    el.historyTableBody.innerHTML = `<tr><td colspan="7" class="text-center">Gagal memuat: ${err.message}</td></tr>`;
   }
 }
 
@@ -6097,19 +6425,20 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
       </div>
       <div class="receipt-divider"></div>
     ` : ''}
-    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px; margin-top: 14px; padding: 0 10px;">
-      <div>
-        Kasir / Petugas,<br><br><br><br>
-        ( .................... )
+    <div class="receipt-divider" style="margin-top: 8px;"></div>
+    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 10.5px; margin-top: 8px; padding: 0 4px;">
+      <div style="width: 46%;">
+        Kasir / Petugas,<br><br>
+        ( ............... )
       </div>
-      <div>
-        Penerima Dana,<br><br><br><br>
-        ( .................... )
+      <div style="width: 46%;">
+        Penerima Dana,<br><br>
+        ( ............... )
       </div>
     </div>
-    <div class="receipt-divider" style="margin-top: 16px;"></div>
+    <div class="receipt-divider" style="margin-top: 10px;"></div>
     <div class="receipt-footer">
-      <p>Harap simpan struk ini sebagai bukti sah pembukuan keuangan kios.</p>
+      <p style="margin: 0; font-size: 10px; color: #64748b;">Harap simpan struk ini sebagai bukti sah pembukuan kios.</p>
     </div>
   `;
 }
@@ -6670,20 +6999,20 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
         <span>${escapeHtml(shiftData.closing_notes || shiftData.notes)}</span>
       </div>
     ` : ''}
-    <div class="receipt-divider" style="margin-top:12px;"></div>
-    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px; margin-top: 14px; padding: 0 8px;">
-      <div>
-        Kasir Bertugas,<br><br><br><br>
-        ( .................... )
+    <div class="receipt-divider" style="margin-top:8px;"></div>
+    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 10px; margin-top: 6px; padding: 0 4px;">
+      <div style="width: 48%;">
+        Kasir Bertugas,<br><br>
+        ( ............... )
       </div>
-      <div>
-        Supervisor / Penerima,<br><br><br><br>
-        ( .................... )
+      <div style="width: 48%;">
+        Supervisor / Penerima,<br><br>
+        ( ............... )
       </div>
     </div>
-    <div class="receipt-divider" style="margin-top: 16px;"></div>
-    <div class="receipt-footer">
-      <p>Kassa POS • Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar</p>
+    <div class="receipt-divider" style="margin-top: 8px;"></div>
+    <div class="receipt-footer" style="padding: 2px 0 0; font-size: 9.5px;">
+      <p style="margin: 0;">Kassa POS • Sistem Kasir Pintar Kios Pasar</p>
     </div>
   `;
 }

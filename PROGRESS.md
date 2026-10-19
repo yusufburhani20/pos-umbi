@@ -371,5 +371,26 @@ F:\POS
         └── owner.css             # Desain sistem modern executive dashboard
 ```
 
+### 12. ⚡ Pembaruan Efisiensi Kasir & Cetak Struk (v1.8.0 - 19 Oktober 2026)
+- [x] **Paksa Layar Penuh PWA (Auto-Fullscreen) & Tombol Ikon**:
+  - PWA dan aplikasi kasir otomatis memicu mode *fullscreen* saat dibuka atau pada interaksi sentuhan pertama kasir, memaksimalkan area layar tablet tanpa gangguan bilah browser.
+  - Tombol toggle layar penuh disederhanakan menjadi tombol ikon murni (`⛶` saat normal, `🗗` saat fullscreen) dengan tooltip informatif, menghemat ruang header.
+- [x] **Format Cetak Biaya & Laporan Harian Sederhana & TTD Ramping**:
+  - Kolom tanda tangan kasir dan penerima/supervisor dibuat berdampingan (*side-by-side*) dengan lebar 48% dan jarak vertikal kompak (2 baris spasi), mencegah tanda tangan terdorong ke bawah dan menghemat 3-4 cm kertas thermal 58mm/80mm per cetakan.
+  - Teks kaki (*receipt footer*) diringkas menjadi 1 baris estetis.
+- [x] **Penyempurnaan Pop-Up Print Preview**:
+  - Modal pratinjau struk thermal disesuaikan dengan kontras tajam, kertas bertekstur bersih (*JetBrains Mono*), scrolling halus, serta tombol aksi cetak yang ergonomis dan mudah ditekan.
+- [x] **Fitur Kunci Layar Kasir Otomatis (10 Menit Inactivity) & Manual Lock**:
+  - **Auto-Lock 10 Menit**: Timer mendeteksi inaktivitas pengguna selama 10 menit tanpa sentuhan atau klik, kemudian otomatis mengunci layar (*blur backdrop overlay*).
+  - **Manual Lock**: Opsi `🔐 Kunci Layar (Lock POS)` tersedia di menu dropdown profil kasir.
+  - **Buka Kunci Tanpa Gangguan**: Dilengkapi touch numpad dan input PIN kasir; sesi aktif, shift, dan keranjang belanja kasir tetap utuh tanpa reset saat dibuka kembali.
+- [x] **Riwayat Transaksi Kasir Default Hari Berjalan & Filter Tanggal**:
+  - Modal riwayat kasir secara default langsung menampilkan transaksi pada hari yang sedang berjalan saja (*today*).
+  - Dilengkapi kontrol *date picker*, tombol filter cepat (*Hari Ini, Kemarin, Semua*), kolom pencarian nota/pelanggan, dan badge kalkulasi total nota serta total omzet dinamis.
+- [x] **Ukuran Kartu Barang Kasir Kompak (1 Baris 4 Item)**:
+  - Grid katalog kasir dioptimalkan dengan CSS `grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px !important;`.
+  - Ukuran font judul barang (`12.5px`), label harga (`10.5px`), badge stok (`9px`), dan emoji (`22px`) disesuaikan secara proporsional sehingga 4 komoditas tampil rapi, padat, dan jelas per baris tanpa terpotong.
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
+
