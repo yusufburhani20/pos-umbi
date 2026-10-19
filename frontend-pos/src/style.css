@@ -267,29 +267,43 @@ input, select, textarea {
   color: #bfdbfe;
 }
 
-/* Live Sync Status Pill */
-.sync-status-pill {
-  display: flex;
+/* Live Sync Status Pill & Printer Hardware Pill: Compact Icon-Only with Hover Tooltip */
+.sync-status-pill,
+.printer-status-pill {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   background-color: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  padding: 5px 12px;
+  padding: 4px 8px;
+  height: 32px;
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
   backdrop-filter: blur(6px);
+  flex-shrink: 0;
 }
 
-.sync-status-pill:hover {
-  background-color: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.35);
+.sync-status-pill:hover,
+.printer-status-pill:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.sync-icon-symbol,
+.printer-icon-symbol {
+  font-size: 13.5px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sync-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: #10b981;
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
@@ -313,13 +327,79 @@ input, select, textarea {
   100% { transform: scale(1.25); opacity: 1; }
 }
 
-.sync-text-wrap {
-  display: flex;
-  flex-direction: column;
+.printer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.sync-status-label {
-  font-size: 11px;
+.printer-status-pill.online .printer-dot {
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(22, 163, 74, 0.8);
+}
+
+.printer-status-pill.online {
+  border-color: rgba(134, 239, 172, 0.45);
+  background: rgba(34, 197, 94, 0.16);
+}
+
+.printer-status-pill.offline {
+  border-color: rgba(252, 165, 165, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* Floating Hover Tooltip: Hidden by default, appears on hover */
+.sync-text-wrap,
+.printer-text-wrap {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-5px);
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.sync-text-wrap::before,
+.printer-text-wrap::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  background: #0f172a;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.sync-status-pill:hover .sync-text-wrap,
+.printer-status-pill:hover .printer-text-wrap {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.sync-status-label,
+.printer-status-label {
+  font-size: 11.5px;
   font-weight: 700;
   color: #f8fafc;
   line-height: 1.2;
@@ -333,27 +413,31 @@ input, select, textarea {
   color: #7dd3fc;
 }
 
-.sync-sub-label {
-  font-size: 9px;
+.sync-sub-label,
+.printer-sub-label {
+  font-size: 10px;
   color: #94a3b8;
   font-family: var(--font-mono);
+  margin-top: 2px;
 }
 
-.btn-sync-trigger {
+.btn-sync-trigger,
+.btn-printer-trigger {
   background: transparent;
   border: none;
   color: #cbd5e1;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
-  padding: 2px;
+  padding: 1px 2px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, color 0.2s ease;
 }
 
-.btn-sync-trigger:hover {
+.btn-sync-trigger:hover,
+.btn-printer-trigger:hover {
   transform: rotate(90deg);
   color: #ffffff;
 }
@@ -750,17 +834,18 @@ input, select, textarea {
     padding: 0 10px !important;
     min-width: 36px;
   }
-  .header-datetime-badge .day-date {
-    display: none !important;
-  }
   .header-datetime-badge {
+    display: flex !important;
     padding: 4px 10px !important;
+  }
+  .header-datetime-badge .day-date {
+    display: inline-block !important;
   }
 }
 
 @media (max-width: 1200px) {
   .header-datetime-badge {
-    display: none !important;
+    display: flex !important;
   }
   .brand-subtitle {
     display: none !important;
@@ -2927,7 +3012,16 @@ input, select, textarea {
   }
 
   .header-datetime-badge {
-    display: none !important;
+    display: flex !important;
+    padding: 3px 8px !important;
+    gap: 6px !important;
+  }
+  .header-datetime-badge .day-date {
+    display: inline-block !important;
+    font-size: 11px !important;
+  }
+  .header-datetime-badge .clock-time {
+    font-size: 10px !important;
   }
 
   .header-status-group {
@@ -3089,7 +3183,16 @@ input, select, textarea {
   }
 
   .header-datetime-badge {
-    display: none !important;
+    display: flex !important;
+    padding: 2px 7px !important;
+    gap: 5px !important;
+  }
+  .header-datetime-badge .day-date {
+    display: inline-block !important;
+    font-size: 10.5px !important;
+  }
+  .header-datetime-badge .clock-time {
+    font-size: 9.5px !important;
   }
 
   .brand-subtitle {
@@ -4713,69 +4816,7 @@ input, select, textarea {
    REDMI PAD SE TABLET ERGONOMICS
    ========================================================================== */
 
-/* Printer Status Pill in Top Header */
-.printer-status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #cbd5e1;
-  padding: 4px 10px;
-  border-radius: 9999px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease;
-  user-select: none;
-}
 
-.printer-status-pill.online {
-  border-color: #86efac;
-  background: #f0fdf4;
-}
-
-.printer-status-pill.offline {
-  border-color: #fca5a5;
-  background: #fff1f2;
-}
-
-.printer-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ef4444;
-  flex-shrink: 0;
-  transition: background 0.2s ease;
-}
-
-.printer-status-pill.online .printer-dot {
-  background: #16a34a;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
-  animation: pulse-printer 2s infinite;
-}
-
-@keyframes pulse-printer {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.printer-text-wrap {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-}
-
-.printer-status-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #1e293b;
-  white-space: nowrap;
-}
-
-.printer-sub-label {
-  font-size: 9.5px;
-  color: #64748b;
-  white-space: nowrap;
-}
 
 .btn-printer-trigger {
   background: #f1f5f9;

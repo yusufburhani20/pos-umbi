@@ -719,18 +719,21 @@ function updateSyncStatusUI(syncState) {
 
   el.syncStatusPill.classList.remove('online', 'offline', 'syncing');
 
+  let syncTooltip = '';
   if (isSyncing) {
     el.syncStatusPill.classList.add('syncing');
     if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🔄 Menyinkron...';
-    if (el.syncSubLabel) el.syncSubLabel.textContent = 'Kirim data...';
+    if (el.syncSubLabel) el.syncSubLabel.textContent = 'Kirim data cloud...';
     if (el.btnManualSync) el.btnManualSync.classList.add('rotating');
+    syncTooltip = 'Status: Menyinkronkan data ke Cloud Server...';
   } else if (!isOnline) {
     el.syncStatusPill.classList.add('offline');
     if (el.syncStatusLabel) {
       el.syncStatusLabel.textContent = pendingCount > 0 ? `🟡 Offline (${pendingCount})` : '🟡 Offline';
     }
-    if (el.syncSubLabel) el.syncSubLabel.textContent = 'Tersimpan lokal';
+    if (el.syncSubLabel) el.syncSubLabel.textContent = 'Tersimpan di Tablet';
     if (el.btnManualSync) el.btnManualSync.classList.remove('rotating');
+    syncTooltip = `Status: Offline (${pendingCount > 0 ? `${pendingCount} nota pending lokal` : 'Koneksi terputus, data aman di tablet'})`;
   } else {
     el.syncStatusPill.classList.add('online');
     if (el.syncStatusLabel) {
@@ -740,7 +743,9 @@ function updateSyncStatusUI(syncState) {
       el.syncSubLabel.textContent = lastSyncTime ? `Sync ${lastSyncTime}` : 'Tersinkron (1 mnt)';
     }
     if (el.btnManualSync) el.btnManualSync.classList.remove('rotating');
+    syncTooltip = `Status: Online • Terhubung ke Server (Sync Terakhir: ${lastSyncTime || 'Tersinkron'})`;
   }
+  el.syncStatusPill.setAttribute('title', syncTooltip);
 
   // Update modal content if open
   if (el.modalDeviceId) el.modalDeviceId.textContent = deviceId || 'TAB-KIOS';
@@ -3955,13 +3960,28 @@ function renderFilteredHistoryTable() {
 
   el.historyTableBody.innerHTML = filtered.map(o => {
     const isCompleted = o.status === 'completed';
-    const timeStr = parseSafeDate(o.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const d = parseSafeDate(o.created_at);
+    const dateFormatted = d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+    const timeFormatted = d.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + ' WIB';
     const statusLabel = o.status === 'completed' ? 'Selesai' : (o.status === 'void' ? 'Batal' : o.status);
 
     return `
       <tr>
-        <td><strong>${escapeHtml(o.order_no)}</strong></td>
-        <td>${timeStr}</td>
+        <td><strong style="color: #0f172a; font-family: monospace; font-size: 13px;">${escapeHtml(o.order_no)}</strong></td>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-weight: 700; font-size: 12.5px; color: #1e293b; white-space: nowrap;">${dateFormatted}</span>
+            <span style="font-size: 11.5px; color: #64748b; font-family: monospace; white-space: nowrap;">${timeFormatted}</span>
+          </div>
+        </td>
         <td>${escapeHtml(o.customer_name || 'Umum')}</td>
         <td>${escapeHtml((o.payment_method || 'cash').toUpperCase())}</td>
         <td><strong>${formatRupiah(o.total_amount)}</strong></td>
@@ -6139,6 +6159,10 @@ async function handleSaveCashierIdentity() {
 function updateHardwareUI(hwState) {
   if (el.printerStatusPill) {
     el.printerStatusPill.className = `printer-status-pill ${hwState.isConnected ? 'online' : 'offline'}`;
+    const pTitle = hwState.isConnected
+      ? `Printer Thermal: Terhubung (${hwState.deviceName || 'Bluetooth'}) • Siap Cetak & Buka Laci Kasir`
+      : 'Printer Thermal: Terputus • Bluetooth / Laci Kasir RJ-11 (Klik untuk Pengaturan)';
+    el.printerStatusPill.setAttribute('title', pTitle);
   }
   if (el.printerStatusLabel) {
     if (hwState.isConnected) {

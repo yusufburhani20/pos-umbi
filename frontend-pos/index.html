@@ -66,8 +66,9 @@
 
         <div class="header-status-group">
           <!-- Live Sync Status Pill (Offline-First 1-Min Auto Sync) -->
-          <div class="sync-status-pill online" id="syncStatusPill" title="Status Sinkronisasi Cloud (Interval 1 Menit)">
+          <div class="sync-status-pill online" id="syncStatusPill" title="🟢 Online • Tersinkron (Interval 1 Menit)">
             <span class="sync-dot" id="syncStatusDot"></span>
+            <span class="sync-icon-symbol">🌐</span>
             <div class="sync-text-wrap">
               <span class="sync-status-label" id="syncStatusLabel">🟢 Online</span>
               <span class="sync-sub-label" id="syncSubLabel">Tersinkron (1 mnt)</span>
@@ -76,8 +77,9 @@
           </div>
 
           <!-- Live Hardware & Printer Bluetooth Pill -->
-          <div class="printer-status-pill offline" id="printerStatusPill" title="Status Printer Bluetooth & Laci Kasir (Cash Drawer)">
+          <div class="printer-status-pill offline" id="printerStatusPill" title="🖨️ Printer: Putus (Bluetooth / Laci Kasir RJ-11)">
             <span class="printer-dot" id="printerStatusDot"></span>
+            <span class="printer-icon-symbol">🖨️</span>
             <div class="printer-text-wrap">
               <span class="printer-status-label" id="printerStatusLabel">🖨️ Printer: Putus</span>
               <span class="printer-sub-label" id="printerSubLabel">Bluetooth / Laci RJ-11</span>
@@ -871,7 +873,7 @@
             <thead>
               <tr>
                 <th>No. Nota</th>
-                <th>Waktu</th>
+                <th>Tanggal & Waktu</th>
                 <th>Pembeli</th>
                 <th>Metode</th>
                 <th>Total</th>
@@ -2846,7 +2848,7 @@
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=22').then((reg) => {
+        navigator.serviceWorker.register('/sw.js?v=23').then((reg) => {
           console.log('[PWA] Service Worker registered:', reg.scope);
           reg.update();
         }).catch((err) => {

@@ -227,10 +227,12 @@ function updateHeaderStatusPills() {
       el.syncStatusPill.className = 'sync-status-pill online';
       if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🟢 Online';
       if (el.syncSubLabel) el.syncSubLabel.textContent = 'Tersinkron (1 mnt)';
+      el.syncStatusPill.setAttribute('title', 'Status: Online • Terhubung ke Server Cloud');
     } else {
       el.syncStatusPill.className = 'sync-status-pill offline';
       if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🔴 Offline';
       if (el.syncSubLabel) el.syncSubLabel.textContent = 'Mode Mandiri';
+      el.syncStatusPill.setAttribute('title', 'Status: Offline • Mode Mandiri (Data tersimpan di perangkat)');
     }
   }
 
@@ -240,10 +242,12 @@ function updateHeaderStatusPills() {
       el.printerStatusPill.className = 'printer-status-pill online';
       if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hardwareManager.connectedDevice.name || 'Printer OK'}`;
       if (el.printerSubLabel) el.printerSubLabel.textContent = 'Bluetooth / Laci RJ-11';
+      el.printerStatusPill.setAttribute('title', `Printer: Terhubung (${hardwareManager.connectedDevice.name || 'Thermal'}) • Siap Cetak`);
     } else {
       el.printerStatusPill.className = 'printer-status-pill offline';
       if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ Printer: Putus';
       if (el.printerSubLabel) el.printerSubLabel.textContent = 'Bluetooth / Laci RJ-11';
+      el.printerStatusPill.setAttribute('title', 'Printer: Terputus • Bluetooth / Laci Kasir (Klik untuk Pengaturan)');
     }
   }
 
