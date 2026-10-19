@@ -494,7 +494,14 @@ input, select, textarea {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 310px;
+  min-width: 320px;
+  max-width: 380px;
+  max-height: calc(100dvh - 70px) !important;
+  max-height: calc(100vh - 70px);
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
   background: #ffffff;
   border-radius: 14px;
   padding: 8px;
@@ -506,6 +513,24 @@ input, select, textarea {
   transform: translateY(-8px) scale(0.97);
   transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
   z-index: 2000;
+}
+
+.header-dropdown-menu::-webkit-scrollbar {
+  width: 5px;
+}
+
+.header-dropdown-menu::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+}
+
+.header-dropdown-menu::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+.header-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .header-dropdown.active .header-dropdown-menu {
@@ -608,6 +633,7 @@ input, select, textarea {
   font-family: inherit;
   user-select: none;
   box-sizing: border-box;
+  touch-action: pan-y !important;
 }
 
 .header-dropdown-item:hover {
@@ -2716,6 +2742,14 @@ input, select, textarea {
     position: absolute !important;
     top: calc(100% + 8px) !important;
     right: 0 !important;
+    min-width: 320px !important;
+    max-width: 380px !important;
+    max-height: calc(100dvh - 65px) !important;
+    max-height: calc(100vh - 65px) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
     z-index: 10000 !important;
   }
 
