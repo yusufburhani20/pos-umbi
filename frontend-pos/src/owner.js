@@ -13,6 +13,13 @@ function parseSafeDate(dateInput) {
   return new Date(s);
 }
 
+function getLocalDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function escapeHtml(str) {
   if (!str && str !== 0) return '';
   return String(str)
@@ -4554,7 +4561,7 @@ function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
   if (el.ownerPurchaseDueDate) {
     const d = new Date();
     d.setDate(d.getDate() + 14);
-    el.ownerPurchaseDueDate.value = d.toISOString().slice(0, 10);
+    el.ownerPurchaseDueDate.value = getLocalDateStr(d);
   }
 
   updateOwnerPurchaseTotal();

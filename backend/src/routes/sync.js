@@ -3,6 +3,20 @@ const router = express.Router();
 const { db, dbQuery } = require('../db');
 const { authenticateToken, logAudit } = require('../middleware/auth');
 
+function formatToJakartaTimestamp(dateInput) {
+  if (!dateInput) {
+    return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Jakarta' });
+  }
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateInput)) {
+    return dateInput;
+  }
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) {
+    return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Jakarta' });
+  }
+  return d.toLocaleString('sv-SE', { timeZone: 'Asia/Jakarta' });
+}
+
 // GET /api/sync/status
 // Lightweight heartbeat & sync status check
 router.get('/status', async (req, res) => {
@@ -147,7 +161,7 @@ router.post('/push', authenticateToken, async (req, res) => {
       const shiftId = await resolveShiftId(order.shift_id);
       const isTempo = order.payment_method === 'tempo';
       const orderStatus = order.status === 'void' ? 'void' : 'completed';
-      const orderDate = order.created_at || new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const orderDate = formatToJakartaTimestamp(order.created_at);
 
       let resolvedCustomerId = order.customer_id || null;
       let resolvedCustomerName = order.customer_name || null;
@@ -248,7 +262,7 @@ router.post('/push', authenticateToken, async (req, res) => {
     // 2. Process Stock Adjustments (Susut / Busuk / Opname)
     for (const adj of stock_adjustments) {
       const shiftId = await resolveShiftId(adj.shift_id);
-      const adjDate = adj.created_at || new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const adjDate = formatToJakartaTimestamp(adj.created_at);
 
       await dbQuery.run(
         `INSERT INTO stock_adjustments 
@@ -277,7 +291,7 @@ router.post('/push', authenticateToken, async (req, res) => {
     // 3. Process Debt Payments
     for (const pay of debt_payments) {
       const shiftId = await resolveShiftId(pay.shift_id);
-      const payDate = pay.payment_date || new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const payDate = formatToJakartaTimestamp(pay.payment_date);
 
       // Check debt exists
       const debt = await dbQuery.get('SELECT * FROM customer_debts WHERE id = ?', [pay.debt_id]);

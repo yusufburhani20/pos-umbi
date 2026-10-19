@@ -47,6 +47,17 @@ function parseSafeDate(dateInput) {
   return new Date(s);
 }
 
+function getLocalTimestampStr(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+
 function escapeHtml(str) {
   if (!str && str !== 0) return '';
   return String(str)
@@ -2457,7 +2468,7 @@ async function handleOpenShift() {
     id: 'OFF-' + Date.now(),
     cashier_id: state.user ? state.user.id : 1,
     cashier_name: state.user ? state.user.name : 'Kasir',
-    start_time: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    start_time: getLocalTimestampStr(),
     starting_cash: amount,
     status: 'open',
     is_offline: true
@@ -3531,7 +3542,7 @@ function updateTempoCalculation() {
   if (el.tempoDueDateInput && !el.tempoDueDateInput.value) {
     const d = new Date();
     d.setDate(d.getDate() + 7);
-    el.tempoDueDateInput.value = d.toISOString().split('T')[0];
+    el.tempoDueDateInput.value = getLocalDateStr(d);
   }
 
   const rawDp = el.tempoDpInput ? el.tempoDpInput.value.replace(/[^0-9]/g, '') : '';
@@ -3664,7 +3675,7 @@ async function handleProcessOrder() {
         cashier_name: state.user ? state.user.name : 'Kasir',
         customer_name: buyerName,
         customer_phone: buyerPhone,
-        created_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
+        created_at: getLocalTimestampStr()
       };
 
       // Save to IndexedDB outbox
@@ -3916,7 +3927,7 @@ async function handleSubmitWaste() {
         type,
         qty_kg: qty,
         notes,
-        created_at: new Date().toISOString()
+        created_at: getLocalTimestampStr()
       });
       await deductProductStockLocal(prodId, qty);
       syncEngine.syncNow({ silent: true });
@@ -5002,7 +5013,7 @@ async function handleCashierPayDebtSubmit() {
         amount_paid: amount,
         payment_method: method,
         notes: notes,
-        payment_date: new Date().toISOString()
+        payment_date: getLocalTimestampStr()
       });
       syncEngine.syncNow({ silent: true });
       showToast('Pembayaran kasbon disimpan di tablet (Offline)!', 'success');

@@ -4,6 +4,17 @@ const DB_VERSION = 1;
 
 let dbInstance = null;
 
+function getLocalTimestampStr(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+
 export function openOfflineDB() {
   if (dbInstance) return Promise.resolve(dbInstance);
 
@@ -241,7 +252,7 @@ export async function enqueueOrderLocal(orderData) {
     order_no: orderData.order_no,
     payload: orderData,
     status: orderData.status || 'pending', // 'pending' | 'synced'
-    created_at: orderData.created_at || new Date().toISOString()
+    created_at: orderData.created_at || getLocalTimestampStr()
   };
 
   return new Promise((resolve, reject) => {
@@ -342,7 +353,7 @@ export async function enqueueAdjustmentLocal(adjData) {
   const record = {
     payload: adjData,
     status: 'pending',
-    created_at: adjData.created_at || new Date().toISOString()
+    created_at: adjData.created_at || getLocalTimestampStr()
   };
   return new Promise((resolve, reject) => {
     const req = store.add(record);
@@ -394,7 +405,7 @@ export async function enqueueDebtPaymentLocal(payData) {
   const record = {
     payload: payData,
     status: 'pending',
-    created_at: payData.payment_date || new Date().toISOString()
+    created_at: payData.payment_date || getLocalTimestampStr()
   };
   return new Promise((resolve, reject) => {
     const req = store.add(record);
