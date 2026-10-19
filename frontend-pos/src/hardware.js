@@ -538,8 +538,8 @@ class HardwareManager {
       append('*** BUKTI KAS MASUK TOKO ***\n');
       append('(TAMBAH MODAL / DANA LACI)\n');
     } else {
-      append('*** VOUCHER BIAYA OPERASIONAL ***\n');
-      append('(BUKTI PENGELUARAN KAS)\n');
+      append('*** BIAYA OPERASIONAL ***\n');
+      append('(PENGELUARAN KAS KIOS)\n');
     }
     if (isReprint) {
       append('*** SALINAN / CETAK ULANG ***\n');
@@ -574,14 +574,12 @@ class HardwareManager {
       append(divider + '\n');
     }
 
-    // 6. Signature Boxes (Kasir & Penerima) - Compact Side-by-Side
+    // 6. Petugas & Penerima (Simpel 1 baris, tidak turun ke bawah)
     append(COMMANDS.ALIGN_CENTER);
     if (is80mm) {
-      append('     Kasir / Petugas,              Penerima Dana,     \n\n');
-      append('  ( .................. )        ( .................. )\n');
+      append('Petugas: ( .................. )   Penerima: ( .................. )\n');
     } else {
-      append('  Kasir,            Penerima,   \n\n');
-      append(' ( ........ )     ( ........ )\n');
+      append('Petugas: (....) Penerima: (....)\n');
     }
 
     // 7. Footer
@@ -631,7 +629,7 @@ class HardwareManager {
     }
   }
 
-  // --- Build Shift Balancing Report Bytes (Laporan X & Laporan Harian) ---
+  // --- Build Shift Balancing Report Bytes (Laporan Harian) ---
   buildShiftReportBytes(shiftData, type = 'X', settings = {}) {
     const is80mm = this.config.paperSize === '80mm';
     const maxCols = is80mm ? 48 : 32;
@@ -684,9 +682,9 @@ class HardwareManager {
       append(COMMANDS.NORMAL_TEXT);
       append('(REKONSILIASI KAS & PENUTUPAN HARIAN)\n');
     } else {
-      append('*** LAPORAN X (CEK SALDO BERJALAN) ***\n');
+      append('*** LAPORAN HARIAN (CEK KAS BERJALAN) ***\n');
       append(COMMANDS.NORMAL_TEXT);
-      append('(RINGKASAN SEMENTARA TENGAH SHIFT)\n');
+      append('(RINGKASAN SALDO KAS BERJALAN)\n');
     }
     append(COMMANDS.BOLD_OFF);
     append(subDivider + '\n');

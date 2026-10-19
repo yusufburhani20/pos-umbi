@@ -460,7 +460,7 @@
       <span class="toc-page">Hal 4 - 5</span>
     </li>
     <li class="toc-item">
-      <span class="toc-title">BAB 3: Dashboard Kasir & Rekonsiliasi Kas Harian (cashier.html - Laporan X, Z, & Biaya)</span>
+      <span class="toc-title">BAB 3: Dashboard Kasir & Rekonsiliasi Kas Harian (cashier.html - Laporan Harian & Biaya)</span>
       <span class="toc-page">Hal 6</span>
     </li>
     <li class="toc-item">
@@ -512,7 +512,7 @@
           <td>
             <strong>Register POS:</strong> <code>https://kassa.konfigin.my.id/</code><br>
             <strong>Dashboard Kasir:</strong> <code>https://kassa.konfigin.my.id/cashier.html</code><br>
-            Wewenang: Buka/Tutup Shift, Penimbangan Kiloan, Kasbon Tempo, Catat Biaya Kas Laci, Buka Laci Kasir, Cetak Laporan X & Z.
+            Wewenang: Buka/Tutup Shift, Penimbangan Kiloan, Kasbon Tempo, Catat Biaya Kas Laci, Buka Laci Kasir, Cetak Laporan Harian.
           </td>
         </tr>
         <tr>
@@ -808,19 +808,19 @@
   <div class="step-box avoid-break">
     <div class="step-header">
       <div class="step-num">3</div>
-      <div class="step-title">Laporan Shift X (Mid-Day Audit) vs Laporan Shift Z (End-of-Day Close)</div>
+      <div class="step-title">Laporan Harian (Cek Kas Berjalan) vs Laporan Harian (Tutup Shift)</div>
     </div>
-    <p>Dua jenis laporan kasir standar ritel modern yang dapat dicetak langsung ke printer thermal:</p>
+    <p>Dua jenis laporan kasir yang dapat dicetak langsung ke printer thermal:</p>
     <ul>
-      <li><strong>🖨️ Cetak Laporan X (Audit Tengah Shift):</strong> Digunakan saat pemilik toko melakukan inspeksi mendadak (*sidak*) di siang hari, atau saat kasir ingin mengecek performa kas sementara <em>tanpa menutup shift aktif</em>. Transaksi kasir tetap berjalan normal setelah Laporan X dicetak.</li>
-      <li><strong>🔒 Cetak Laporan Z & Tutup Shift Resmi:</strong> Digunakan di sore/malam hari saat kios tutup. Sistem akan membekukan shift aktif, mencetak ringkasan penutupan resmi (Laporan Z) yang memuat total omset, modal awal, penjualan tunai, pengeluaran kas, uang fisik, dan selisih kas. Shift resmi ditutup untuk serah terima ke kasir berikutnya.</li>
+      <li><strong>🖨️ Cetak Laporan Harian (Cek Kas Berjalan):</strong> Digunakan saat pemilik toko melakukan inspeksi mendadak (*sidak*) di siang hari, atau saat kasir ingin mengecek performa kas sementara <em>tanpa menutup shift aktif</em>. Transaksi kasir tetap berjalan normal setelah laporan dicetak.</li>
+      <li><strong>🔒 Cetak Laporan Harian & Tutup Shift:</strong> Digunakan di sore/malam hari saat kios tutup. Sistem akan membekukan shift aktif, mencetak ringkasan penutupan resmi yang memuat total omset, modal awal, penjualan tunai, pengeluaran kas, uang fisik, dan selisih kas. Shift resmi ditutup untuk serah terima ke kasir berikutnya.</li>
     </ul>
   </div>
 
   <div class="step-box avoid-break">
     <div class="step-header">
       <div class="step-num">4</div>
-      <div class="step-title">Pencatatan Biaya Kas Laci & Cetak Bukti Voucher Thermal</div>
+      <div class="step-title">Pencatatan Biaya Kas Laci & Cetak Struk Biaya Operasional</div>
     </div>
     <p>Setiap kali uang tunai diambil dari laci untuk operasional kios:</p>
     <ol>
@@ -1359,8 +1359,8 @@
       <tr>
         <td>8</td>
         <td>Cetak Laporan Shift X</td>
-        <td>Di <code>cashier.html</code>, ketuk tombol Cetak Laporan X untuk audit laci tengah hari</td>
-        <td>[ &nbsp; ] Laporan X Cetak</td>
+        <td>Di <code>cashier.html</code>, ketuk tombol Cetak Laporan Harian untuk audit laci tengah hari</td>
+        <td>[ &nbsp; ] Laporan Harian Dicetak</td>
       </tr>
       <tr>
         <td>9</td>

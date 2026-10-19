@@ -1864,7 +1864,7 @@ input, select, textarea {
 
 /* Ensure stacked modals (Receipt reprint, Void auth, Child catalog modals) always appear in FRONT of parent modals */
 #receiptModal {
-  z-index: 1300 !important;
+  z-index: 100100 !important;
 }
 
 #voidAuthModal {

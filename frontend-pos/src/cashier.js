@@ -548,7 +548,7 @@ async function loadActiveShiftData() {
     if (el.salesTempo) el.salesTempo.textContent = formatRupiah(s.tempo_sales || 0);
     if (el.totalOmset) el.totalOmset.textContent = formatRupiah(s.total_omset || 0);
 
-    // Recent Expenses List with Print Voucher buttons
+    // Recent Expenses List with Print buttons
     if (el.expensesListContainer) {
       if (s.recent_expenses && s.recent_expenses.length > 0) {
         el.expensesListContainer.innerHTML = s.recent_expenses.map(e => {
@@ -698,13 +698,13 @@ function openReceiptPreview(type, data) {
   let titleText = 'Pratinjau Struk Thermal';
 
   if (type === 'shift_x') {
-    titleText = 'Pratinjau Struk Laporan X (Cek Kas Berjalan)';
+    titleText = 'Pratinjau Struk Laporan Harian (Cek Kas Berjalan)';
     htmlReceipt = renderThermalShiftReceipt(data, 'X');
   } else if (type === 'shift_z') {
     titleText = 'Pratinjau Struk Laporan Harian (Tutup Shift Kasir)';
     htmlReceipt = renderThermalShiftReceipt(data, 'Z');
   } else if (type === 'expense') {
-    titleText = 'Pratinjau Voucher Pengeluaran Kas Laci';
+    titleText = 'Pratinjau Struk Biaya Operasional';
     htmlReceipt = renderThermalExpenseReceipt(data, false);
   } else if (type === 'income') {
     titleText = 'Pratinjau Bukti Kas Masuk Laci';
@@ -756,7 +756,7 @@ async function handleConfirmPrintReceipt() {
     if (type === 'shift_x' || type === 'shift_z') {
       const modeType = type === 'shift_z' ? 'Z' : 'X';
       await hardwareManager.printShiftReport(data, modeType, settings);
-      const repLabel = type === 'shift_z' ? 'Laporan Harian' : 'Laporan X';
+      const repLabel = 'Laporan Harian';
       showToast(`🖨️ Struk ${repLabel} berhasil dikirim ke printer!`, 'success');
     } else if (type === 'expense' || type === 'income') {
       await hardwareManager.printExpense(data, settings, false);
@@ -806,7 +806,7 @@ async function handleDirectOpenShift() {
 }
 
 // -----------------------------------------------------------------------------
-// PRINT LAPORAN X (CEK SALDO BERJALAN) -> BUKA PRATINJAU DULU
+// PRINT LAPORAN HARIAN (CEK SALDO BERJALAN) -> BUKA PRATINJAU DULU
 // -----------------------------------------------------------------------------
 function handlePrintReportX() {
   if (!state.shift) {
@@ -891,7 +891,7 @@ async function handleCloseShiftZ() {
 }
 
 // -----------------------------------------------------------------------------
-// RENDER THERMAL SHIFT RECEIPT (LAPORAN X & Z)
+// RENDER THERMAL SHIFT RECEIPT (LAPORAN HARIAN)
 // -----------------------------------------------------------------------------
 function renderThermalShiftReceipt(shiftData, type = 'X') {
   const isZ = type === 'Z';
@@ -974,10 +974,10 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
       ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
       <div class="receipt-divider"></div>
       <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
-        ${isZ ? '*** LAPORAN HARIAN (TUTUP KASIR) ***' : '*** LAPORAN X (CEK SALDO BERJALAN) ***'}
+        ${isZ ? '*** LAPORAN HARIAN (TUTUP KASIR) ***' : '*** LAPORAN HARIAN (CEK KAS BERJALAN) ***'}
       </div>
       <div style="font-size: 11px; color: #475569;">
-        ${isZ ? '(REKONSILIASI KAS & PENUTUPAN HARIAN)' : '(RINGKASAN SEMENTARA TENGAH SHIFT)'}
+        ${isZ ? '(REKONSILIASI KAS & PENUTUPAN HARIAN)' : '(RINGKASAN SALDO KAS BERJALAN)'}
       </div>
       <div style="margin-top: 6px;">No. Shift   : #${escapeHtml(String(shiftData.id || shiftData.shift_id || '-'))}</div>
       <div>Petugas Kasir: ${escapeHtml(shiftData.cashier_name || (state.user ? state.user.name : 'Kasir'))}</div>
@@ -1083,7 +1083,7 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
 }
 
 // -----------------------------------------------------------------------------
-// RENDER THERMAL EXPENSE RECEIPT (VOUCHER BIAYA & KAS MASUK)
+// RENDER THERMAL EXPENSE RECEIPT (STRUK BIAYA & KAS MASUK)
 // -----------------------------------------------------------------------------
 function renderThermalExpenseReceipt(expense, isReprint = false) {
   const isIncome = expense.type === 'income';
@@ -1101,15 +1101,14 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
       ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
       <div class="receipt-divider"></div>
       <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
-        ${isIncome ? '*** BUKTI KAS MASUK TOKO ***' : '*** VOUCHER BIAYA OPERASIONAL ***'}
+        ${isIncome ? '*** BUKTI KAS MASUK TOKO ***' : '*** BIAYA OPERASIONAL ***'}
       </div>
       <div style="font-size: 11px; color: #475569;">
-        ${isIncome ? '(TAMBAH MODAL / DANA LACI)' : '(BUKTI PENGELUARAN KAS KIOS)'}
+        ${isIncome ? '(TAMBAH MODAL / DANA LACI)' : '(PENGELUARAN KAS KIOS)'}
       </div>
       ${isReprint ? '<div class="receipt-reprint-tag" style="background:#0f172a; color:#fff; font-weight:800; padding:2px 4px; margin:4px 0; border-radius:4px; text-align:center;">*** SALINAN / CETAK ULANG ***</div>' : ''}
       <div style="margin-top: 6px;">No. Bukti : ${escapeHtml(expense.expense_no || ('EXP-' + (expense.id || '001')))}</div>
       <div>Waktu     : ${timeFormatted}</div>
-      <div>Petugas   : ${escapeHtml(expense.recorded_by_name || (state.user ? state.user.name : 'Kasir'))}</div>
       <div>Sumber Kas: ${expense.source === 'cash' ? '💵 Kas Laci Kasir' : '🏦 Transfer Bank'}</div>
       <div>Kategori  : ${escapeHtml(expense.category_name || expense.category || '-')}</div>
     </div>
@@ -1129,15 +1128,9 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
       <div class="receipt-divider"></div>
     ` : ''}
     <div class="receipt-divider" style="margin-top:8px;"></div>
-    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 10px; margin-top: 6px; padding: 0 4px;">
-      <div style="width: 48%;">
-        Kasir Bertugas,<br><br>
-        ( ............... )
-      </div>
-      <div style="width: 48%;">
-        Penerima Dana,<br><br>
-        ( ............... )
-      </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-top: 6px; padding: 4px 6px; border: 1px dashed #cbd5e1; border-radius: 6px; background: #f8fafc;">
+      <span>Petugas: <strong>${escapeHtml(expense.recorded_by_name || (state.user ? state.user.name : 'Kasir'))}</strong></span>
+      <span>Penerima: <strong>( ............ )</strong></span>
     </div>
     <div class="receipt-divider" style="margin-top: 8px;"></div>
     <div class="receipt-footer" style="padding: 2px 0 0; font-size: 9.5px;">

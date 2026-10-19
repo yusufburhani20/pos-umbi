@@ -312,6 +312,7 @@ const el = {
   inputExpenseAmount: document.getElementById('inputExpenseAmount'),
   inputExpenseNotes: document.getElementById('inputExpenseNotes'),
   btnSubmitExpense: document.getElementById('btnSubmitExpense'),
+  chkAutoPrintExpense: document.getElementById('chkAutoPrintExpense'),
   btnResetExpenseAmount: document.getElementById('btnResetExpenseAmount'),
   searchExpenseHistoryInput: document.getElementById('searchExpenseHistoryInput'),
   filterExpenseCategory: document.getElementById('filterExpenseCategory'),
@@ -6677,10 +6678,10 @@ function renderCashierExpensesHistoryTable() {
         state.lastCompletedOrder = null;
         state.lastExpenseIsReprint = true;
         renderThermalExpenseReceipt(exp, true);
-        if (el.receiptModalTitle) el.receiptModalTitle.textContent = exp.type === 'income' ? 'Pratinjau Bukti Kas Masuk' : 'Pratinjau Voucher Biaya Kas';
+        if (el.receiptModalTitle) el.receiptModalTitle.textContent = exp.type === 'income' ? 'Pratinjau Bukti Kas Masuk' : 'Pratinjau Struk Biaya Operasional';
         if (el.btnNextOrder) el.btnNextOrder.textContent = 'Tutup Pratinjau';
         if (el.receiptModal) {
-          el.receiptModal.style.zIndex = '13000';
+          el.receiptModal.style.zIndex = '100100';
           el.receiptModal.style.display = 'flex';
         }
       }
@@ -6711,15 +6712,14 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
       ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
       <div class="receipt-divider"></div>
       <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
-        ${isIncome ? '*** BUKTI KAS MASUK TOKO ***' : '*** VOUCHER BIAYA OPERASIONAL ***'}
+        ${isIncome ? '*** BUKTI KAS MASUK TOKO ***' : '*** BIAYA OPERASIONAL ***'}
       </div>
       <div style="font-size: 11px; color: #475569;">
-        ${isIncome ? '(TAMBAH MODAL / DANA LACI)' : '(BUKTI PENGELUARAN KAS KIOS)'}
+        ${isIncome ? '(TAMBAH MODAL / DANA LACI)' : '(PENGELUARAN KAS KIOS)'}
       </div>
       ${isReprint ? '<div class="receipt-reprint-tag" style="background:#0f172a; color:#fff; font-weight:800; padding:2px 4px; margin:4px 0; border-radius:4px; text-align:center;">*** SALINAN / CETAK ULANG ***</div>' : ''}
       <div style="margin-top: 6px;">No. Bukti : ${escapeHtml(expense.expense_no || '-')}</div>
       <div>Waktu     : ${timeFormatted}</div>
-      <div>Petugas   : ${escapeHtml(expense.recorded_by_name || (state.user ? state.user.name : 'Kasir'))}</div>
       <div>Sumber Kas: ${expense.source === 'cash' ? '💵 Kas Laci Kasir' : '🏦 Transfer Bank'}</div>
       <div>Kategori  : ${escapeHtml(expense.category_name || '-')}</div>
     </div>
@@ -6739,17 +6739,11 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
       <div class="receipt-divider"></div>
     ` : ''}
     <div class="receipt-divider" style="margin-top: 8px;"></div>
-    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 10.5px; margin-top: 8px; padding: 0 4px;">
-      <div style="width: 46%;">
-        Kasir / Petugas,<br><br>
-        ( ............... )
-      </div>
-      <div style="width: 46%;">
-        Penerima Dana,<br><br>
-        ( ............... )
-      </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-top: 6px; padding: 4px 6px; border: 1px dashed #cbd5e1; border-radius: 6px; background: #f8fafc;">
+      <span>Petugas: <strong>${escapeHtml(expense.recorded_by_name || (state.user ? state.user.name : 'Kasir'))}</strong></span>
+      <span>Penerima: <strong>( ............ )</strong></span>
     </div>
-    <div class="receipt-divider" style="margin-top: 10px;"></div>
+    <div class="receipt-divider" style="margin-top: 8px;"></div>
     <div class="receipt-footer">
       <p style="margin: 0; font-size: 10px; color: #64748b;">Harap simpan struk ini sebagai bukti sah pembukuan kios.</p>
     </div>
@@ -6794,17 +6788,28 @@ async function handleSaveCashierExpense() {
 
     showToast(res.message || 'Pengeluaran berhasil dicatat!', 'success');
 
-    // Show voucher preview modal first
+    // Show preview modal
     if (res.expense) {
       state.lastCompletedExpense = res.expense;
       state.lastCompletedOrder = null;
       state.lastExpenseIsReprint = false;
       renderThermalExpenseReceipt(res.expense, false);
-      if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Pratinjau Voucher Biaya Kas Laci';
+      if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Pratinjau Struk Biaya Operasional';
       if (el.btnNextOrder) el.btnNextOrder.textContent = 'Tutup Pratinjau';
       if (el.receiptModal) {
-        el.receiptModal.style.zIndex = '13000';
+        el.receiptModal.style.zIndex = '100100';
         el.receiptModal.style.display = 'flex';
+      }
+
+      // Auto print if enabled and printer is connected
+      const shouldAutoPrint = el.chkAutoPrintExpense ? el.chkAutoPrintExpense.checked : true;
+      if (shouldAutoPrint && hardwareManager && hardwareManager.isConnected) {
+        try {
+          await hardwareManager.printExpense(res.expense, state.settings, false);
+          showToast('🖨️ Struk biaya operasional tercetak otomatis!', 'success');
+        } catch (printErr) {
+          console.warn('Auto print expense error:', printErr);
+        }
       }
     }
 
@@ -6850,7 +6855,7 @@ async function handleSaveCashierIncome() {
 
     showToast(res.message || 'Kas masuk berhasil dicatat!', 'success');
 
-    // Show voucher preview modal first
+    // Show preview modal first
     if (res.expense) {
       state.lastCompletedExpense = res.expense;
       state.lastCompletedOrder = null;
@@ -6859,7 +6864,7 @@ async function handleSaveCashierIncome() {
       if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Pratinjau Bukti Kas Masuk Laci';
       if (el.btnNextOrder) el.btnNextOrder.textContent = 'Tutup Pratinjau';
       if (el.receiptModal) {
-        el.receiptModal.style.zIndex = '13000';
+        el.receiptModal.style.zIndex = '100100';
         el.receiptModal.style.display = 'flex';
       }
     }
@@ -7097,19 +7102,19 @@ async function handleDashboardPrintReportX() {
   try {
     if (el.btnDashboardPrintReportX) {
       el.btnDashboardPrintReportX.disabled = true;
-      el.btnDashboardPrintReportX.innerHTML = '<span>⏳</span> Mencetak Laporan X...';
+      el.btnDashboardPrintReportX.innerHTML = '<span>⏳</span> Mencetak Laporan Harian...';
     }
 
     renderThermalShiftReceipt(reportData, 'X');
     const settings = state.settings || {};
     await hardwareManager.printShiftReport(reportData, 'X', settings);
-    showToast('🖨️ Struk Laporan X (Cek Kas Berjalan) berhasil dicetak ke printer kasir!', 'success');
+    showToast('🖨️ Struk Laporan Harian (Cek Kas Berjalan) berhasil dicetak ke printer kasir!', 'success');
   } catch (err) {
-    showToast('Gagal mencetak Laporan X: ' + err.message, 'error');
+    showToast('Gagal mencetak Laporan Harian: ' + err.message, 'error');
   } finally {
     if (el.btnDashboardPrintReportX) {
       el.btnDashboardPrintReportX.disabled = false;
-      el.btnDashboardPrintReportX.innerHTML = '<span>🖨️</span> Cetak Laporan X (Cek Kas Berjalan)';
+      el.btnDashboardPrintReportX.innerHTML = '<span>🖨️</span> Cetak Laporan Harian (Cek Kas Berjalan)';
     }
   }
 }
@@ -7265,10 +7270,10 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
       ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
       <div class="receipt-divider"></div>
       <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
-        ${isZ ? '*** LAPORAN HARIAN (TUTUP KASIR) ***' : '*** LAPORAN X (CEK SALDO BERJALAN) ***'}
+        ${isZ ? '*** LAPORAN HARIAN (TUTUP KASIR) ***' : '*** LAPORAN HARIAN (CEK KAS BERJALAN) ***'}
       </div>
       <div style="font-size: 11px; color: #475569;">
-        ${isZ ? '(REKONSILIASI KAS & PENUTUPAN HARIAN)' : '(RINGKASAN SEMENTARA TENGAH SHIFT)'}
+        ${isZ ? '(REKONSILIASI KAS & PENUTUPAN HARIAN)' : '(RINGKASAN SALDO KAS BERJALAN)'}
       </div>
       <div style="margin-top: 6px;">No. Shift   : #${escapeHtml(String(shiftData.id || shiftData.shift_id || '-'))}</div>
       <div>Petugas Kasir: ${escapeHtml(shiftData.cashier_name || (state.user ? state.user.name : 'Kasir'))}</div>
