@@ -3618,6 +3618,8 @@ function renderThermalReceipt(order, isReprint = false) {
       ${sFooter.split('\n').map(line => `<p>${line}</p>`).join('')}
     </div>
   `;
+  const rBody = el.receiptModal ? el.receiptModal.querySelector('.modal-body') : null;
+  if (rBody) rBody.scrollTop = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -6523,6 +6525,8 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
       <p style="margin: 0; font-size: 10px; color: #64748b;">Harap simpan struk ini sebagai bukti sah pembukuan kios.</p>
     </div>
   `;
+  const rBody = el.receiptModal ? el.receiptModal.querySelector('.modal-body') : null;
+  if (rBody) rBody.scrollTop = 0;
 }
 
 async function handleSaveCashierExpense() {
@@ -7097,6 +7101,8 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
       <p style="margin: 0;">Kassa POS • Sistem Kasir Pintar Kios Pasar</p>
     </div>
   `;
+  const rBody = el.receiptModal ? el.receiptModal.querySelector('.modal-body') : null;
+  if (rBody) rBody.scrollTop = 0;
 }
 
 

@@ -651,6 +651,8 @@ function openReceiptPreview(type, data) {
 
   if (el.modalReceiptPreview) {
     el.modalReceiptPreview.style.display = 'flex';
+    const rBody = el.modalReceiptPreview.querySelector('.modal-body');
+    if (rBody) rBody.scrollTop = 0;
   }
 }
 

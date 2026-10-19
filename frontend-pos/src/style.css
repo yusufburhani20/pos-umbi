@@ -2401,26 +2401,64 @@ input, select, textarea {
   max-width: 320px !important;
   width: 92vw !important;
   border-radius: 14px !important;
-  max-height: 88vh !important;
+  max-height: 86vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 
 #receiptModal .modal-header,
 .cashier-preview-dialog .modal-header {
   padding: 10px 14px !important;
+  flex-shrink: 0 !important;
 }
 
 #receiptModal .modal-body,
 .cashier-preview-dialog .modal-body {
-  padding: 10px 12px !important;
-  max-height: 52vh !important;
+  padding: 12px 14px !important;
+  max-height: 64vh !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
   overflow-y: auto !important;
-  display: flex !important;
-  justify-content: center !important;
+  -webkit-overflow-scrolling: touch !important;
+  display: block !important;
+  background: #f1f5f9 !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+}
+
+/* Clear visible scrollbar for receipt preview */
+#receiptModal .modal-body::-webkit-scrollbar,
+.cashier-preview-dialog .modal-body::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+
+#receiptModal .modal-body::-webkit-scrollbar-track,
+.cashier-preview-dialog .modal-body::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+#receiptModal .modal-body::-webkit-scrollbar-thumb,
+.cashier-preview-dialog .modal-body::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+
+#receiptModal .thermal-receipt,
+.cashier-preview-dialog .thermal-receipt {
+  margin: 0 auto !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 275px !important;
+  box-sizing: border-box !important;
 }
 
 #receiptModal .modal-footer,
 .cashier-preview-dialog .modal-footer {
   padding: 10px 12px !important;
+  flex-shrink: 0 !important;
 }
 
 /* Denomination Grid (Blind Shift) */
