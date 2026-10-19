@@ -2966,5 +2966,87 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL: Login PIN Khusus Owner (Direct Phone Login) -->
+  <div class="modal-backdrop owner-login-backdrop" id="ownerLoginModal" style="display:none; z-index: 999999;">
+    <div class="modal-dialog owner-login-dialog">
+      <div class="owner-login-header">
+        <div class="owner-login-badge-wrap">
+          <div class="owner-login-icon">👑</div>
+          <span class="owner-portal-tag">PORTAL EKSEKUTIF PEMILIK</span>
+        </div>
+        <h2 class="owner-login-title">Kassa POS • Executive</h2>
+        <p class="owner-login-store" id="ownerLoginStoreName">PD. HASIL BUMI RAYA 1</p>
+        <p class="owner-login-desc">Masukkan 6 Digit PIN Pemilik untuk mengakses laporan & kontrol finansial toko.</p>
+      </div>
+
+      <div class="owner-login-body">
+        <!-- Error / Warning Alert Box -->
+        <div id="ownerLoginAlert" class="owner-login-alert" style="display:none;"></div>
+
+        <!-- 6 PIN Dots Indicator -->
+        <div class="owner-pin-display-wrapper" id="ownerPinDisplayWrap" title="Ketuk untuk input PIN">
+          <input type="password" id="ownerPinInput" class="owner-pin-hidden-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+          <div class="owner-pin-dots" id="ownerPinDots">
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+            <span class="pin-dot"></span>
+          </div>
+        </div>
+
+        <!-- Touch Numpad Grid -->
+        <div class="owner-numpad-grid" id="ownerLoginNumpad">
+          <button type="button" class="btn-owner-num" data-key="1">1</button>
+          <button type="button" class="btn-owner-num" data-key="2">2</button>
+          <button type="button" class="btn-owner-num" data-key="3">3</button>
+          <button type="button" class="btn-owner-num" data-key="4">4</button>
+          <button type="button" class="btn-owner-num" data-key="5">5</button>
+          <button type="button" class="btn-owner-num" data-key="6">6</button>
+          <button type="button" class="btn-owner-num" data-key="7">7</button>
+          <button type="button" class="btn-owner-num" data-key="8">8</button>
+          <button type="button" class="btn-owner-num" data-key="9">9</button>
+          <button type="button" class="btn-owner-num btn-owner-num-clear" data-key="clear" title="Hapus Semua">C</button>
+          <button type="button" class="btn-owner-num" data-key="0">0</button>
+          <button type="button" class="btn-owner-num btn-owner-num-action" data-key="backspace" title="Hapus Satu Digit">⌫</button>
+        </div>
+
+        <div class="owner-login-footer-actions">
+          <a href="/?mode=pos" class="btn-switch-cashier">
+            <span>🛒 Masuk ke Terminal Kasir Toko ➔</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Konfirmasi Logout Owner -->
+  <div class="modal-backdrop" id="modalConfirmLogoutOwner" style="display:none; z-index: 10050;">
+    <div class="modal-dialog modal-sm" style="max-width: 420px; width: 95vw; background: #ffffff; border-radius: 16px; border: 1.5px solid #e2e8f0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+      <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 22px;">
+        <div class="modal-title-wrap" style="display: flex; align-items: center; gap: 12px;">
+          <span class="modal-icon-badge amber" style="background: #fef3c7; color: #d97706; font-size: 22px; padding: 6px 12px; border-radius: 10px;">🚪</span>
+          <div>
+            <h2 style="color: #0f172a; margin: 0; font-size: 18px; font-weight: 800;">Keluar Sesi Owner?</h2>
+            <p class="modal-subtitle" style="color: #64748b; font-size: 12px; margin: 2px 0 0 0;">Kunci dashboard dari akses yang tidak berwenang</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalLogoutOwner" style="color: #64748b;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px 22px;">
+        <p style="margin: 0; font-size: 13.5px; color: #334155; line-height: 1.5;">
+          Sesi pemilik toko akan diakhiri secara aman. Anda dapat masuk kembali kapan saja dengan memasukkan PIN Owner.
+        </p>
+      </div>
+      <div class="modal-footer" style="padding: 14px 22px; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn-footer-secondary" id="btnCancelModalLogoutOwner" type="button" style="padding: 8px 18px; border-radius: 8px;">Batal</button>
+        <button class="btn-footer-primary" id="btnConfirmLogoutOwnerSubmit" type="button" style="background: #059669; border: 1px solid #047857; color: #ffffff; padding: 8px 20px; border-radius: 8px; font-weight: 700; cursor: pointer;">
+          <span>🔒 Ya, Kunci & Keluar</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

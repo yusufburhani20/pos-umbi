@@ -469,7 +469,21 @@ const el = {
   ownerExpenseShortageAlert: document.getElementById('ownerExpenseShortageAlert'),
   lblOwnerDrawerAvail: document.getElementById('lblOwnerDrawerAvail'),
   lblOwnerDrawerShortage: document.getElementById('lblOwnerDrawerShortage'),
-  btnOwnerQuickAddIncomeFromAlert: document.getElementById('btnOwnerQuickAddIncomeFromAlert')
+  btnOwnerQuickAddIncomeFromAlert: document.getElementById('btnOwnerQuickAddIncomeFromAlert'),
+
+  // Owner Direct Login & Logout Confirmation Elements
+  ownerLoginModal: document.getElementById('ownerLoginModal'),
+  ownerLoginDialog: document.querySelector('.owner-login-dialog'),
+  ownerLoginAlert: document.getElementById('ownerLoginAlert'),
+  ownerLoginStoreName: document.getElementById('ownerLoginStoreName'),
+  ownerPinInput: document.getElementById('ownerPinInput'),
+  ownerPinDisplayWrap: document.getElementById('ownerPinDisplayWrap'),
+  ownerPinDots: document.getElementById('ownerPinDots'),
+  ownerLoginNumpad: document.getElementById('ownerLoginNumpad'),
+  modalConfirmLogoutOwner: document.getElementById('modalConfirmLogoutOwner'),
+  btnCloseModalLogoutOwner: document.getElementById('btnCloseModalLogoutOwner'),
+  btnCancelModalLogoutOwner: document.getElementById('btnCancelModalLogoutOwner'),
+  btnConfirmLogoutOwnerSubmit: document.getElementById('btnConfirmLogoutOwnerSubmit')
 };
 
 
@@ -575,10 +589,223 @@ function showToast(message, type = 'success') {
 }
 
 // -----------------------------------------------------------------------------
+// OWNER AUTHENTICATION & DIRECT PHONE LOGIN ENGINE
+// -----------------------------------------------------------------------------
+let ownerPollingTimer = null;
+let ownerEnteredPin = '';
+
+function startOwnerAutoPolling() {
+  if (ownerPollingTimer) clearInterval(ownerPollingTimer);
+  ownerPollingTimer = setInterval(() => {
+    if (!api.token || !state.user || state.user.role !== 'owner') return;
+    checkTabletSyncHeartbeat();
+    api.getDashboardReport().then(dashRes => {
+      state.dashboard = dashRes;
+      renderKPIs();
+      renderLiquiditySnapshot();
+      renderDailyCashflowLedger();
+      renderRevenueChart();
+      renderAnomalyRadar();
+      renderLowStockRadar();
+      renderVoidDetails();
+      renderRecentFeeds();
+    }).catch(() => {});
+  }, 30000);
+}
+
+function showOwnerLoginModal(initialMsg = null) {
+  if (!el.ownerLoginModal) return;
+  ownerEnteredPin = '';
+  if (el.ownerPinInput) el.ownerPinInput.value = '';
+  updateOwnerPinDots();
+
+  if (el.ownerLoginAlert) {
+    if (initialMsg) {
+      el.ownerLoginAlert.textContent = initialMsg;
+      el.ownerLoginAlert.style.display = 'block';
+    } else {
+      el.ownerLoginAlert.textContent = '';
+      el.ownerLoginAlert.style.display = 'none';
+    }
+  }
+
+  if (el.ownerLoginStoreName) {
+    const storeName = (state.settings && state.settings.store_name) || localStorage.getItem('pos_store_name') || 'PD. HASIL BUMI RAYA 1';
+    el.ownerLoginStoreName.textContent = storeName;
+  }
+
+  el.ownerLoginModal.style.display = 'flex';
+  setTimeout(() => {
+    if (el.ownerPinInput) el.ownerPinInput.focus();
+  }, 100);
+}
+
+function hideOwnerLoginModal() {
+  if (el.ownerLoginModal) {
+    el.ownerLoginModal.style.display = 'none';
+  }
+  ownerEnteredPin = '';
+  if (el.ownerPinInput) el.ownerPinInput.value = '';
+  updateOwnerPinDots();
+}
+
+function updateOwnerPinDots() {
+  if (!el.ownerPinDots) return;
+  const dots = el.ownerPinDots.querySelectorAll('.pin-dot');
+  dots.forEach((dot, idx) => {
+    if (idx < ownerEnteredPin.length) {
+      dot.classList.add('filled');
+    } else {
+      dot.classList.remove('filled');
+    }
+  });
+}
+
+function shakeOwnerLoginDialog() {
+  if (!el.ownerLoginDialog) return;
+  el.ownerLoginDialog.classList.remove('shake');
+  void el.ownerLoginDialog.offsetWidth;
+  el.ownerLoginDialog.classList.add('shake');
+}
+
+function showOwnerLoginError(msg) {
+  if (el.ownerLoginAlert) {
+    el.ownerLoginAlert.textContent = msg;
+    el.ownerLoginAlert.style.display = 'block';
+  }
+  shakeOwnerLoginDialog();
+  ownerEnteredPin = '';
+  if (el.ownerPinInput) el.ownerPinInput.value = '';
+  updateOwnerPinDots();
+}
+
+async function submitOwnerPinLogin(pin) {
+  if (!pin || pin.length < 4) return;
+  if (el.ownerLoginAlert) el.ownerLoginAlert.style.display = 'none';
+
+  try {
+    const res = await api.login(pin);
+    if (!res.user || res.user.role !== 'owner') {
+      const roleName = res.user && res.user.name ? `Kasir (${res.user.name})` : 'Kasir';
+      showOwnerLoginError(`Akses Ditolak: PIN ini terdaftar sebagai ${roleName}. Dashboard eksekutif ini khusus Pemilik Toko (Owner).`);
+      return;
+    }
+
+    api.setSession(res.token, res.user);
+    state.user = res.user;
+    hideOwnerLoginModal();
+    showToast(`Selamat datang, ${state.user.name || 'Owner'}! Dashboard aktif.`, 'success');
+
+    await loadAllData();
+    await checkTabletSyncHeartbeat();
+    startOwnerAutoPolling();
+  } catch (err) {
+    console.error('Owner PIN login error:', err);
+    showOwnerLoginError(err.message || 'PIN salah. Silakan coba lagi.');
+  }
+}
+
+function openLogoutModal() {
+  if (el.modalConfirmLogoutOwner) {
+    el.modalConfirmLogoutOwner.style.display = 'flex';
+  } else {
+    if (confirm('Keluar dari sesi Owner?')) {
+      handleOwnerLogoutExecution();
+    }
+  }
+}
+
+function closeLogoutModal() {
+  if (el.modalConfirmLogoutOwner) {
+    el.modalConfirmLogoutOwner.style.display = 'none';
+  }
+}
+
+function handleOwnerLogoutExecution() {
+  if (ownerPollingTimer) {
+    clearInterval(ownerPollingTimer);
+    ownerPollingTimer = null;
+  }
+  api.clearSession();
+  state.user = null;
+  showToast('Sesi Owner telah diakhiri secara aman.', 'info');
+  showOwnerLoginModal('Sesi telah diakhiri. Masukkan PIN Owner untuk masuk kembali.');
+}
+
+function bindOwnerLoginEvents() {
+  if (el.ownerPinDisplayWrap && el.ownerPinInput) {
+    el.ownerPinDisplayWrap.addEventListener('click', () => {
+      el.ownerPinInput.focus();
+    });
+  }
+
+  if (el.ownerPinInput) {
+    el.ownerPinInput.addEventListener('input', (e) => {
+      const cleanDigits = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+      ownerEnteredPin = cleanDigits;
+      e.target.value = cleanDigits;
+      updateOwnerPinDots();
+      if (cleanDigits.length === 6) {
+        submitOwnerPinLogin(cleanDigits);
+      }
+    });
+
+    el.ownerPinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        if (ownerEnteredPin.length >= 4) {
+          submitOwnerPinLogin(ownerEnteredPin);
+        }
+      }
+    });
+  }
+
+  if (el.ownerLoginNumpad) {
+    el.ownerLoginNumpad.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-owner-num');
+      if (!btn) return;
+      const key = btn.dataset.key;
+      if (key === 'clear') {
+        ownerEnteredPin = '';
+        if (el.ownerPinInput) el.ownerPinInput.value = '';
+        updateOwnerPinDots();
+        if (el.ownerLoginAlert) el.ownerLoginAlert.style.display = 'none';
+      } else if (key === 'backspace') {
+        ownerEnteredPin = ownerEnteredPin.slice(0, -1);
+        if (el.ownerPinInput) el.ownerPinInput.value = ownerEnteredPin;
+        updateOwnerPinDots();
+      } else if (key) {
+        if (ownerEnteredPin.length < 6) {
+          ownerEnteredPin += key;
+          if (el.ownerPinInput) el.ownerPinInput.value = ownerEnteredPin;
+          updateOwnerPinDots();
+          if (ownerEnteredPin.length === 6) {
+            submitOwnerPinLogin(ownerEnteredPin);
+          }
+        }
+      }
+    });
+  }
+
+  if (el.btnCloseModalLogoutOwner) {
+    el.btnCloseModalLogoutOwner.addEventListener('click', closeLogoutModal);
+  }
+  if (el.btnCancelModalLogoutOwner) {
+    el.btnCancelModalLogoutOwner.addEventListener('click', closeLogoutModal);
+  }
+  if (el.btnConfirmLogoutOwnerSubmit) {
+    el.btnConfirmLogoutOwnerSubmit.addEventListener('click', () => {
+      closeLogoutModal();
+      handleOwnerLogoutExecution();
+    });
+  }
+}
+
+// -----------------------------------------------------------------------------
 // INITIALIZATION
 // -----------------------------------------------------------------------------
 async function initOwnerApp() {
   bindEvents();
+  bindOwnerLoginEvents();
   initOwnerHardwareSupport();
   updateClock();
   setInterval(updateClock, 1000);
@@ -587,8 +814,7 @@ async function initOwnerApp() {
   initSubscriptionGuard({ isOwner: true });
 
   if (!api.token) {
-    alert('Sesi belum aktif. Silakan login sebagai Owner terlebih dahulu.');
-    window.location.href = '/';
+    showOwnerLoginModal();
     return;
   }
 
@@ -597,34 +823,19 @@ async function initOwnerApp() {
     state.user = meRes.user;
 
     if (state.user.role !== 'owner') {
-      alert('Akses Ditolak: Anda login sebagai Kasir. Halaman ini hanya untuk Pemilik (Owner).');
-      window.location.href = '/';
+      api.clearSession();
+      showOwnerLoginModal('Akses Ditolak: Anda sebelumnya login sebagai Kasir. Masukkan PIN Pemilik (Owner).');
       return;
     }
 
+    hideOwnerLoginModal();
     await loadAllData();
     await checkTabletSyncHeartbeat();
-
-    // Real-time mobile phone auto-polling every 30 seconds
-    setInterval(() => {
-      checkTabletSyncHeartbeat();
-      api.getDashboardReport().then(dashRes => {
-        state.dashboard = dashRes;
-        renderKPIs();
-        renderLiquiditySnapshot();
-        renderDailyCashflowLedger();
-        renderRevenueChart();
-        renderAnomalyRadar();
-        renderLowStockRadar();
-        renderVoidDetails();
-        renderRecentFeeds();
-      }).catch(() => {});
-    }, 30000);
+    startOwnerAutoPolling();
   } catch (err) {
     console.error('Session error:', err);
-    alert('Sesi kedaluwarsa. Silakan login kembali.');
     api.clearSession();
-    window.location.href = '/';
+    showOwnerLoginModal('Sesi login telah kedaluwarsa. Masukkan PIN Owner kembali.');
   }
 }
 
@@ -658,12 +869,12 @@ function bindEvents() {
   if (el.btnRefreshAudit) el.btnRefreshAudit.addEventListener('click', loadAllData);
   el.btnBackToPos.addEventListener('click', () => { window.location.href = '/?mode=pos'; });
 
-  el.btnOwnerLogout.addEventListener('click', () => {
-    if (confirm('Keluar dari sesi Owner?')) {
-      api.clearSession();
-      window.location.href = '/';
-    }
-  });
+  if (el.btnOwnerLogout) {
+    el.btnOwnerLogout.addEventListener('click', (e) => {
+      e.preventDefault();
+      openLogoutModal();
+    });
+  }
 
   // Revenue Chart Time Toggles (7 Days vs Today Hourly)
   document.querySelectorAll('.btn-chart-toggle').forEach(btn => {
@@ -872,11 +1083,9 @@ function switchTab(tabId) {
   }
 
   if (el.sheetBtnLogout) {
-    el.sheetBtnLogout.addEventListener('click', () => {
-      if (confirm('Keluar dari sesi Owner?')) {
-        api.clearSession();
-        window.location.href = '/';
-      }
+    el.sheetBtnLogout.addEventListener('click', (e) => {
+      e.preventDefault();
+      openLogoutModal();
     });
   }
 
