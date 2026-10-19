@@ -5190,4 +5190,62 @@ body.system-license-locked .exec-workspace {
   user-select: none !important;
 }
 
+/* -----------------------------------------------------------------------------
+ * CASHIER DASHBOARD & DAILY BALANCING STYLES
+ * -------------------------------------------------------------------------- */
+.cashier-dashboard-dialog {
+  animation: modalScaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-shift-dashboard-direct {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-shift-dashboard-direct:hover {
+  background: rgba(16, 185, 129, 0.35) !important;
+  border-color: #34d399 !important;
+  transform: translateY(-1px);
+}
+
+.dash-denom-input {
+  transition: all 0.15s ease;
+}
+
+.dash-denom-input:focus {
+  border-color: #10b981 !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  background: #ffffff;
+}
+
+#dashVarianceCard.balanced {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+#dashVarianceCard.shortage {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+}
+
+#dashVarianceCard.surplus {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+@media (max-width: 900px) {
+  .dash-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .dash-columns-split {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .dash-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 

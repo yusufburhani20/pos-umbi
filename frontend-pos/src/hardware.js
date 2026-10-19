@@ -620,6 +620,231 @@ class HardwareManager {
       return { success: true, mode: 'system' };
     }
   }
+
+  // --- Build Shift Balancing Report Bytes (Laporan X & Laporan Z) ---
+  buildShiftReportBytes(shiftData, type = 'X', settings = {}) {
+    const is80mm = this.config.paperSize === '80mm';
+    const maxCols = is80mm ? 48 : 32;
+    const divider = '='.repeat(maxCols);
+    const subDivider = '-'.repeat(maxCols);
+
+    const encoder = new TextEncoder();
+    const byteChunks = [];
+    const append = (b) => {
+      if (Array.isArray(b)) byteChunks.push(new Uint8Array(b));
+      else if (b instanceof Uint8Array) byteChunks.push(b);
+      else if (typeof b === 'string') byteChunks.push(encoder.encode(b));
+    };
+
+    const formatLine = (left, right) => {
+      const leftStr = String(left || '');
+      const rightStr = String(right || '');
+      const spaces = maxCols - (leftStr.length + rightStr.length);
+      if (spaces > 0) {
+        return leftStr + ' '.repeat(spaces) + rightStr;
+      }
+      return leftStr + ' ' + rightStr;
+    };
+
+    const formatCurrency = (val) => {
+      return 'Rp ' + Number(val || 0).toLocaleString('id-ID');
+    };
+
+    append(COMMANDS.INIT);
+
+    // 1. Store Header
+    append(COMMANDS.ALIGN_CENTER);
+    append(COMMANDS.DOUBLE_SIZE_ON);
+    append(COMMANDS.BOLD_ON);
+    const storeName = settings.store_name || 'PD. HASIL BUMI RAYA 1';
+    append(storeName + '\n');
+    append(COMMANDS.NORMAL_TEXT);
+    append(COMMANDS.BOLD_OFF);
+
+    const storeTagline = settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas Pasar';
+    append(storeTagline + '\n');
+    if (settings.store_address) append(settings.store_address + '\n');
+    if (settings.store_phone) append('Telp/WA: ' + settings.store_phone + '\n');
+    append(divider + '\n');
+
+    // 2. Report Title
+    append(COMMANDS.BOLD_ON);
+    if (type === 'Z') {
+      append('*** LAPORAN Z (TUTUP SHIFT KASIR) ***\n');
+      append(COMMANDS.NORMAL_TEXT);
+      append('(REKONSILIASI KAS & SERAH TERIMA)\n');
+    } else {
+      append('*** LAPORAN X (CEK SALDO BERJALAN) ***\n');
+      append(COMMANDS.NORMAL_TEXT);
+      append('(RINGKASAN SEMENTARA TENGAH SHIFT)\n');
+    }
+    append(COMMANDS.BOLD_OFF);
+    append(subDivider + '\n');
+
+    // 3. Shift Metadata
+    append(COMMANDS.ALIGN_LEFT);
+    append(formatLine('No. Shift   :', '#' + (shiftData.id || shiftData.shift_id || '-')) + '\n');
+    append(formatLine('Kasir       :', shiftData.cashier_name || 'Kasir Bertugas') + '\n');
+    if (shiftData.start_time) {
+      append(formatLine('Waktu Buka  :', new Date(shiftData.start_time).toLocaleString('id-ID')) + '\n');
+    }
+    const printTime = type === 'Z' && shiftData.end_time 
+      ? new Date(shiftData.end_time).toLocaleString('id-ID')
+      : new Date().toLocaleString('id-ID');
+    append(formatLine(type === 'Z' ? 'Waktu Tutup :' : 'Waktu Cetak :', printTime) + '\n');
+    append(formatLine('Status Shift:', type === 'Z' ? 'TUTUP (CLOSED)' : 'AKTIF (OPEN)') + '\n');
+    append(subDivider + '\n');
+
+    // 4. Cash Drawer Reconciliation (Rincian Kas Laci)
+    append(COMMANDS.BOLD_ON);
+    append('RINCIAN POSISI KAS LACI:\n');
+    append(COMMANDS.BOLD_OFF);
+
+    const startingCash = Number(shiftData.starting_cash || 0);
+    const cashSales = Number(shiftData.cash_sales || shiftData.total_cash_sales || 0);
+    const cashDebt = Number(shiftData.cash_debt_collected || shiftData.total_cash_debt_collected || 0);
+    const cashIncome = Number(shiftData.cash_income || shiftData.total_cash_income || 0);
+    const cashExpenses = Number(shiftData.cash_expenses || shiftData.total_cash_expenses || 0);
+    const cashSupplier = Number(shiftData.cash_supplier_payments || shiftData.total_cash_supplier_paid || 0);
+
+    const expectedCash = startingCash + cashSales + cashDebt + cashIncome - cashExpenses - cashSupplier;
+
+    append(formatLine('  Modal Awal (Float)     :', formatCurrency(startingCash)) + '\n');
+    append(formatLine('  (+) Penjualan Tunai    :', formatCurrency(cashSales)) + '\n');
+    if (cashDebt > 0) {
+      append(formatLine('  (+) Pelunasan Bon Tunai:', formatCurrency(cashDebt)) + '\n');
+    }
+    if (cashIncome > 0) {
+      append(formatLine('  (+) Kas Masuk Tambahan :', formatCurrency(cashIncome)) + '\n');
+    }
+    if (cashExpenses > 0) {
+      append(formatLine('  (-) Pengeluaran Laci   :', '(' + formatCurrency(cashExpenses) + ')') + '\n');
+    }
+    if (cashSupplier > 0) {
+      append(formatLine('  (-) Kulakan Kas Laci   :', '(' + formatCurrency(cashSupplier) + ')') + '\n');
+    }
+    append(subDivider + '\n');
+
+    // Expected Drawer Cash
+    append(COMMANDS.BOLD_ON);
+    append(formatLine('SALDO LACI SEHARUSNYA:', formatCurrency(expectedCash)) + '\n');
+    append(COMMANDS.BOLD_OFF);
+
+    // 5. Cash Physically Counted & Variance
+    const actualCash = Number(shiftData.actual_cash !== undefined ? shiftData.actual_cash : (shiftData.actual_cash_input !== undefined ? shiftData.actual_cash_input : expectedCash));
+    const difference = actualCash - expectedCash;
+
+    append(formatLine('FISIK UANG DIHITUNG  :', formatCurrency(actualCash)) + '\n');
+    append(subDivider + '\n');
+
+    append(COMMANDS.ALIGN_CENTER);
+    append(COMMANDS.BOLD_ON);
+    if (difference === 0) {
+      append('STATUS : [ OK KAS BALANCE / SESUAI ]\n');
+    } else if (difference < 0) {
+      append(`STATUS : [ !! SELISIH KURANG ${formatCurrency(Math.abs(difference))} ]\n`);
+    } else {
+      append(`STATUS : [ + SELISIH LEBIH ${formatCurrency(difference)} ]\n`);
+    }
+    append(COMMANDS.BOLD_OFF);
+    append(COMMANDS.ALIGN_LEFT);
+    append(subDivider + '\n');
+
+    // 6. Denominations Breakdown (if available)
+    if (shiftData.breakdown && typeof shiftData.breakdown === 'object') {
+      append(COMMANDS.BOLD_ON);
+      append('RINCIAN PECAHAN UANG FISIK:\n');
+      append(COMMANDS.BOLD_OFF);
+      const b = shiftData.breakdown;
+      if (b.d100k) append(formatLine('  100.000 x ' + Math.round(b.d100k / 100000), formatCurrency(b.d100k)) + '\n');
+      if (b.d50k)  append(formatLine('   50.000 x ' + Math.round(b.d50k / 50000), formatCurrency(b.d50k)) + '\n');
+      if (b.d20k)  append(formatLine('   20.000 x ' + Math.round(b.d20k / 20000), formatCurrency(b.d20k)) + '\n');
+      if (b.d10k)  append(formatLine('   10.000 x ' + Math.round(b.d10k / 10000), formatCurrency(b.d10k)) + '\n');
+      if (b.d5k)   append(formatLine('    5.000 x ' + Math.round(b.d5k / 5000), formatCurrency(b.d5k)) + '\n');
+      if (b.d2k)   append(formatLine('    2.000 x ' + Math.round(b.d2k / 2000), formatCurrency(b.d2k)) + '\n');
+      if (b.d1k)   append(formatLine('    1.000 x ' + Math.round(b.d1k / 1000), formatCurrency(b.d1k)) + '\n');
+      if (b.dKoin) append(formatLine('    Koin / Receh         :', formatCurrency(b.dKoin)) + '\n');
+      append(subDivider + '\n');
+    }
+
+    // 7. Non-Cash Sales & Total Shift Turnover
+    const qris = Number(shiftData.qris_sales || shiftData.total_qris || 0);
+    const transfer = Number(shiftData.transfer_sales || shiftData.total_transfer || 0);
+    const tempo = Number(shiftData.tempo_sales || shiftData.total_tempo || 0);
+    const totalOmset = Number(shiftData.total_omset || (cashSales + qris + transfer + tempo));
+    const totalOrders = shiftData.total_orders || '-';
+
+    append(COMMANDS.BOLD_ON);
+    append('RINGKASAN METODE NON-TUNAI:\n');
+    append(COMMANDS.BOLD_OFF);
+    append(formatLine('  QRIS                :', formatCurrency(qris)) + '\n');
+    append(formatLine('  Transfer Bank       :', formatCurrency(transfer)) + '\n');
+    append(formatLine('  Bon Hutang Baru     :', formatCurrency(tempo)) + '\n');
+    append(formatLine('  Total Omset Shift   :', formatCurrency(totalOmset)) + '\n');
+    append(formatLine('  Total Nota Transaksi:', String(totalOrders) + ' Nota') + '\n');
+    append(subDivider + '\n');
+
+    // 8. Notes
+    if (shiftData.closing_notes || shiftData.notes) {
+      append('Catatan Kasir:\n');
+      append('  ' + (shiftData.closing_notes || shiftData.notes) + '\n');
+      append(subDivider + '\n');
+    }
+
+    // 9. Signatures
+    append(COMMANDS.ALIGN_CENTER);
+    if (is80mm) {
+      append('       Kasir Bertugas,               Supervisor / Penerima,  \n\n\n\n');
+      append('    ( .................... )      ( .................... )\n');
+    } else {
+      append('    Kasir,              Supervisor, \n\n\n\n');
+      append(' ( .......... )      ( .......... )\n');
+    }
+    append(divider + '\n');
+    append('Kassa POS • Sistem Kasir Pintar\n& Anti-Kecolongan Toko Pasar\n');
+    append(COMMANDS.FEED_AND_CUT);
+
+    let totalLen = 0;
+    byteChunks.forEach(c => (totalLen += c.length));
+    const merged = new Uint8Array(totalLen);
+    let offset = 0;
+    byteChunks.forEach(c => {
+      merged.set(c, offset);
+      offset += c.length;
+    });
+    return merged;
+  }
+
+  // --- Main Print Shift Report Method ---
+  async printShiftReport(shiftData, type = 'X', settings = {}) {
+    const bytes = this.buildShiftReportBytes(shiftData, type, settings);
+
+    // Auto-open cash drawer if closing shift
+    if (this.config.autoDrawer && type === 'Z') {
+      try {
+        await this.kickCashDrawer();
+      } catch (err) {
+        console.warn('[Hardware] Gagal membuka laci otomatis:', err);
+      }
+    }
+
+    if (this.config.mode === 'bluetooth') {
+      if (this.isConnected) {
+        await this.sendBluetoothBytes(bytes);
+        return { success: true, mode: 'bluetooth' };
+      } else {
+        console.warn('[Hardware] Bluetooth printer belum terhubung, mencoba RawBT...');
+        this.sendRawBT(bytes);
+        return { success: true, mode: 'rawbt_fallback' };
+      }
+    } else if (this.config.mode === 'rawbt') {
+      this.sendRawBT(bytes);
+      return { success: true, mode: 'rawbt' };
+    } else {
+      window.print();
+      return { success: true, mode: 'system' };
+    }
+  }
 }
 
 export const hardwareManager = new HardwareManager();

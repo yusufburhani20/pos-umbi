@@ -362,6 +362,61 @@ const el = {
   totalCountedText: document.getElementById('totalCountedText'),
   closingNotes: document.getElementById('closingNotes'),
 
+  // Cashier Dashboard & Daily Balancing
+  modalCashierDashboard: document.getElementById('modalCashierDashboard'),
+  btnOpenCashierDashboard: document.getElementById('btnOpenCashierDashboard'),
+  btnDropdownCashierDashboard: document.getElementById('btnDropdownCashierDashboard'),
+  btnUserDropdownShiftDashboard: document.getElementById('btnUserDropdownShiftDashboard'),
+  btnCloseCashierDashboard: document.getElementById('btnCloseCashierDashboard'),
+  btnRefreshCashierDashboard: document.getElementById('btnRefreshCashierDashboard'),
+  btnDrawerKickDashboard: document.getElementById('btnDrawerKickDashboard'),
+  btnDashboardPrintReportX: document.getElementById('btnDashboardPrintReportX'),
+  btnDashboardCloseShiftZ: document.getElementById('btnDashboardCloseShiftZ'),
+  btnDashResetDenom: document.getElementById('btnDashResetDenom'),
+  btnDashQuickAddExpense: document.getElementById('btnDashQuickAddExpense'),
+  btnDashQuickAddIncome: document.getElementById('btnDashQuickAddIncome'),
+  dashShiftBadge: document.getElementById('dashShiftBadge'),
+  dashShiftMetaSubtitle: document.getElementById('dashShiftMetaSubtitle'),
+  dashKpiStartingCash: document.getElementById('dashKpiStartingCash'),
+  dashKpiCashSales: document.getElementById('dashKpiCashSales'),
+  dashKpiCashSalesCount: document.getElementById('dashKpiCashSalesCount'),
+  dashKpiIncomeDebt: document.getElementById('dashKpiIncomeDebt'),
+  dashKpiIncomeDebtMeta: document.getElementById('dashKpiIncomeDebtMeta'),
+  dashKpiExpensesCash: document.getElementById('dashKpiExpensesCash'),
+  dashKpiExpensesCount: document.getElementById('dashKpiExpensesCount'),
+  dashFormulaExplanation: document.getElementById('dashFormulaExplanation'),
+  dashExpectedCashValue: document.getElementById('dashExpectedCashValue'),
+  dashTotalCounted: document.getElementById('dashTotalCounted'),
+  dashVarianceCard: document.getElementById('dashVarianceCard'),
+  dashVarianceIcon: document.getElementById('dashVarianceIcon'),
+  dashVarianceTitle: document.getElementById('dashVarianceTitle'),
+  dashVarianceSubtitle: document.getElementById('dashVarianceSubtitle'),
+  dashVarianceNominal: document.getElementById('dashVarianceNominal'),
+  dashClosingNotes: document.getElementById('dashClosingNotes'),
+  dashTotalOrdersBadge: document.getElementById('dashTotalOrdersBadge'),
+  dashSalesCash: document.getElementById('dashSalesCash'),
+  dashSalesQris: document.getElementById('dashSalesQris'),
+  dashSalesTransfer: document.getElementById('dashSalesTransfer'),
+  dashSalesTempo: document.getElementById('dashSalesTempo'),
+  dashTotalOmset: document.getElementById('dashTotalOmset'),
+  dashExpensesListContainer: document.getElementById('dashExpensesListContainer'),
+  dashD100k: document.getElementById('dashD100k'),
+  dashD50k: document.getElementById('dashD50k'),
+  dashD20k: document.getElementById('dashD20k'),
+  dashD10k: document.getElementById('dashD10k'),
+  dashD5k: document.getElementById('dashD5k'),
+  dashD2k: document.getElementById('dashD2k'),
+  dashD1k: document.getElementById('dashD1k'),
+  dashDKoin: document.getElementById('dashDKoin'),
+  dashSub100k: document.getElementById('dashSub100k'),
+  dashSub50k: document.getElementById('dashSub50k'),
+  dashSub20k: document.getElementById('dashSub20k'),
+  dashSub10k: document.getElementById('dashSub10k'),
+  dashSub5k: document.getElementById('dashSub5k'),
+  dashSub2k: document.getElementById('dashSub2k'),
+  dashSub1k: document.getElementById('dashSub1k'),
+  dashSubKoin: document.getElementById('dashSubKoin'),
+
   wasteModal: document.getElementById('wasteModal'),
   btnWaste: document.getElementById('btnWaste'),
   btnCloseWasteModal: document.getElementById('btnCloseWasteModal'),
@@ -1877,8 +1932,77 @@ function bindEvents() {
     }
   });
 
-  // Blind Close Shift
-  el.btnCloseShift.addEventListener('click', openCloseShiftModal);
+  // Cashier Dashboard & Daily Balancing Listeners
+  if (el.btnOpenCashierDashboard) {
+    el.btnOpenCashierDashboard.addEventListener('click', openCashierDashboard);
+  }
+  if (el.btnDropdownCashierDashboard) {
+    el.btnDropdownCashierDashboard.addEventListener('click', () => {
+      closeAllHeaderDropdowns();
+      openCashierDashboard();
+    });
+  }
+  if (el.btnUserDropdownShiftDashboard) {
+    el.btnUserDropdownShiftDashboard.addEventListener('click', () => {
+      closeAllHeaderDropdowns();
+      openCashierDashboard();
+    });
+  }
+  if (el.btnCloseCashierDashboard) {
+    el.btnCloseCashierDashboard.addEventListener('click', () => {
+      if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
+    });
+  }
+  if (el.btnRefreshCashierDashboard) {
+    el.btnRefreshCashierDashboard.addEventListener('click', refreshCashierDashboardData);
+  }
+  if (el.btnDrawerKickDashboard) {
+    el.btnDrawerKickDashboard.addEventListener('click', async () => {
+      try {
+        await hardwareManager.kickCashDrawer();
+        showToast('💰 Sinyal buka laci kasir (Kick RJ-11) terkirim!', 'success');
+      } catch (err) {
+        showToast('Gagal membuka laci: ' + err.message, 'warning');
+      }
+    });
+  }
+  if (el.btnDashboardPrintReportX) {
+    el.btnDashboardPrintReportX.addEventListener('click', handleDashboardPrintReportX);
+  }
+  if (el.btnDashboardCloseShiftZ) {
+    el.btnDashboardCloseShiftZ.addEventListener('click', handleDashboardCloseShiftZ);
+  }
+  if (el.btnDashResetDenom) {
+    el.btnDashResetDenom.addEventListener('click', () => {
+      ['dashD100k', 'dashD50k', 'dashD20k', 'dashD10k', 'dashD5k', 'dashD2k', 'dashD1k', 'dashDKoin'].forEach(id => {
+        const inp = document.getElementById(id);
+        if (inp) inp.value = '0';
+      });
+      recalculateDashboardDenominations();
+    });
+  }
+  if (el.btnDashQuickAddExpense) {
+    el.btnDashQuickAddExpense.addEventListener('click', () => {
+      openCashierExpensesModal();
+    });
+  }
+  if (el.btnDashQuickAddIncome) {
+    el.btnDashQuickAddIncome.addEventListener('click', () => {
+      if (el.modalCashierIncome) el.modalCashierIncome.style.display = 'flex';
+    });
+  }
+  ['dashD100k', 'dashD50k', 'dashD20k', 'dashD10k', 'dashD5k', 'dashD2k', 'dashD1k', 'dashDKoin'].forEach(id => {
+    const inp = document.getElementById(id);
+    if (inp) {
+      inp.addEventListener('input', recalculateDashboardDenominations);
+    }
+  });
+
+  // Blind Close Shift (Fallback Modal)
+  el.btnCloseShift.addEventListener('click', () => {
+    closeAllHeaderDropdowns();
+    openCashierDashboard();
+  });
   el.btnCloseCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   el.btnCancelCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   
@@ -6055,4 +6179,453 @@ async function handleDeleteCashierExpense(id) {
     showToast('Gagal menghapus biaya: ' + err.message, 'error');
   }
 }
+
+// -----------------------------------------------------------------------------
+// CASHIER DASHBOARD & DAILY BALANCING (REKONSILIASI KAS HARIAN)
+// -----------------------------------------------------------------------------
+async function openCashierDashboard() {
+  if (!state.shift) {
+    showToast('Shift kasir belum dibuka. Silakan buka shift terlebih dahulu.', 'warning');
+    showOpenShiftModal();
+    return;
+  }
+  if (el.modalCashierDashboard) {
+    el.modalCashierDashboard.style.display = 'flex';
+  }
+  await refreshCashierDashboardData();
+}
+
+async function refreshCashierDashboardData() {
+  try {
+    if (el.btnRefreshCashierDashboard) {
+      el.btnRefreshCashierDashboard.innerHTML = '<span>⏳</span> Memuat...';
+      el.btnRefreshCashierDashboard.disabled = true;
+    }
+
+    const res = await api.getCurrentShift().catch(() => null);
+    if (!res || !res.has_active_shift) {
+      showToast('Tidak ada shift aktif yang ditemukan.', 'warning');
+      if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
+      return;
+    }
+
+    state.shift = res.shift;
+    const s = state.shift;
+
+    if (el.dashShiftBadge) {
+      el.dashShiftBadge.textContent = `Shift #${s.id} Aktif`;
+    }
+    if (el.dashShiftMetaSubtitle) {
+      const startTimeStr = parseSafeDate(s.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      el.dashShiftMetaSubtitle.textContent = `Petugas: ${s.cashier_name || (state.user ? state.user.name : 'Kasir')} • Buka: ${startTimeStr} WIB • Modal: ${formatRupiah(s.starting_cash)}`;
+    }
+
+    // 4 KPI Cards
+    if (el.dashKpiStartingCash) {
+      el.dashKpiStartingCash.textContent = formatRupiah(s.starting_cash || 0);
+    }
+    if (el.dashKpiCashSales) {
+      el.dashKpiCashSales.textContent = formatRupiah(s.cash_sales || 0);
+    }
+    if (el.dashKpiCashSalesCount) {
+      el.dashKpiCashSalesCount.textContent = `${s.total_orders || 0} transaksi lunas tunai`;
+    }
+    if (el.dashKpiIncomeDebt) {
+      const totalIn = Number(s.cash_income || 0) + Number(s.cash_debt_collected || 0);
+      el.dashKpiIncomeDebt.textContent = `+${formatRupiah(totalIn)}`;
+    }
+    if (el.dashKpiIncomeDebtMeta) {
+      el.dashKpiIncomeDebtMeta.textContent = `Masuk: ${formatRupiah(s.cash_income || 0)} | Bon: ${formatRupiah(s.cash_debt_collected || 0)}`;
+    }
+    if (el.dashKpiExpensesCash) {
+      el.dashKpiExpensesCash.textContent = `-${formatRupiah(s.cash_expenses || 0)}`;
+    }
+    if (el.dashKpiExpensesCount) {
+      const expCount = (s.recent_expenses && s.recent_expenses.length) || 0;
+      el.dashKpiExpensesCount.textContent = `${expCount} pengeluaran laci`;
+    }
+
+    // Formula explanation & Expected cash
+    const starting = Number(s.starting_cash || 0);
+    const cashSales = Number(s.cash_sales || 0);
+    const debtIn = Number(s.cash_debt_collected || 0);
+    const incIn = Number(s.cash_income || 0);
+    const expOut = Number(s.cash_expenses || 0);
+    const supOut = Number(s.cash_supplier_payments || 0);
+    const expected = starting + cashSales + debtIn + incIn - expOut - supOut;
+
+    if (el.dashFormulaExplanation) {
+      el.dashFormulaExplanation.textContent = `Modal [${formatRupiah(starting)}] + Tunai [${formatRupiah(cashSales)}] + Pelunasan [${formatRupiah(debtIn)}] + Kas Masuk [${formatRupiah(incIn)}] - Biaya [${formatRupiah(expOut)}] = Saldo Laci Seharusnya`;
+    }
+    if (el.dashExpectedCashValue) {
+      el.dashExpectedCashValue.textContent = formatRupiah(expected);
+    }
+
+    // Transactions breakdown
+    if (el.dashTotalOrdersBadge) {
+      el.dashTotalOrdersBadge.textContent = `${s.total_orders || 0} Nota Transaksi`;
+    }
+    if (el.dashSalesCash) el.dashSalesCash.textContent = formatRupiah(cashSales);
+    if (el.dashSalesQris) el.dashSalesQris.textContent = formatRupiah(s.qris_sales || 0);
+    if (el.dashSalesTransfer) el.dashSalesTransfer.textContent = formatRupiah(s.transfer_sales || 0);
+    if (el.dashSalesTempo) el.dashSalesTempo.textContent = formatRupiah(s.tempo_sales || 0);
+    if (el.dashTotalOmset) el.dashTotalOmset.textContent = formatRupiah(s.total_omset || 0);
+
+    // Recent Expenses in Cash Drawer
+    if (el.dashExpensesListContainer) {
+      if (s.recent_expenses && s.recent_expenses.length > 0) {
+        el.dashExpensesListContainer.innerHTML = s.recent_expenses.map(e => `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #fff5f5; border: 1px solid #fee2e2; border-radius: 8px; padding: 6px 10px; font-size: 12px;">
+            <div>
+              <strong style="color: #991b1b; display: block;">${escapeHtml(e.category || 'Biaya Operasional')}</strong>
+              <span style="color: #64748b; font-size: 11px;">${escapeHtml(e.notes || '-')} • ${parseSafeDate(e.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <strong style="font-family: monospace; color: #b91c1c; font-size: 13px;">-${formatRupiah(e.amount)}</strong>
+          </div>
+        `).join('');
+      } else {
+        el.dashExpensesListContainer.innerHTML = `
+          <div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 18px;">
+            Belum ada pengeluaran kas laci pada shift ini.
+          </div>
+        `;
+      }
+    }
+
+    recalculateDashboardDenominations();
+  } catch (err) {
+    showToast('Gagal memuat dashboard kasir: ' + err.message, 'error');
+  } finally {
+    if (el.btnRefreshCashierDashboard) {
+      el.btnRefreshCashierDashboard.innerHTML = '<span>🔄</span> Segarkan';
+      el.btnRefreshCashierDashboard.disabled = false;
+    }
+  }
+}
+
+function recalculateDashboardDenominations() {
+  const d100 = (Number(el.dashD100k ? el.dashD100k.value : 0) || 0) * 100000;
+  const d50 = (Number(el.dashD50k ? el.dashD50k.value : 0) || 0) * 50000;
+  const d20 = (Number(el.dashD20k ? el.dashD20k.value : 0) || 0) * 20000;
+  const d10 = (Number(el.dashD10k ? el.dashD10k.value : 0) || 0) * 10000;
+  const d5 = (Number(el.dashD5k ? el.dashD5k.value : 0) || 0) * 5000;
+  const d2 = (Number(el.dashD2k ? el.dashD2k.value : 0) || 0) * 2000;
+  const d1 = (Number(el.dashD1k ? el.dashD1k.value : 0) || 0) * 1000;
+  const dKoin = Number(el.dashDKoin ? el.dashDKoin.value : 0) || 0;
+
+  if (el.dashSub100k) el.dashSub100k.textContent = formatRupiah(d100);
+  if (el.dashSub50k) el.dashSub50k.textContent = formatRupiah(d50);
+  if (el.dashSub20k) el.dashSub20k.textContent = formatRupiah(d20);
+  if (el.dashSub10k) el.dashSub10k.textContent = formatRupiah(d10);
+  if (el.dashSub5k) el.dashSub5k.textContent = formatRupiah(d5);
+  if (el.dashSub2k) el.dashSub2k.textContent = formatRupiah(d2);
+  if (el.dashSub1k) el.dashSub1k.textContent = formatRupiah(d1);
+  if (el.dashSubKoin) el.dashSubKoin.textContent = formatRupiah(dKoin);
+
+  const total = d100 + d50 + d20 + d10 + d5 + d2 + d1 + dKoin;
+  if (el.dashTotalCounted) el.dashTotalCounted.textContent = formatRupiah(total);
+
+  // Expected cash
+  const s = state.shift || {};
+  const starting = Number(s.starting_cash || 0);
+  const cashSales = Number(s.cash_sales || 0);
+  const debtIn = Number(s.cash_debt_collected || 0);
+  const incIn = Number(s.cash_income || 0);
+  const expOut = Number(s.cash_expenses || 0);
+  const supOut = Number(s.cash_supplier_payments || 0);
+  const expected = starting + cashSales + debtIn + incIn - expOut - supOut;
+
+  const diff = total - expected;
+
+  if (el.dashVarianceCard) {
+    el.dashVarianceCard.classList.remove('balanced', 'shortage', 'surplus');
+    if (diff === 0) {
+      el.dashVarianceCard.classList.add('balanced');
+      if (el.dashVarianceIcon) el.dashVarianceIcon.textContent = '✅';
+      if (el.dashVarianceTitle) el.dashVarianceTitle.textContent = 'KAS BALANCE (SESUAI)';
+      if (el.dashVarianceSubtitle) el.dashVarianceSubtitle.textContent = 'Uang fisik tepat sesuai dengan kalkulasi sistem.';
+      if (el.dashVarianceNominal) {
+        el.dashVarianceNominal.textContent = 'Selisih: Rp 0';
+        el.dashVarianceNominal.style.color = '#059669';
+      }
+    } else if (diff < 0) {
+      el.dashVarianceCard.classList.add('shortage');
+      if (el.dashVarianceIcon) el.dashVarianceIcon.textContent = '⚠️';
+      if (el.dashVarianceTitle) el.dashVarianceTitle.textContent = 'SELISIH KURANG (MINUS TEKOR)';
+      if (el.dashVarianceSubtitle) el.dashVarianceSubtitle.textContent = 'Uang fisik di laci kurang dari catatan sistem. Periksa kembali kembalian atau nota bon.';
+      if (el.dashVarianceNominal) {
+        el.dashVarianceNominal.textContent = `Kurang: -${formatRupiah(Math.abs(diff))}`;
+        el.dashVarianceNominal.style.color = '#dc2626';
+      }
+    } else {
+      el.dashVarianceCard.classList.add('surplus');
+      if (el.dashVarianceIcon) el.dashVarianceIcon.textContent = 'ℹ️';
+      if (el.dashVarianceTitle) el.dashVarianceTitle.textContent = 'SELISIH LEBIH (SURPLUS)';
+      if (el.dashVarianceSubtitle) el.dashVarianceSubtitle.textContent = 'Uang fisik di laci lebih banyak daripada catatan sistem.';
+      if (el.dashVarianceNominal) {
+        el.dashVarianceNominal.textContent = `Lebih: +${formatRupiah(diff)}`;
+        el.dashVarianceNominal.style.color = '#d97706';
+      }
+    }
+  }
+
+  const breakdown = { d100k: d100, d50k: d50, d20k: d20, d10k: d10, d5k: d5, d2k: d2, d1k: d1, dKoin };
+  return { total, breakdown, diff, expected };
+}
+
+async function handleDashboardPrintReportX() {
+  if (!state.shift) {
+    showToast('Tidak ada shift aktif yang bisa dicetak.', 'warning');
+    return;
+  }
+
+  const { total, breakdown, diff, expected } = recalculateDashboardDenominations();
+  const reportData = {
+    ...state.shift,
+    cashier_name: state.shift.cashier_name || (state.user ? state.user.name : 'Kasir'),
+    actual_cash: total,
+    breakdown,
+    expected_system_cash: expected,
+    cash_difference: diff,
+    closing_notes: el.dashClosingNotes ? el.dashClosingNotes.value : ''
+  };
+
+  try {
+    if (el.btnDashboardPrintReportX) {
+      el.btnDashboardPrintReportX.disabled = true;
+      el.btnDashboardPrintReportX.innerHTML = '<span>⏳</span> Mencetak Laporan X...';
+    }
+
+    renderThermalShiftReceipt(reportData, 'X');
+    const settings = state.settings || {};
+    await hardwareManager.printShiftReport(reportData, 'X', settings);
+    showToast('🖨️ Struk Laporan X (Cek Kas Berjalan) berhasil dicetak ke printer kasir!', 'success');
+  } catch (err) {
+    showToast('Gagal mencetak Laporan X: ' + err.message, 'error');
+  } finally {
+    if (el.btnDashboardPrintReportX) {
+      el.btnDashboardPrintReportX.disabled = false;
+      el.btnDashboardPrintReportX.innerHTML = '<span>🖨️</span> Cetak Laporan X (Cek Kas Berjalan)';
+    }
+  }
+}
+
+async function handleDashboardCloseShiftZ() {
+  if (!state.shift) {
+    showToast('Tidak ada shift aktif yang bisa ditutup.', 'warning');
+    return;
+  }
+
+  const { total, breakdown, diff, expected } = recalculateDashboardDenominations();
+
+  let confirmMsg = `Konfirmasi Tutup Shift #${state.shift.id}?\n\nTotal Fisik Dihitung: ${formatRupiah(total)}\nSaldo Seharusnya: ${formatRupiah(expected)}`;
+  if (diff === 0) {
+    confirmMsg += '\n\n✅ Status: KAS BALANCE (Rp 0)';
+  } else if (diff < 0) {
+    confirmMsg += `\n\n⚠️ PERHATIAN: Terdapat SELISIH KURANG sebesar ${formatRupiah(Math.abs(diff))}!\nSelisih akan tercatat ke laporan Owner. Pastikan catatan telah diisi.`;
+  } else {
+    confirmMsg += `\n\nℹ️ Status: SELISIH LEBIH ${formatRupiah(diff)}`;
+  }
+  confirmMsg += '\n\nSistem akan menutup shift dan otomatis mencetak Struk Laporan Z ke printer thermal.';
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    if (el.btnDashboardCloseShiftZ) {
+      el.btnDashboardCloseShiftZ.disabled = true;
+      el.btnDashboardCloseShiftZ.innerHTML = '<span>⏳</span> Menutup Shift & Mencetak...';
+    }
+
+    const notes = el.dashClosingNotes ? el.dashClosingNotes.value : '';
+    const res = await api.closeShift(
+      state.shift.id,
+      total,
+      breakdown,
+      notes
+    );
+
+    const sum = res.summary;
+
+    // Print Report Z
+    try {
+      renderThermalShiftReceipt(sum, 'Z');
+      const settings = state.settings || {};
+      await hardwareManager.printShiftReport(sum, 'Z', settings);
+    } catch (printErr) {
+      console.warn('[Hardware] Gagal mencetak Laporan Z:', printErr);
+    }
+
+    if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
+
+    let alertMsg = `Shift Kasir #${sum.shift_id} Berhasil Ditutup!\nTotal Fisik: ${formatRupiah(sum.actual_cash_input)}`;
+    if (sum.is_balanced) {
+      alertMsg += '\nStatus: KAS BALANCE (Sesuai Sistem)';
+    } else if (sum.cash_difference < 0) {
+      alertMsg += `\n⚠️ PERHATIAN: Selisih KURANG ${formatRupiah(Math.abs(sum.cash_difference))} (Tercatat ke Log Owner)`;
+    } else {
+      alertMsg += `\nStatus: Selisih LEBIH ${formatRupiah(sum.cash_difference)}`;
+    }
+    alertMsg += '\n\nStruk Laporan Z telah dicetak ke printer kasir.';
+
+    alert(alertMsg);
+    await syncShift();
+  } catch (err) {
+    showToast('Gagal menutup shift: ' + err.message, 'error');
+  } finally {
+    if (el.btnDashboardCloseShiftZ) {
+      el.btnDashboardCloseShiftZ.disabled = false;
+      el.btnDashboardCloseShiftZ.innerHTML = '<span>🔒</span> Tutup Shift & Cetak Laporan Z';
+    }
+  }
+}
+
+function renderThermalShiftReceipt(shiftData, type = 'X') {
+  if (!el.thermalReceipt) return;
+  const isZ = type === 'Z';
+  const timeFormatted = new Date().toLocaleString('id-ID');
+  const sName = (state.settings && state.settings.store_name) || 'PD. HASIL BUMI RAYA 1';
+  const sTagline = (state.settings && state.settings.store_tagline) || 'Pusat Umbi, Bawang & Komoditas';
+  const sAddress = (state.settings && state.settings.store_address) || '';
+  const sPhone = (state.settings && state.settings.store_phone) || '';
+
+  const startingCash = Number(shiftData.starting_cash || 0);
+  const cashSales = Number(shiftData.cash_sales || shiftData.total_cash_sales || 0);
+  const cashDebt = Number(shiftData.cash_debt_collected || shiftData.total_cash_debt_collected || 0);
+  const cashIncome = Number(shiftData.cash_income || shiftData.total_cash_income || 0);
+  const cashExpenses = Number(shiftData.cash_expenses || shiftData.total_cash_expenses || 0);
+  const cashSupplier = Number(shiftData.cash_supplier_payments || shiftData.total_cash_supplier_paid || 0);
+  const expectedCash = startingCash + cashSales + cashDebt + cashIncome - cashExpenses - cashSupplier;
+  const actualCash = Number(shiftData.actual_cash !== undefined ? shiftData.actual_cash : (shiftData.actual_cash_input !== undefined ? shiftData.actual_cash_input : expectedCash));
+  const diff = actualCash - expectedCash;
+
+  const qris = Number(shiftData.qris_sales || shiftData.total_qris || 0);
+  const transfer = Number(shiftData.transfer_sales || shiftData.total_transfer || 0);
+  const tempo = Number(shiftData.tempo_sales || shiftData.total_tempo || 0);
+  const totalOmset = Number(shiftData.total_omset || (cashSales + qris + transfer + tempo));
+  const totalOrders = shiftData.total_orders || '-';
+
+  let varianceBadge = '';
+  if (diff === 0) {
+    varianceBadge = '<div style="color: #059669; font-weight: 800; font-size: 13px;">[ ✅ KAS BALANCE (SESUAI) ]</div>';
+  } else if (diff < 0) {
+    varianceBadge = `<div style="color: #dc2626; font-weight: 800; font-size: 13px;">[ ⚠️ SELISIH KURANG ${formatRupiah(Math.abs(diff))} ]</div>`;
+  } else {
+    varianceBadge = `<div style="color: #d97706; font-weight: 800; font-size: 13px;">[ ℹ️ SELISIH LEBIH ${formatRupiah(diff)} ]</div>`;
+  }
+
+  el.thermalReceipt.innerHTML = `
+    <div class="receipt-header">
+      <div class="receipt-title">${escapeHtml(sName)}</div>
+      <div>${escapeHtml(sTagline)}</div>
+      ${sAddress ? `<div style="font-size:11px; margin-top:2px;">${escapeHtml(sAddress)}</div>` : ''}
+      ${sPhone ? `<div style="font-size:11px;">Telp/WA: ${escapeHtml(sPhone)}</div>` : ''}
+      <div class="receipt-divider"></div>
+      <div style="font-weight: 800; font-size: 13px; text-transform: uppercase; margin: 4px 0;">
+        ${isZ ? '*** LAPORAN Z (TUTUP SHIFT KASIR) ***' : '*** LAPORAN X (CEK SALDO BERJALAN) ***'}
+      </div>
+      <div style="font-size: 11px; color: #475569;">
+        ${isZ ? '(REKONSILIASI KAS & SERAH TERIMA SHIFT)' : '(RINGKASAN SEMENTARA TENGAH SHIFT)'}
+      </div>
+      <div style="margin-top: 6px;">No. Shift   : #${escapeHtml(String(shiftData.id || shiftData.shift_id || '-'))}</div>
+      <div>Petugas Kasir: ${escapeHtml(shiftData.cashier_name || (state.user ? state.user.name : 'Kasir'))}</div>
+      <div>Waktu Cetak  : ${timeFormatted}</div>
+      <div>Status Shift : ${isZ ? 'TUTUP (CLOSED)' : 'AKTIF BERJALAN (OPEN)'}</div>
+    </div>
+    <div class="receipt-divider"></div>
+    <div style="font-size: 11.5px; line-height: 1.5;">
+      <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">POSISI KAS LACI:</div>
+      <div style="display:flex; justify-content:space-between;">
+        <span>Modal Awal (Float) :</span>
+        <span style="font-family:monospace;">${formatRupiah(startingCash)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span>(+) Penjualan Tunai:</span>
+        <span style="font-family:monospace; color:#059669;">+${formatRupiah(cashSales)}</span>
+      </div>
+      ${cashDebt > 0 ? `
+        <div style="display:flex; justify-content:space-between;">
+          <span>(+) Pelunasan Bon :</span>
+          <span style="font-family:monospace; color:#059669;">+${formatRupiah(cashDebt)}</span>
+        </div>
+      ` : ''}
+      ${cashIncome > 0 ? `
+        <div style="display:flex; justify-content:space-between;">
+          <span>(+) Kas Masuk Toko:</span>
+          <span style="font-family:monospace; color:#059669;">+${formatRupiah(cashIncome)}</span>
+        </div>
+      ` : ''}
+      ${cashExpenses > 0 ? `
+        <div style="display:flex; justify-content:space-between;">
+          <span>(-) Biaya Keluar Laci:</span>
+          <span style="font-family:monospace; color:#dc2626;">-${formatRupiah(cashExpenses)}</span>
+        </div>
+      ` : ''}
+      ${cashSupplier > 0 ? `
+        <div style="display:flex; justify-content:space-between;">
+          <span>(-) Kulakan Tunai :</span>
+          <span style="font-family:monospace; color:#dc2626;">-${formatRupiah(cashSupplier)}</span>
+        </div>
+      ` : ''}
+    </div>
+    <div class="receipt-divider"></div>
+    <div style="display:flex; justify-content:space-between; font-weight:800; font-size:12.5px;">
+      <span>SALDO SEHARUSNYA:</span>
+      <span style="font-family:monospace;">${formatRupiah(expectedCash)}</span>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-weight:800; font-size:12.5px; margin-top:2px;">
+      <span>FISIK DIHITUNG:</span>
+      <span style="font-family:monospace; color:#0284c7;">${formatRupiah(actualCash)}</span>
+    </div>
+    <div style="text-align:center; margin: 8px 0 4px;">
+      ${varianceBadge}
+    </div>
+    <div class="receipt-divider"></div>
+    <div style="font-size: 11.5px; line-height: 1.4;">
+      <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">NON-TUNAI & OMSET:</div>
+      <div style="display:flex; justify-content:space-between;">
+        <span>QRIS :</span>
+        <span style="font-family:monospace;">${formatRupiah(qris)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span>Transfer Bank :</span>
+        <span style="font-family:monospace;">${formatRupiah(transfer)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span>Bon Tempo Baru :</span>
+        <span style="font-family:monospace;">${formatRupiah(tempo)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-weight:700; margin-top:4px;">
+        <span>Total Omset Shift :</span>
+        <span style="font-family:monospace;">${formatRupiah(totalOmset)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span>Total Nota :</span>
+        <span>${totalOrders} Transaksi</span>
+      </div>
+    </div>
+    ${shiftData.closing_notes || shiftData.notes ? `
+      <div class="receipt-divider"></div>
+      <div style="font-size:11px;">
+        <strong>Catatan Kasir:</strong><br>
+        <span>${escapeHtml(shiftData.closing_notes || shiftData.notes)}</span>
+      </div>
+    ` : ''}
+    <div class="receipt-divider" style="margin-top:12px;"></div>
+    <div style="display: flex; justify-content: space-between; text-align: center; font-size: 11px; margin-top: 14px; padding: 0 8px;">
+      <div>
+        Kasir Bertugas,<br><br><br><br>
+        ( .................... )
+      </div>
+      <div>
+        Supervisor / Penerima,<br><br><br><br>
+        ( .................... )
+      </div>
+    </div>
+    <div class="receipt-divider" style="margin-top: 16px;"></div>
+    <div class="receipt-footer">
+      <p>Kassa POS • Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar</p>
+    </div>
+  `;
+}
+
 

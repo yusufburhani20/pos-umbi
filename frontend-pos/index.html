@@ -107,6 +107,12 @@
           <span class="nav-label">Buka Laci</span>
         </button>
 
+        <!-- Direct Quick Action: Dashboard Kasir & Rekonsiliasi Kas -->
+        <button class="btn-nav btn-shift-dashboard-direct" id="btnOpenCashierDashboard" type="button" title="Dashboard Kasir & Rekonsiliasi Kas (Laporan X/Z & Uang Laci)" style="background: rgba(16, 185, 129, 0.2); border: 1.5px solid #10b981; color: #fff;">
+          <span class="icon">📊</span>
+          <span class="nav-label">Kasir & Kas</span>
+        </button>
+
         <!-- Sub Menu 1: Kelola Kios Dropdown (Menyatukan Kulakan, Hutang, Biaya, Kas, Opname) -->
         <div class="header-dropdown" id="storeMenuDropdown">
           <button class="btn-nav btn-store-menu" id="btnStoreMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Manajemen & Operasional Kios" style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10b981; color: #f8fafc;">
@@ -116,6 +122,18 @@
           </button>
           <div class="header-dropdown-menu" id="storeDropdownContent">
             <div class="dropdown-section-header">
+              <span>Operasional & Rekonsiliasi Kasir</span>
+            </div>
+
+            <button class="header-dropdown-item" id="btnDropdownCashierDashboard" type="button">
+              <span class="dropdown-item-icon icon-emerald">📊</span>
+              <div class="dropdown-item-text">
+                <span class="item-title">Dashboard Kasir & Rekonsiliasi Kas</span>
+                <span class="item-desc">Hitung fisik laci, balance kas, cetak Laporan X & Z</span>
+              </div>
+            </button>
+
+            <div class="dropdown-section-header" style="margin-top: 6px;">
               <span>Manajemen Toko & Komoditas</span>
             </div>
             
@@ -226,6 +244,14 @@
               <div class="dropdown-item-text">
                 <span class="item-title">Identitas Toko & Profil</span>
                 <span class="item-desc">Ubah nama kios, alamat nota & profil kasir</span>
+              </div>
+            </button>
+
+            <button class="header-dropdown-item" id="btnUserDropdownShiftDashboard" type="button">
+              <span class="dropdown-item-icon icon-emerald">📊</span>
+              <div class="dropdown-item-text">
+                <span class="item-title">Dashboard Kasir & Rekap Shift</span>
+                <span class="item-desc">Balance kas laci, hitung lembaran & cetak Laporan X/Z</span>
               </div>
             </button>
 
@@ -768,6 +794,294 @@
         <button class="btn-secondary" id="btnCancelCloseShiftModal">Kembali ke Kasir</button>
         <button class="btn-danger" id="btnSubmitBlindClose">Kirim & Tutup Shift Sekarang</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Dashboard Kasir & Rekonsiliasi Kas Harian (Tablet & Mobile Optimized) -->
+  <div class="modal-backdrop" id="modalCashierDashboard" style="display:none; z-index: 10006;">
+    <div class="modal-dialog modal-xl cashier-dashboard-dialog" style="max-width: 1080px; width: 96vw; max-height: 94vh; display: flex; flex-direction: column; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;">
+      
+      <!-- Dashboard Modal Header -->
+      <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 16px 22px; background: #f8fafc; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span class="modal-icon-badge emerald" style="font-size: 24px; padding: 8px 12px; background: #ecfdf5; color: #059669; border-radius: 10px;">📊</span>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h2 style="color: #0f172a; margin: 0; font-size: 19px; font-weight: 800;">Dashboard Kasir & Rekonsiliasi Kas Harian</h2>
+              <span class="badge-shift-status" id="dashShiftBadge" style="background: #10b981; color: #ffffff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px;">Shift Aktif</span>
+            </div>
+            <p class="modal-subtitle" style="color: #64748b; font-size: 12.5px; margin: 2px 0 0 0;" id="dashShiftMetaSubtitle">
+              Memuat data kasir dan shift...
+            </p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn btn-secondary" id="btnRefreshCashierDashboard" style="height: 36px; padding: 0 12px; font-size: 12.5px; font-weight: 600; border-radius: 8px; display: flex; align-items: center; gap: 6px;" title="Segarkan Data Shift">
+            <span>🔄</span> Segarkan
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnDrawerKickDashboard" style="height: 36px; padding: 0 12px; font-size: 12.5px; font-weight: 600; border-radius: 8px; display: flex; align-items: center; gap: 6px;" title="Buka Laci Uang Kasir (Kick RJ-11)">
+            <span>💰</span> Buka Laci
+          </button>
+          <button class="modal-close" id="btnCloseCashierDashboard" type="button" style="color: #64748b; margin-left: 4px;">✕</button>
+        </div>
+      </div>
+
+      <!-- Dashboard Modal Body (Scrollable) -->
+      <div class="modal-body" style="padding: 18px 22px; overflow-y: auto; flex: 1; background: #ffffff;">
+        
+        <!-- 4 KPI Cards -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;" class="dash-kpi-grid">
+          <!-- KPI 1: Modal Awal -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">1. Modal Awal Laci</span>
+              <span style="font-size: 15px;">💼</span>
+            </div>
+            <strong id="dashKpiStartingCash" style="font-size: 18px; color: #334155; font-family: monospace; font-weight: 800; display: block;">Rp 0</strong>
+            <span style="font-size: 11px; color: #64748b;">Float uang kembalian</span>
+          </div>
+
+          <!-- KPI 2: Penjualan Tunai -->
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase;">2. Penjualan Tunai</span>
+              <span style="font-size: 15px;">💵</span>
+            </div>
+            <strong id="dashKpiCashSales" style="font-size: 18px; color: #15803d; font-family: monospace; font-weight: 800; display: block;">Rp 0</strong>
+            <span id="dashKpiCashSalesCount" style="font-size: 11px; color: #166534; font-weight: 600;">0 transaksi lunas tunai</span>
+          </div>
+
+          <!-- KPI 3: Kas Masuk & Pelunasan Bon -->
+          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: #1e40af; text-transform: uppercase;">3. Kas Masuk & Bon</span>
+              <span style="font-size: 15px;">📥</span>
+            </div>
+            <strong id="dashKpiIncomeDebt" style="font-size: 18px; color: #1d4ed8; font-family: monospace; font-weight: 800; display: block;">Rp 0</strong>
+            <span id="dashKpiIncomeDebtMeta" style="font-size: 11px; color: #1e40af;">Masuk laci kasir</span>
+          </div>
+
+          <!-- KPI 4: Pengeluaran Kas Laci -->
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 12px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase;">4. Biaya Keluar Laci</span>
+              <span style="font-size: 15px;">💸</span>
+            </div>
+            <strong id="dashKpiExpensesCash" style="font-size: 18px; color: #b91c1c; font-family: monospace; font-weight: 800; display: block;">Rp 0</strong>
+            <span id="dashKpiExpensesCount" style="font-size: 11px; color: #991b1b; font-weight: 600;">0 voucher pengeluaran</span>
+          </div>
+        </div>
+
+        <!-- Banner Rumus Saldo Kas Laci Seharusnya (Expected Drawer Cash) -->
+        <div style="background: linear-gradient(135deg, #064e3b 0%, #022c22 100%); color: #ffffff; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 18px;">💡</span>
+              <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #a7f3d0;">
+                Kalkulasi Saldo Kas Laci Seharusnya (Sistem POS):
+              </span>
+            </div>
+            <div id="dashFormulaExplanation" style="font-size: 12.5px; color: #e2e8f0; margin-top: 4px; font-family: monospace;">
+              Modal [Rp 0] + Tunai [Rp 0] + Pelunasan [Rp 0] - Biaya Laci [Rp 0] = Saldo Seharusnya
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 11px; color: #6ee7b7; text-transform: uppercase; font-weight: 700; display: block;">Total Uang Laci Seharusnya</span>
+            <strong id="dashExpectedCashValue" style="font-size: 24px; font-family: monospace; color: #34d399; font-weight: 900;">Rp 0</strong>
+          </div>
+        </div>
+
+        <!-- 2-Column Split: Kalkulator Fisik (Kiri) & Aktivitas Transaksi (Kanan) -->
+        <div style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px;" class="dash-columns-split">
+          
+          <!-- KOLOM KIRI: KALKULATOR UANG FISIK & STATUS SELISIH -->
+          <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+              <div>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                  <span>🧮</span> Kalkulator Pecahan Uang Fisik di Laci
+                </h3>
+                <span style="font-size: 11.5px; color: #64748b;">Masukkan jumlah lembaran uang yang ada di laci kasir saat ini</span>
+              </div>
+              <button type="button" id="btnDashResetDenom" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11.5px; font-weight: 600; padding: 4px 8px; cursor: pointer;">
+                Reset 0
+              </button>
+            </div>
+
+            <!-- Denomination Rows Grid -->
+            <div class="denomination-grid" style="display: flex; flex-direction: column; gap: 6px;">
+              <!-- 100k -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #be123c;">Rp 100.000 :</span>
+                <input type="number" class="dash-denom-input" id="dashD100k" min="0" value="0" style="width: 65px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span style="font-size: 11px; color: #64748b;">lbr</span>
+                <span class="dash-denom-subtotal" id="dashSub100k" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+
+              <!-- 50k -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #1d4ed8;">Rp 50.000 :</span>
+                <input type="number" class="dash-denom-input" id="dashD50k" min="0" value="0" style="width: 65px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span style="font-size: 11px; color: #64748b;">lbr</span>
+                <span class="dash-denom-subtotal" id="dashSub50k" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+
+              <!-- 20k -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #047857;">Rp 20.000 :</span>
+                <input type="number" class="dash-denom-input" id="dashD20k" min="0" value="0" style="width: 65px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span style="font-size: 11px; color: #64748b;">lbr</span>
+                <span class="dash-denom-subtotal" id="dashSub20k" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+
+              <!-- 10k -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #b45309;">Rp 10.000 :</span>
+                <input type="number" class="dash-denom-input" id="dashD10k" min="0" value="0" style="width: 65px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span style="font-size: 11px; color: #64748b;">lbr</span>
+                <span class="dash-denom-subtotal" id="dashSub10k" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+
+              <!-- 5k -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #475569;">Rp 5.000 :</span>
+                <input type="number" class="dash-denom-input" id="dashD5k" min="0" value="0" style="width: 65px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span style="font-size: 11px; color: #64748b;">lbr</span>
+                <span class="dash-denom-subtotal" id="dashSub5k" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+
+              <!-- 2k -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #475569;">Rp 2.000 :</span>
+                <input type="number" class="dash-denom-input" id="dashD2k" min="0" value="0" style="width: 65px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span style="font-size: 11px; color: #64748b;">lbr</span>
+                <span class="dash-denom-subtotal" id="dashSub2k" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+
+              <!-- 1k -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #475569;">Rp 1.000 :</span>
+                <input type="number" class="dash-denom-input" id="dashD1k" min="0" value="0" style="width: 65px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: center; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span style="font-size: 11px; color: #64748b;">lbr</span>
+                <span class="dash-denom-subtotal" id="dashSub1k" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+
+              <!-- Koin / Receh -->
+              <div class="denom-row" style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 10px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                <span style="width: 100px; font-size: 13px; font-weight: 700; font-family: monospace; color: #475569;">Koin / Receh :</span>
+                <input type="number" class="dash-denom-input" id="dashDKoin" min="0" value="0" placeholder="Rp" style="width: 90px; height: 34px; border: 1.5px solid #cbd5e1; border-radius: 6px; text-align: right; padding-right: 6px; font-size: 14px; font-weight: 700; font-family: monospace;">
+                <span class="dash-denom-subtotal" id="dashSubKoin" style="flex: 1; text-align: right; font-size: 13px; font-weight: 700; font-family: monospace; color: #0f172a;">Rp 0</span>
+              </div>
+            </div>
+
+            <!-- Banner Total Fisik Dihitung -->
+            <div style="margin-top: 10px; background: #0f172a; color: #ffffff; padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 700;">TOTAL FISIK DIHITUNG:</span>
+              <strong id="dashTotalCounted" style="font-size: 18px; font-family: monospace; color: #38bdf8; font-weight: 900;">Rp 0</strong>
+            </div>
+
+            <!-- VARIANCE / DISCREPANCY STATUS CARD -->
+            <div id="dashVarianceCard" style="margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: #ecfdf5; border: 1.5px solid #a7f3d0; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="dashVarianceIcon" style="font-size: 20px;">✅</span>
+                <div>
+                  <strong id="dashVarianceTitle" style="font-size: 13.5px; color: #065f46; display: block;">KAS BALANCE (SESUAI)</strong>
+                  <span id="dashVarianceSubtitle" style="font-size: 11.5px; color: #047857;">Uang fisik tepat sesuai dengan kalkulasi sistem.</span>
+                </div>
+              </div>
+              <strong id="dashVarianceNominal" style="font-size: 16px; font-family: monospace; color: #059669; font-weight: 800;">Selisih: Rp 0</strong>
+            </div>
+
+            <!-- Catatan Kasir -->
+            <div style="margin-top: 12px;">
+              <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">
+                Catatan / Keterangan Kasir (Wajib diisi jika terjadi selisih kas):
+              </label>
+              <textarea id="dashClosingNotes" rows="2" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; font-family: inherit;" placeholder="Misal: Uang fisik sesuai / kembalian kurang Rp 2.000 koin tercecer"></textarea>
+            </div>
+          </div>
+
+          <!-- KOLOM KANAN: RINCIAN METODE TRANSAKSI & PENGELUARAN LACI -->
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            
+            <!-- Box 1: Ringkasan Semua Transaksi Shift -->
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                  <span>📋</span> Ringkasan Penjualan Shift
+                </h3>
+                <span id="dashTotalOrdersBadge" style="background: #eff6ff; color: #1d4ed8; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 12px;">0 Nota</span>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px;">
+                <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+                  <span style="color: #64748b;">💵 Tunai (Masuk Laci):</span>
+                  <strong id="dashSalesCash" style="font-family: monospace; color: #15803d;">Rp 0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+                  <span style="color: #64748b;">📱 QRIS:</span>
+                  <strong id="dashSalesQris" style="font-family: monospace; color: #0284c7;">Rp 0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+                  <span style="color: #64748b;">🏦 Transfer Bank:</span>
+                  <strong id="dashSalesTransfer" style="font-family: monospace; color: #4f46e5;">Rp 0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+                  <span style="color: #64748b;">📒 Bon Tempo (Hutang Baru):</span>
+                  <strong id="dashSalesTempo" style="font-family: monospace; color: #d97706;">Rp 0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 6px 0 2px; font-size: 13.5px; font-weight: 800; border-top: 1.5px solid #e2e8f0;">
+                  <span style="color: #0f172a;">TOTAL OMSET SHIFT:</span>
+                  <strong id="dashTotalOmset" style="font-family: monospace; color: #0f172a;">Rp 0</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Box 2: Pengeluaran Kas Laci Shift Ini -->
+            <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; flex: 1; display: flex; flex-direction: column;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                  <span>💸</span> Biaya Keluar Laci (Shift Ini)
+                </h3>
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" id="btnDashQuickAddExpense" style="background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 6px; font-size: 11px; font-weight: 700; padding: 2px 6px; cursor: pointer;">
+                    + Biaya
+                  </button>
+                  <button type="button" id="btnDashQuickAddIncome" style="background: #dcfce7; border: 1px solid #86efac; color: #15803d; border-radius: 6px; font-size: 11px; font-weight: 700; padding: 2px 6px; cursor: pointer;">
+                    + Kas Masuk
+                  </button>
+                </div>
+              </div>
+
+              <!-- List container -->
+              <div id="dashExpensesListContainer" style="overflow-y: auto; max-height: 190px; flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                <div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 20px;">
+                  Belum ada pengeluaran kas laci pada shift ini.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dashboard Modal Footer Actions -->
+      <div class="modal-footer" style="padding: 14px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; flex-shrink: 0;">
+        <div style="font-size: 12px; color: #64748b; display: flex; align-items: center; gap: 6px;">
+          <span>🖨️</span> Printer Bluetooth Thermal & Fallback System Print siap mencetak struk audit kas.
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button type="button" class="btn btn-secondary" id="btnDashboardPrintReportX" style="height: 42px; padding: 0 16px; border-radius: 8px; font-weight: 700; background: #f1f5f9; color: #334155; border: 1.5px solid #cbd5e1; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <span>🖨️</span> Cetak Laporan X (Cek Kas Berjalan)
+          </button>
+          <button type="button" class="btn btn-danger" id="btnDashboardCloseShiftZ" style="height: 42px; padding: 0 18px; border-radius: 8px; font-weight: 800; background: #dc2626; color: #ffffff; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);">
+            <span>🔒</span> Tutup Shift & Cetak Laporan Z
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 

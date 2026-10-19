@@ -19,11 +19,17 @@ router.get('/current', authenticateToken, async (req, res) => {
       return res.json({ success: true, has_active_shift: false, shift: null });
     }
 
-    // Calculate current live cash in drawer for active shift
-    const cashSalesRow = await dbQuery.get(
-      `SELECT COALESCE(SUM(total_amount), 0) as cash_sales
+    // Calculate current live sales & transactions for active shift
+    const ordersStatsRow = await dbQuery.get(
+      `SELECT 
+         COUNT(id) as total_orders,
+         COALESCE(SUM(CASE WHEN payment_method = 'cash' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as cash_sales,
+         COALESCE(SUM(CASE WHEN payment_method = 'qris' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as qris_sales,
+         COALESCE(SUM(CASE WHEN payment_method = 'transfer' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as transfer_sales,
+         COALESCE(SUM(CASE WHEN (payment_method = 'tempo' OR status = 'tempo') THEN total_amount ELSE 0 END), 0) as tempo_sales,
+         COALESCE(SUM(CASE WHEN status != 'void' THEN total_amount ELSE 0 END), 0) as total_omset
        FROM orders
-       WHERE shift_id = ? AND payment_method = 'cash' AND status = 'completed'`,
+       WHERE shift_id = ?`,
       [shift.id]
     );
 
@@ -50,7 +56,22 @@ router.get('/current', authenticateToken, async (req, res) => {
       [shift.id, shift.start_time]
     );
 
-    const cashSales = cashSalesRow.cash_sales || 0;
+    // Recent cash expenses for cashier dashboard
+    const recentExpenses = await dbQuery.all(
+      `SELECT id, expense_no, category, amount, notes, created_at
+       FROM store_expenses
+       WHERE shift_id = ? AND source = 'cash' AND type = 'expense'
+       ORDER BY id DESC LIMIT 10`,
+      [shift.id]
+    );
+
+    const cashSales = ordersStatsRow.cash_sales || 0;
+    const qrisSales = ordersStatsRow.qris_sales || 0;
+    const transferSales = ordersStatsRow.transfer_sales || 0;
+    const tempoSales = ordersStatsRow.tempo_sales || 0;
+    const totalOmset = ordersStatsRow.total_omset || 0;
+    const totalOrders = ordersStatsRow.total_orders || 0;
+
     const cashExpenses = expensesRow.cash_expenses || 0;
     const cashIncome = expensesRow.cash_income || 0;
     const cashSupplier = supplierCashRow.cash_supplier_payments || 0;
@@ -63,12 +84,18 @@ router.get('/current', authenticateToken, async (req, res) => {
       has_active_shift: true,
       shift: {
         ...shift,
+        total_orders: totalOrders,
+        total_omset: totalOmset,
         cash_sales: cashSales,
+        qris_sales: qrisSales,
+        transfer_sales: transferSales,
+        tempo_sales: tempoSales,
         cash_expenses: cashExpenses,
         cash_income: cashIncome,
         cash_debt_collected: cashDebt,
         cash_supplier_payments: cashSupplier,
-        current_drawer_cash: currentDrawerCash
+        current_drawer_cash: currentDrawerCash,
+        recent_expenses: recentExpenses || []
       }
     });
   } catch (err) {
@@ -143,20 +170,17 @@ router.post('/close', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Shift aktif tidak ditemukan atau sudah ditutup' });
     }
 
-    // Calculate system cash from completed cash orders in this shift
-    const cashSalesRow = await dbQuery.get(
-      `SELECT COALESCE(SUM(total_amount), 0) as total_cash_sales
-       FROM orders
-       WHERE shift_id = ? AND payment_method = 'cash' AND status = 'completed'`,
-      [shift_id]
-    );
-
-    const nonCashSalesRow = await dbQuery.get(
+    // Calculate full shift sales & transactions
+    const ordersStatsRow = await dbQuery.get(
       `SELECT 
-         COALESCE(SUM(CASE WHEN payment_method = 'qris' THEN total_amount ELSE 0 END), 0) as total_qris,
-         COALESCE(SUM(CASE WHEN payment_method = 'transfer' THEN total_amount ELSE 0 END), 0) as total_transfer
+         COUNT(id) as total_orders,
+         COALESCE(SUM(CASE WHEN payment_method = 'cash' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as total_cash_sales,
+         COALESCE(SUM(CASE WHEN payment_method = 'qris' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as total_qris,
+         COALESCE(SUM(CASE WHEN payment_method = 'transfer' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as total_transfer,
+         COALESCE(SUM(CASE WHEN (payment_method = 'tempo' OR status = 'tempo') THEN total_amount ELSE 0 END), 0) as total_tempo,
+         COALESCE(SUM(CASE WHEN status != 'void' THEN total_amount ELSE 0 END), 0) as total_omset
        FROM orders
-       WHERE shift_id = ? AND status = 'completed'`,
+       WHERE shift_id = ?`,
       [shift_id]
     );
 
@@ -185,7 +209,7 @@ router.post('/close', authenticateToken, async (req, res) => {
       [shift_id, shift.start_time]
     );
 
-    const totalCashSales = cashSalesRow.total_cash_sales || 0;
+    const totalCashSales = ordersStatsRow.total_cash_sales || 0;
     const totalCashExpenses = cashExpensesRow.total_cash_expenses || 0;
     const totalCashIncome = cashExpensesRow.total_cash_income || 0;
     const totalCashSupplierPaid = cashSupplierPaymentsRow.total_cash_supplier || 0;
@@ -239,17 +263,26 @@ router.post('/close', authenticateToken, async (req, res) => {
       message: 'Shift berhasil ditutup',
       summary: {
         shift_id,
+        cashier_name: req.user.name,
+        start_time: shift.start_time,
+        end_time: new Date().toISOString(),
         starting_cash: shift.starting_cash,
+        total_orders: ordersStatsRow.total_orders || 0,
+        total_omset: ordersStatsRow.total_omset || 0,
         total_cash_sales: totalCashSales,
+        total_qris: ordersStatsRow.total_qris || 0,
+        total_transfer: ordersStatsRow.total_transfer || 0,
+        total_tempo: ordersStatsRow.total_tempo || 0,
         total_cash_expenses: totalCashExpenses,
         total_cash_income: totalCashIncome,
         total_cash_supplier_paid: totalCashSupplierPaid,
-        total_qris: nonCashSalesRow.total_qris,
-        total_transfer: nonCashSalesRow.total_transfer,
+        total_cash_debt_collected: totalCashDebtCollected,
         expected_system_cash: expectedSystemCash,
         actual_cash_input: actual_cash,
         cash_difference: cashDifference,
-        is_balanced: cashDifference === 0
+        is_balanced: cashDifference === 0,
+        breakdown,
+        closing_notes: finalNotes
       }
     });
   } catch (err) {
