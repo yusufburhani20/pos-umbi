@@ -454,8 +454,21 @@ F:\POS
   - Mengirimkan sinyal `modalReady` melalui `postMessage` dari iframe ke [`cashier.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/cashier.html).
 - [x] **Transisi Opasitas Halus & Indikator Pemuatan**:
   - Menambahkan `#cashierModalLoader` elegan ("⏳ Memuat Riwayat Transaksi...") dan transisi opasitas pada iframe sehingga jendela modal muncul secara halus dan bersih tanpa ada kilatan halaman kasir sama sekali.
-- [x] **Service Worker Cache v26 & Deploy Server Live**:
-  - Cache Service Worker dinaikkan ke `kassa-pos-cache-v26` dan dideploy ke server online `192.168.18.32` (`kassa.konfigin.my.id`).
+### 18. 🚀 Optimasi Akselerasi Pop-up Modal Instan (0 Milidetik) Tanpa Loading (v1.9.5 - 19 Oktober 2026)
+- [x] **Identifikasi Akar Masalah Loading Lambat**:
+  - Sebelumnya, setiap kali kasir memilih menu di dropdown profil, sistem memuat ulang URL iframe (`iframe.src = '/?modal=...'`) dan saat ditutup menghancurkan iframe (`iframe.src = 'about:blank'`).
+  - Hal ini memaksa tablet mengunduh ulang berkas HTML, mem-parsing script 300KB+ dari awal, dan menunggu pemanggilan jaringan sebelum modal terbuka, sehingga terasa lambat dan ada jeda loading beberapa detik.
+- [x] **Arsitektur Preloaded Warm Iframe & PostMessage**:
+  - [`cashier.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/cashier.html) kini melakukan *preloading* satu kali di latar belakang (`<iframe id="cashierModalIframe" src="/?embed=1" loading="eager">`).
+  - Saat kasir menekan menu apa saja (Riwayat, Katalog, Piutang, Opname, dll.), sistem **TIDAK PERNAH** memuat ulang URL iframe. Kontrol dilakukan secara instan lewat komunikasi dua arah `postMessage({ action: 'openModal', modal: modalName })`.
+  - Jendela pop-up modal terbuka seketika (**0 milidetik**) layaknya aplikasi native tanpa ada unduhan jaringan ulang dan tanpa spinner loading.
+- [x] **Memori Iframe Terjaga (Warm State)**:
+  - Saat modal ditutup, `iframe.src` tidak dihancurkan ke `about:blank`, melainkan tetap hidup di memori dan hanya menyembunyikan overlay. Ketika kasir membuka menu lain beberapa menit kemudian, modal tetap terbuka seketika tanpa jeda.
+- [x] **Pemuatan Data Produk Latar Belakang Non-Blocking**:
+  - Pada [`app.js`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/src/app.js) mode embed, pemuatan data katalog produk dan susut berjalan non-blocking di latar belakang dari IndexedDB lokal, sehingga saat modal Katalog atau Susut dibuka, data komoditas sudah siap pakai.
+- [x] **Service Worker Cache v27 & Rilis Server Live**:
+  - Cache Service Worker dinaikkan ke `kassa-pos-cache-v27`.
+  - Bundle terbaru dideploy langsung ke server live `192.168.18.32` (`kassa.konfigin.my.id`) dan Nginx direload.
 
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
