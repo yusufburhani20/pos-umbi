@@ -2251,11 +2251,13 @@ function bindEvents() {
   });
 
   // Blind Close Shift (Fallback Modal)
-  el.btnCloseShift.addEventListener('click', () => {
-    const userDropdown = document.getElementById('userMenuDropdown');
-    if (userDropdown) userDropdown.classList.remove('active');
-    openCashierDashboard();
-  });
+  if (el.btnCloseShift) {
+    el.btnCloseShift.addEventListener('click', () => {
+      const userDropdown = document.getElementById('userMenuDropdown');
+      if (userDropdown) userDropdown.classList.remove('active');
+      openCashierDashboard();
+    });
+  }
   el.btnCloseCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   el.btnCancelCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   

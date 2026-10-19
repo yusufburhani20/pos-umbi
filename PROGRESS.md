@@ -470,6 +470,15 @@ F:\POS
   - Cache Service Worker dinaikkan ke `kassa-pos-cache-v27`.
   - Bundle terbaru dideploy langsung ke server live `192.168.18.32` (`kassa.konfigin.my.id`) dan Nginx direload.
 
+### 19. 🧹 Penyatuan Menu Dropdown Profil: "Rekonsiliasi & Tutup Shift" (v1.9.6 - 19 Oktober 2026)
+- [x] **Penyederhanaan Menu Duplikat**:
+  - Menggabungkan menu *Dashboard Kasir & Rekon Kas* dan *Tutup Shift Kasir* menjadi satu menu tunggal yang bersih dan jelas: **`📊 Rekonsiliasi & Tutup Shift`** *(Hitung fisik uang laci, cek selisih & Laporan Harian)*.
+  - Diterapkan secara seragam di Layar Kasir POS ([`index.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/index.html)) maupun di Dashboard Kasir ([`cashier.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/cashier.html)).
+  - Mengeliminasi menu ganda yang redundan sehingga dropdown profil kasir menjadi jauh lebih rapi, terstruktur, dan tidak membingungkan petugas kasir.
+- [x] **Service Worker Cache v28 & Deploy Produksi**:
+  - Cache Service Worker dinaikkan ke `kassa-pos-cache-v28`.
+  - Bundle terbaru dideploy langsung ke server live `192.168.18.32` (`kassa.konfigin.my.id`) dan Nginx direload.
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
 
