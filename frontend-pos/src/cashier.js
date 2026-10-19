@@ -196,12 +196,20 @@ async function loadActiveShiftData() {
     state.shift = res.shift;
     const s = state.shift;
 
-    // Header Badges
-    const cashierName = s.cashier_name || (state.user ? state.user.name : 'Kasir');
+    // Header Badges - Resolve clean cashier name (never display raw 'Owner')
+    function resolveCashierName(shiftObj, userObj) {
+      if (userObj && userObj.name && userObj.role === 'cashier') return userObj.name;
+      if (shiftObj && shiftObj.cashier_name && shiftObj.cashier_name.toLowerCase() !== 'owner') return shiftObj.cashier_name;
+      if (userObj && userObj.name && userObj.name.toLowerCase() !== 'owner') return userObj.name;
+      return 'Kasir (Admin)';
+    }
+
+    const cashierName = resolveCashierName(s, state.user);
+    state.resolvedCashierName = cashierName;
     const startTimeStr = parseSafeDate(s.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
     if (el.badgeShiftText) {
-      el.badgeShiftText.textContent = `Shift #${s.id} Aktif: ${cashierName}`;
+      el.badgeShiftText.textContent = `Shift Aktif #${s.id} • ${cashierName}`;
     }
     if (el.pageShiftSubtitle) {
       el.pageShiftSubtitle.textContent = `Petugas: ${cashierName} • Buka: ${startTimeStr} WIB • Modal Awal: ${formatRupiah(s.starting_cash)}`;
@@ -493,7 +501,7 @@ function handlePrintReportX() {
   const { total, breakdown, diff, expected } = recalculateDenominations();
   const reportData = {
     ...state.shift,
-    cashier_name: state.shift.cashier_name || (state.user ? state.user.name : 'Kasir'),
+    cashier_name: state.resolvedCashierName || (state.user ? state.user.name : 'Kasir (Admin)'),
     actual_cash: total,
     breakdown,
     expected_system_cash: expected,

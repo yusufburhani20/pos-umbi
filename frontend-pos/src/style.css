@@ -5249,3 +5249,14 @@ body.system-license-locked .exec-workspace {
 }
 
 
+
+
+/* Standalone Pages Scrolling Support (e.g. cashier.html) */
+html.cashier-html,
+body.cashier-body {
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+}
