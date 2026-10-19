@@ -96,55 +96,75 @@
           <span class="icon" id="fullscreenIcon" style="font-size: 16px;">⛶</span>
         </button>
 
-        <!-- Direct Quick Action: Riwayat Transaksi -->
-        <button class="btn-nav btn-history-direct" id="btnHistory" title="Riwayat Transaksi Nota Kasir">
-          <span class="icon">📋</span>
-          <span class="nav-label">Riwayat</span>
-        </button>
-
         <!-- Direct Quick Action: Buka Laci Kasir -->
         <button class="btn-nav btn-drawer-direct" id="btnQuickOpenDrawer" type="button" title="Buka Laci Uang Kasir (Cash Drawer Kick RJ-11)">
           <span class="icon">💰</span>
           <span class="nav-label">Buka Laci</span>
         </button>
 
-        <!-- Sub Menu 1: Kelola Kios Dropdown (Menyatukan Kulakan, Hutang, Biaya, Kas, Opname) -->
-        <div class="header-dropdown" id="storeMenuDropdown">
-          <button class="btn-nav btn-store-menu" id="btnStoreMenuTrigger" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Manajemen & Operasional Kios" style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10b981; color: #f8fafc;">
-            <span class="icon">📦</span>
-            <span class="nav-label">Kelola Kios</span>
+        <div class="nav-divider"></div>
+
+        <!-- Menu Utama Profil & Manajemen Lengkap Kios Dropdown -->
+        <div class="header-dropdown" id="userMenuDropdown">
+          <button class="btn-nav btn-user-menu shift-indicator" id="shiftIndicator" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Akun, Manajemen Toko & Shift Kasir">
+            <div class="user-status-avatar">
+              <span class="status-dot green" id="cashierStatusDot"></span>
+            </div>
+            <div class="shift-text">
+              <span class="shift-name" id="activeCashierName">Kasir (Admin)</span>
+              <span class="shift-meta" id="activeShiftMeta">Shift Aktif</span>
+            </div>
             <span class="dropdown-chevron">▾</span>
           </button>
-          <div class="header-dropdown-menu" id="storeDropdownContent">
-            <div class="dropdown-section-header">
-              <span>Operasional & Rekonsiliasi Kasir</span>
-            </div>
-
-            <a class="header-dropdown-item" id="btnDropdownCashierDashboard" href="/cashier.html" style="text-decoration: none; color: inherit;">
-              <span class="dropdown-item-icon icon-emerald">📊</span>
-              <div class="dropdown-item-text">
-                <span class="item-title">Dashboard Kasir & Rekonsiliasi Kas</span>
-                <span class="item-desc">Hitung fisik laci, balance kas, cetak Laporan X & Z</span>
+          <div class="header-dropdown-menu header-dropdown-menu-right" id="userDropdownContent" style="min-width: 350px; max-width: 410px; max-height: calc(100vh - 65px); overflow-y: auto;">
+            <!-- Header Kartu User / Kasir Aktif -->
+            <div class="dropdown-user-header">
+              <div class="dropdown-user-avatar">👤</div>
+              <div class="dropdown-user-details">
+                <span class="dropdown-user-name" id="dropdownUserDisplayName">Kasir (Admin)</span>
+                <span class="dropdown-user-role" id="dropdownUserRole">Kasir & Admin Kios</span>
               </div>
-            </a>
-
-            <div class="dropdown-section-header" style="margin-top: 6px;">
-              <span>Manajemen Toko & Komoditas</span>
             </div>
-            
-            <button class="header-dropdown-item" id="btnCatalogMargin" type="button">
-              <span class="dropdown-item-icon icon-purple">🏷️</span>
+
+            <!-- BAGIAN 1: KASIR & TRANSAKSI -->
+            <div class="dropdown-section-header" style="margin-top: 8px;">
+              <span>Kasir & Transaksi</span>
+            </div>
+
+            <button class="header-dropdown-item" id="btnHistory" type="button">
+              <span class="dropdown-item-icon icon-blue">📋</span>
               <div class="dropdown-item-text">
-                <span class="item-title">Katalog & Margin</span>
-                <span class="item-desc">Kelola harga modal, ecer, karung & profit margin</span>
+                <span class="item-title">Riwayat Transaksi Kasir</span>
+                <span class="item-desc">Semua nota penjualan, cetak ulang struk & batalkan nota</span>
               </div>
             </button>
 
-            <button class="header-dropdown-item" id="btnDebtsModal" type="button">
-              <span class="dropdown-item-icon icon-amber">📒</span>
+            <a class="header-dropdown-item" id="btnUserDropdownShiftDashboard" href="/cashier.html" style="text-decoration: none; color: inherit;">
+              <span class="dropdown-item-icon icon-emerald">📊</span>
               <div class="dropdown-item-text">
-                <span class="item-title">Buku Piutang & Kasbon</span>
-                <span class="item-desc">Catat utang langganan kios, jatuh tempo & bayar</span>
+                <span class="item-title">Dashboard Kasir & Rekon Kas</span>
+                <span class="item-desc">Balance kas laci, hitung lembaran fisik & Laporan Harian</span>
+              </div>
+            </a>
+
+            <button class="header-dropdown-item item-shift" id="btnCloseShift" type="button">
+              <span class="dropdown-item-icon icon-rose">🔒</span>
+              <div class="dropdown-item-text">
+                <span class="item-title">Tutup Shift Kasir</span>
+                <span class="item-desc">Blind cash count, setoran kas harian & cetak rekap</span>
+              </div>
+            </button>
+
+            <!-- BAGIAN 2: KOMODITAS & STOK -->
+            <div class="dropdown-section-header" style="margin-top: 10px;">
+              <span>Komoditas & Stok Gudang</span>
+            </div>
+
+            <button class="header-dropdown-item" id="btnCatalogMargin" type="button">
+              <span class="dropdown-item-icon icon-purple">🏷️</span>
+              <div class="dropdown-item-text">
+                <span class="item-title">Katalog & Margin Harga</span>
+                <span class="item-desc">Kelola harga modal, ecer, karung & profit margin</span>
               </div>
             </button>
 
@@ -164,11 +184,24 @@
               </div>
             </button>
 
+            <!-- BAGIAN 3: KEUANGAN, PIUTANG & KULAKAN -->
+            <div class="dropdown-section-header" style="margin-top: 10px;">
+              <span>Keuangan, Piutang & Kulakan</span>
+            </div>
+
+            <button class="header-dropdown-item" id="btnDebtsModal" type="button">
+              <span class="dropdown-item-icon icon-amber">📒</span>
+              <div class="dropdown-item-text">
+                <span class="item-title">Buku Piutang & Kasbon</span>
+                <span class="item-desc">Catat utang langganan kios, jatuh tempo & bayar</span>
+              </div>
+            </button>
+
             <button class="header-dropdown-item" id="btnCashierSuppliersModal" type="button">
               <span class="dropdown-item-icon icon-emerald">🚛</span>
               <div class="dropdown-item-text">
                 <span class="item-title">Pemasok & Buku Kulakan</span>
-                <span class="item-desc">Data juragan petani, kontak WA, riwayat barang masuk</span>
+                <span class="item-desc">Data juragan petani, kontak WA, riwayat pasokan</span>
               </div>
             </button>
 
@@ -188,51 +221,18 @@
               </div>
             </button>
 
+            <!-- BAGIAN 4: PENGATURAN & PERANGKAT -->
+            <div class="dropdown-section-header" style="margin-top: 10px;">
+              <span>Pengaturan & Perangkat</span>
+            </div>
+
             <button class="header-dropdown-item" id="btnHardwareDropdownItem" type="button">
               <span class="dropdown-item-icon icon-blue">🖨️</span>
               <div class="dropdown-item-text">
                 <span class="item-title">Printer & Laci Kasir</span>
-                <span class="item-desc">Atur Bluetooth, ukuran kertas thermal & cash drawer RJ-11</span>
+                <span class="item-desc">Atur Bluetooth, ukuran thermal & cash drawer RJ-11</span>
               </div>
             </button>
-
-            <div class="dropdown-divider"></div>
-
-            <button class="header-dropdown-item item-owner" id="btnOwnerPanel" type="button">
-              <span class="dropdown-item-icon icon-gold">👑</span>
-              <div class="dropdown-item-text">
-                <span class="item-title">Panel Owner & Laporan</span>
-                <span class="item-desc">Laba bersih, rekap eksekutif & audit keseluruhan</span>
-              </div>
-              <span class="dropdown-badge-owner">VIP</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="nav-divider"></div>
-
-        <!-- Sub Menu 2: Akun Kasir & Sesi Shift Dropdown -->
-        <div class="header-dropdown" id="userMenuDropdown">
-          <button class="btn-nav btn-user-menu shift-indicator" id="shiftIndicator" type="button" aria-haspopup="true" aria-expanded="false" title="Menu Akun & Sesi Shift Kasir">
-            <div class="user-status-avatar">
-              <span class="status-dot green" id="cashierStatusDot"></span>
-            </div>
-            <div class="shift-text">
-              <span class="shift-name" id="activeCashierName">Kasir (Admin)</span>
-              <span class="shift-meta" id="activeShiftMeta">Shift Aktif</span>
-            </div>
-            <span class="dropdown-chevron">▾</span>
-          </button>
-          <div class="header-dropdown-menu header-dropdown-menu-right" id="userDropdownContent">
-            <div class="dropdown-user-header">
-              <div class="dropdown-user-avatar">👤</div>
-              <div class="dropdown-user-details">
-                <span class="dropdown-user-name" id="dropdownUserDisplayName">Kasir (Admin)</span>
-                <span class="dropdown-user-role" id="dropdownUserRole">Kasir & Admin Kios</span>
-              </div>
-            </div>
-
-            <div class="dropdown-divider"></div>
 
             <button class="header-dropdown-item" id="btnEditIdentity" type="button">
               <span class="dropdown-item-icon icon-blue">⚙️</span>
@@ -242,21 +242,19 @@
               </div>
             </button>
 
-            <a class="header-dropdown-item" id="btnUserDropdownShiftDashboard" href="/cashier.html" style="text-decoration: none; color: inherit;">
-              <span class="dropdown-item-icon icon-emerald">📊</span>
+            <button class="header-dropdown-item item-owner" id="btnOwnerPanel" type="button">
+              <span class="dropdown-item-icon icon-gold">👑</span>
               <div class="dropdown-item-text">
-                <span class="item-title">Dashboard Kasir & Rekap Shift</span>
-                <span class="item-desc">Balance kas laci, hitung lembaran & cetak Laporan X/Z</span>
+                <span class="item-title">Panel Owner & Laporan</span>
+                <span class="item-desc">Laba bersih, rekap eksekutif & audit keseluruhan</span>
               </div>
-            </a>
-
-            <button class="header-dropdown-item item-shift" id="btnCloseShift" type="button">
-              <span class="dropdown-item-icon icon-rose">🔒</span>
-              <div class="dropdown-item-text">
-                <span class="item-title">Tutup Shift Kasir</span>
-                <span class="item-desc">Blind cash count, setoran kas harian & rekap</span>
-              </div>
+              <span class="dropdown-badge-owner">VIP</span>
             </button>
+
+            <!-- BAGIAN 5: KEAMANAN & SISTEM -->
+            <div class="dropdown-section-header" style="margin-top: 10px;">
+              <span>Keamanan & Sistem</span>
+            </div>
 
             <button class="header-dropdown-item item-lock" id="btnManualLock" type="button">
               <span class="dropdown-item-icon icon-amber">🔐</span>

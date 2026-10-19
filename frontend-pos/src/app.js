@@ -901,10 +901,12 @@ async function initApp() {
   if (targetModal) {
     setTimeout(() => {
       try {
-        if (targetModal === 'catalog') openCatalogMarginModal();
+        if (targetModal === 'history') openHistoryModal();
+        else if (targetModal === 'catalog') openCatalogMarginModal();
         else if (targetModal === 'debts') openCashierDebtsModal();
         else if (targetModal === 'stockOpname') openStockOpnameModal();
         else if (targetModal === 'waste') openWasteModal();
+        else if (targetModal === 'lock') lockScreenNow();
         else if (targetModal === 'suppliers') {
           if (el.modalCashierSuppliers) el.modalCashierSuppliers.style.display = 'flex';
           switchCashierSupplierTab('juragan');
