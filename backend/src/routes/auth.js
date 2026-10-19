@@ -5,10 +5,59 @@ const jwt = require('jsonwebtoken');
 const { dbQuery } = require('../db');
 const { JWT_SECRET, authenticateToken, logAudit } = require('../middleware/auth');
 
+// Brute-force rate limiter for PIN logins (5 failed attempts = 5 min lockout)
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
+const loginAttempts = new Map();
+
+function checkRateLimit(ip) {
+  const record = loginAttempts.get(ip);
+  if (!record) return { blocked: false };
+  const now = Date.now();
+  if (record.lockedUntil && now < record.lockedUntil) {
+    const remainingSeconds = Math.ceil((record.lockedUntil - now) / 1000);
+    return { blocked: true, remainingSeconds };
+  }
+  if (record.lockedUntil && now >= record.lockedUntil) {
+    loginAttempts.delete(ip);
+    return { blocked: false };
+  }
+  return { blocked: false };
+}
+
+function recordFailedAttempt(ip) {
+  const now = Date.now();
+  const record = loginAttempts.get(ip) || { count: 0, firstAttempt: now };
+  if (now - record.firstAttempt > LOCKOUT_DURATION_MS) {
+    record.count = 1;
+    record.firstAttempt = now;
+    delete record.lockedUntil;
+  } else {
+    record.count += 1;
+  }
+  if (record.count >= MAX_FAILED_ATTEMPTS) {
+    record.lockedUntil = now + LOCKOUT_DURATION_MS;
+  }
+  loginAttempts.set(ip, record);
+}
+
+function clearRateLimit(ip) {
+  loginAttempts.delete(ip);
+}
+
 // POST /api/auth/login
 // Supports login with username + pin, OR just 6-digit PIN for quick cashier login
 router.post('/login', async (req, res) => {
   try {
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const rateCheck = checkRateLimit(clientIp);
+    if (rateCheck.blocked) {
+      return res.status(429).json({
+        success: false,
+        message: `Terlalu banyak percobaan PIN salah. Demi keamanan, silakan coba lagi dalam ${rateCheck.remainingSeconds} detik.`
+      });
+    }
+
     const { username, pin } = req.body;
 
     if (!pin) {
@@ -31,7 +80,8 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user) {
-      await logAudit(null, 'LOGIN_FAILED', { username, ip: req.ip });
+      recordFailedAttempt(clientIp);
+      await logAudit(null, 'LOGIN_FAILED', { username, ip: clientIp });
       return res.status(401).json({ success: false, message: 'PIN atau username salah' });
     }
 
@@ -39,10 +89,14 @@ router.post('/login', async (req, res) => {
     if (username) {
       const isMatch = await bcrypt.compare(pin, user.pin_code);
       if (!isMatch) {
-        await logAudit(user.id, 'LOGIN_FAILED_PIN', { username });
+        recordFailedAttempt(clientIp);
+        await logAudit(user.id, 'LOGIN_FAILED_PIN', { username, ip: clientIp });
         return res.status(401).json({ success: false, message: 'PIN salah' });
       }
     }
+
+    // Login successful: reset rate limit counter
+    clearRateLimit(clientIp);
 
     const token = jwt.sign(
       { id: user.id, name: user.name, username: user.username, role: user.role },

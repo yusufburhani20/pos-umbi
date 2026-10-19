@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { dbQuery } = require('../db');
-const { authenticateToken, requireOwner, logAudit } = require('../middleware/auth');
+const { authenticateToken, requireStrictOwner, logAudit } = require('../middleware/auth');
 
 // GET /api/users (Owner only)
 // Fetch all users (Cashiers & Owners)
-router.get('/', authenticateToken, requireOwner, async (req, res) => {
+router.get('/', authenticateToken, requireStrictOwner, async (req, res) => {
   try {
     const users = await dbQuery.all(
       'SELECT id, name, username, role, is_active, created_at FROM users ORDER BY role DESC, id ASC'
@@ -19,7 +19,7 @@ router.get('/', authenticateToken, requireOwner, async (req, res) => {
 
 // POST /api/users (Owner only)
 // Create new cashier
-router.post('/', authenticateToken, requireOwner, async (req, res) => {
+router.post('/', authenticateToken, requireStrictOwner, async (req, res) => {
   try {
     const { name, username, pin_code, role = 'cashier' } = req.body;
 
@@ -67,7 +67,7 @@ router.post('/', authenticateToken, requireOwner, async (req, res) => {
 
 // PUT /api/users/:id (Owner only)
 // Update cashier details, reset PIN, or toggle active status
-router.put('/:id', authenticateToken, requireOwner, async (req, res) => {
+router.put('/:id', authenticateToken, requireStrictOwner, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, pin_code, is_active } = req.body;

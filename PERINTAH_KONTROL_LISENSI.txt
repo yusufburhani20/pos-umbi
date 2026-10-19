@@ -1,0 +1,259 @@
+================================================================================
+          PANDUAN & PERINTAH KONTROL LISENSI LANGGANAN POS UMBI (VENDOR)
+================================================================================
+
+Aplikasi POS Umbi dilengkapi sistem manajemen lisensi & langganan (SaaS).
+Jika klien/toko telat membayar biaya langganan, sistem akan menampilkan pop-up 
+secara otomatis di layar Kasir maupun Owner yang memuat rincian rekening transfer 
+dan tombol konfirmasi pembayaran langsung ke WhatsApp Vendor.
+
+Dokumen ini berisi panduan kontrol lisensi, pengosongan transaksi, dan backup database.
+Tersedia 2 cara penggunaan:
+A. Cara Termudah: Melalui Aplikasi Menu Bash Interaktif (Tinggal Pilih Angka)
+B. Cara Manual: Melalui Perintah Terminal Node.js (CLI Satuan)
+
+
+================================================================================
+A. CARA TERMUDAH: MENU BASH INTERAKTIF (TINGGAL PILIH ANGKA)
+================================================================================
+
+Cukup buka terminal di folder proyek dan ketik:
+
+   ./kontrol.sh
+   (atau: bash kontrol.sh  /  ./menu.sh)
+
+Akan muncul antarmuka menu berwarna di terminal:
+--------------------------------------------------------------------------------
+  [ 1] 📊 Cek Status Masa Aktif & Rekening Saat Ini
+  [ 2] ➕ Perpanjang Masa Aktif (+30, +90, +365 Hari, dst.)
+  [ 3] 📅 Setel Tanggal Jatuh Tempo Tertentu (YYYY-MM-DD)
+
+  [ 4] ⚠️  Setel Mode Peringatan  ➔ TIDAK MENGUNCI (Ada tombol 'Nanti Saja')
+  [ 5] 🔒 Setel Mode Terkunci    ➔ MENGUNCI TOTAL (Layar kasir & owner diblokir)
+  [ 6] 🔓 Setel Mode Normal/Aktif ➔ BEBAS POP-UP   (Buka kunci / normal kembali)
+
+  [ 7] 🏦 Ubah Rekening Bank Vendor, Nominal, & No. WhatsApp
+  [ 8] ⚡ Simulasi Pengujian (Demo Overdue / Warning)
+  [ 9] 🧹 Kosongkan Data Transaksi Toko (Clean Reset Klien Baru)
+
+  [10] 💾 Buat Cadangan (Backup) Database Sekarang
+  [11] 📋 Lihat Daftar File Cadangan (Folder backups/)
+  [12] 🔄 Pulihkan (Restore) Database dari Berkas Cadangan
+
+  [ 0] ❌ Keluar / Tutup Menu
+--------------------------------------------------------------------------------
+Anda cukup mengetik nomor menu yang diinginkan lalu tekan Enter!
+
+
+================================================================================
+B. PENJELASAN 2 JENIS POP-UP TAGIHAN (PERINGATAN VS KUNCI TOTAL)
+================================================================================
+
+1. POP-UP TIPE 1: PERINGATAN AWAL (TIDAK MENGUNCI)
+   - Menu Bash: Pilihan [4]
+   - Perintah Terminal: node backend/manage_license.js --warn
+   - Sifat: 
+     * Pop-up pengingat pembayaran warna Amber (Kuning) muncul di kasir & owner.
+     * TIDAK MENGUNCI aplikasi.
+     * Tombol "✕" (tutup) dan tombol "Nanti Saja (Lanjut ke Kasir) ➔" AKTIF.
+     * Kasir masih dapat melayani pelanggan, menimbang barang, dan cetak nota.
+     * Sangat tepat untuk mengingatkan klien di hari-hari awal sebelum jatuh tempo.
+
+2. POP-UP TIPE 2: PEMBLOKIRAN TOTAL (MENGUNCI TOTAL)
+   - Menu Bash: Pilihan [5]
+   - Perintah Terminal: node backend/manage_license.js --lock
+   - Sifat:
+     * Pop-up pemblokiran warna Merah pekat muncul di kasir & owner.
+     * MENGUNCI TOTAL (Hard Lockdown).
+     * Tombol "✕" dan tombol "Nanti Saja" DISEMBUNYIKAN / DITIADAKAN.
+     * Klik di luar pop-up dan tombol Keyboard 'Esc' DIBLOKIR.
+     * Tombol belanja dan checkout kasir DINONAKTIFKAN sampai dibayar.
+     * Sangat tepat jika klien membandel / telat bayar melewati batas toleransi.
+
+3. KEMBALI KE STATUS NORMAL (BEBAS POP-UP)
+   - Menu Bash: Pilihan [6]
+   - Perintah Terminal: node backend/manage_license.js --unlock
+   - Sifat: Menghilangkan semua pop-up dan mengembalikan sistem ke kondisi normal.
+
+
+================================================================================
+C. DAFTAR LENGKAP PERINTAH TERMINAL MANUAL (CLI SATUAN)
+================================================================================
+
+Jika Anda ingin menjalankan perintah satuan secara langsung tanpa menu:
+
+1. MENGECEK STATUS MASA AKTIF & REKENING PEMBAYARAN SAAT INI:
+   node backend/manage_license.js --status
+
+   Output: Menampilkan nama toko, status (Aktif/Peringatan/Terkunci), sisa hari,
+           tanggal jatuh tempo, serta nomor rekening tujuan saat ini.
+
+
+2. MEMPERPANJANG MASA AKTIF LANGGANAN SETELAH KLIEN MEMBAYAR:
+   node backend/manage_license.js --extend 30
+
+   Catatan:
+   - Angka 30 bisa diganti dengan jumlah hari yang diinginkan.
+   - Contoh +1 Bulan (30 Hari)  : node backend/manage_license.js --extend 30
+   - Contoh +3 Bulan (90 Hari)  : node backend/manage_license.js --extend 90
+   - Contoh +1 Tahun (365 Hari) : node backend/manage_license.js --extend 365
+   - Jika status sebelumnya terkunci, perintah ini otomatis membuka kunci aplikasi.
+
+
+3. MENYETEL TANGGAL JATUH TEMPO TERTENTU (SPESIFIK):
+   node backend/manage_license.js --set-due YYYY-MM-DD
+
+   Contoh:
+   node backend/manage_license.js --set-due 2026-12-31
+
+
+4. SETEL MODE PERINGATAN (TIDAK MENGUNCI):
+   node backend/manage_license.js --warn
+
+
+5. SETEL MODE KUNCI AKSES APLIKASI (MENGUNCI TOTAL):
+   node backend/manage_license.js --lock
+
+
+6. MEMBUKA KEMBALI KUNCI / KEMBALI KE NORMAL:
+   node backend/manage_license.js --unlock
+
+   Efek:
+   - Mengembalikan status ke Normal / Aktif.
+   - Jika tanggal jatuh tempo sudah lewat, otomatis ditambahkan masa aktif 30 hari.
+
+
+6. MENGUBAH DETAIL REKENING TUJUAN & NOMINAL LANGGANAN:
+   node backend/manage_license.js --set-bank "<NamaBank>" "<NoRekening>" "<AtasNama>" <Nominal> "<NoWhatsApp>"
+
+   Contoh:
+   node backend/manage_license.js --set-bank "BCA" "883-123-4567" "YUSUF BURHANI / VENDOR POS" 150000 "0812-3456-7890"
+
+   Penjelasan Parameter:
+   - Parameter 1 : Nama Bank (misal: "BCA", "Mandiri", "BRI", "BNI")
+   - Parameter 2 : Nomor Rekening (misal: "883-123-4567")
+   - Parameter 3 : Nama Pemilik Rekening (misal: "YUSUF BURHANI")
+   - Parameter 4 : Nominal Biaya per Bulan dalam angka (misal: 150000)
+   - Parameter 5 : Nomor WhatsApp Vendor untuk konfirmasi (misal: "0812-3456-7890")
+
+
+7. SIMULASI KONDISI TELAT BAYAR (UNTUK PENGUJIAN):
+   node backend/manage_license.js --simulate-overdue
+
+   Efek: Mengatur tanggal jatuh tempo ke 5 hari yang lalu (melewati batas toleransi).
+         Sistem akan seketika terkunci dan menampilkan pop-up blokir.
+
+
+8. SIMULASI PENGINGAT MENDEKATI JATUH TEMPO:
+   node backend/manage_license.js --simulate-warning
+
+   Efek: Mengatur tanggal jatuh tempo ke 2 hari kedepan.
+         Sistem menampilkan pop-up amber pengingat dengan tombol toleransi "Nanti Saja".
+
+
+9. MENGOSONGKAN DATA TRANSAKSI TOKO (CLEAN RESET UNTUK KLIEN BARU):
+   a. Melihat Preview Data Transaksi yang akan dihapus (Mode Aman / Tanpa Hapus):
+      node backend/reset_transactions.js
+      atau:
+      node backend/manage_license.js --reset-transactions
+
+   b. Mengeksekusi Pengosongan Data Transaksi:
+      node backend/reset_transactions.js --confirm
+      atau:
+      node backend/manage_license.js --reset-transactions --confirm
+
+   FITUR KEAMANAN SISTEM:
+   - Sistem OTOMATIS membuat file cadangan (backup) SQLite sebelum menghapus,
+     contoh: backend/pos_umbi_backup_before_reset_YYYY-MM-DD.db.
+   - DATA YANG DIKOSONGKAN HANYA DATA TRANSAKSI:
+     * Nota Penjualan Kasir (orders, order_items)
+     * Buku Piutang / Kasbon Pelanggan (customer_debts, debt_payments)
+     * Sesi Shift Kasir (shifts)
+     * Biaya Operasional & Kas Toko (store_expenses)
+     * Riwayat Kulakan & Hutang Pemasok (purchases, supplier_payments)
+     * Catatan Barang Susut / Busuk / Opname (stock_adjustments)
+     * Log Aktivitas / Audit Trail (audit_logs)
+     * Nomor urut nota kasir otomatis di-reset mulai dari #1 kembali.
+   - DATA YANG 100% TETAP UTUH & AMAN (TIDAK AKAN DIHAPUS):
+     * Master Komoditas & Harga Produk (products) beserta stok
+     * Identitas Toko & Lisensi Vendor (store_settings)
+     * Akun Login Kasir & Owner (users) beserta PIN
+     * Data Pelanggan Langganan / Reseller (customers)
+     * Data Juragan / Pemasok (suppliers)
+
+
+10. MEMBUAT CADANGAN (BACKUP) & PEMULIHAN (RESTORE) DATABASE:
+   a. Membuat Backup Baru (Otomatis & Aman saat Toko Buka):
+      node backend/backup_database.js
+      atau:
+      node backend/manage_license.js --backup
+
+      Efek:
+      - Menjalankan sinkronisasi WAL checkpoint & atomic VACUUM INTO.
+      - Menyimpan salinan database terpadat ke folder backups/ dengan format:
+        backups/pos_umbi_backup_YYYY-MM-DD_HH-mm-ss.db.
+      - Menampilkan ringkasan jumlah komoditas, nota transaksi, omzet, dan piutang.
+
+   b. Melihat Daftar File Backup yang Tersedia:
+      node backend/backup_database.js --list
+      atau:
+      node backend/manage_license.js --list-backups
+
+   c. Memulihkan (Restore) Database dari File Cadangan Tertentu:
+      node backend/backup_database.js --restore <nama_file.db>
+      
+      Contoh:
+      node backend/backup_database.js --restore pos_umbi_backup_2026-10-18_22-31-09.db
+
+      Keamanan Restore:
+      - Sebelum menimpa, sistem otomatis mengamankan database saat ini ke file penyelamat
+        (rescue backup) agar data tidak pernah hilang jika salah memilih file.
+      - Otomatis menjalankan verifikasi integritas SQLite (PRAGMA integrity_check).
+
+
+================================================================================
+2. TAHAPAN SIKLUS PENEGAKAN LANGGANAN (LIFECYCLE)
+================================================================================
+
+1. AKTIF (Sisa waktu > 3 hari):
+   - Aplikasi berjalan normal. Pop-up tagihan TIDAK AKAN MUNCUL.
+   - Pemilik toko tetap dapat melihat info masa aktif di Tab Pengaturan Owner.
+
+2. PENGINGAT / WARNING (Sisa waktu 0 s/d 3 hari):
+   - Pop-up pengingat berwarna amber muncul otomatis saat membuka program.
+   - Klien masih bisa menekan tombol "Nanti Saja (Lanjut ke Kasir)" agar 
+     operasional kios tidak terganggu mendadak.
+
+3. MASA TENGGANG / GRACE PERIOD (Telat 1 s/d 3 hari):
+   - Tagihan telah lewat jatuh tempo, tetapi sistem memberikan toleransi 3 hari.
+   - Muncul peringatan dengan hitungan mundur sisa hari toleransi.
+
+4. TERKUNCI TOTAL / EXPIRED (Telat > 3 hari atau dikunci manual):
+   - Sistem memblokir penuh layar kasir maupun owner (*Hard Lockdown*).
+   - Modal pop-up mengunci layar dan TIDAK DAPAT DITUTUP.
+   - Tombol transaksi belanja kasir dinonaktifkan.
+   - Klien diarahkan untuk transfer ke rekening yang tertera dan menekan tombol WhatsApp.
+   - Setelah transfer diverifikasi, klien menekan tombol "🔄 Periksa Status Sekarang"
+     atau vendor menjalankan perintah `--extend 30` untuk membuka kunci secara instan.
+
+
+================================================================================
+3. API ENDPOINT (UNTUK INTEGRASI JAUH / CLOUD)
+================================================================================
+
+- Cek Status Langganan:
+  GET http://localhost:4000/api/subscription/status
+
+- Update Lisensi via API:
+  POST http://localhost:4000/api/subscription/update
+  Headers:
+    Content-Type: application/json
+  Body:
+    {
+      "vendor_key": "pos_umbi_master_vendor_key_2026",
+      "extend_days": 30
+    }
+
+================================================================================
+Dokumen ini dibuat otomatis untuk referensi operasional vendor POS Umbi.
+================================================================================

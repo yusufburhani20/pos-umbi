@@ -1,4 +1,7 @@
 import { api } from './api.js';
+import Chart from 'chart.js/auto';
+import { hardwareManager } from './hardware.js';
+import { initSubscriptionGuard } from './subscription.js';
 
 function parseSafeDate(dateInput) {
   if (!dateInput) return new Date();
@@ -8,6 +11,16 @@ function parseSafeDate(dateInput) {
     s = s.replace(' ', 'T');
   }
   return new Date(s);
+}
+
+function escapeHtml(str) {
+  if (!str && str !== 0) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 const state = {
@@ -26,7 +39,19 @@ const state = {
   debts: [],
   debtSummary: {},
   activeDebtFilter: 'all',
-  activeDebtForPayment: null
+  activeDebtForPayment: null,
+  revenueChartInstance: null,
+  reportSalesChartInstance: null,
+  currentChartTimeView: '7days',
+  suppliers: [],
+  supplierSummary: {},
+  purchases: [],
+  currentSupplierView: 'suppliers',
+  activeSupplierDebtFilter: 'all',
+  activePurchaseForPayment: null,
+  ownerExpenses: [],
+  ownerExpenseSummary: {},
+  ownerExpenseCategories: []
 };
 
 // DOM Elements
@@ -42,9 +67,59 @@ const el = {
   kpiDrawerStatus: document.getElementById('kpiDrawerStatus'),
   kpiRevenueToday: document.getElementById('kpiRevenueToday'),
   kpiOrdersCount: document.getElementById('kpiOrdersCount'),
-  kpiNonCash: document.getElementById('kpiNonCash'),
-  kpiVoidAmount: document.getElementById('kpiVoidAmount'),
-  kpiVoidCount: document.getElementById('kpiVoidCount'),
+  kpiTotalExpenseToday: document.getElementById('kpiTotalExpenseToday'),
+  kpiExpenseSubLabel: document.getElementById('kpiExpenseSubLabel'),
+  kpiNetProfitToday: document.getElementById('kpiNetProfitToday'),
+  kpiProfitSubLabel: document.getElementById('kpiProfitSubLabel'),
+  cardNetProfitWrap: document.getElementById('cardNetProfitWrap'),
+
+  // Liquidity & Working Capital Snapshot
+  lblWorkingCapitalStatus: document.getElementById('lblWorkingCapitalStatus'),
+  liqCashDrawer: document.getElementById('liqCashDrawer'),
+  liqBankIncoming: document.getElementById('liqBankIncoming'),
+  liqCustomerDebts: document.getElementById('liqCustomerDebts'),
+  liqCustomerDebtorsCount: document.getElementById('liqCustomerDebtorsCount'),
+  liqSupplierDebts: document.getElementById('liqSupplierDebts'),
+  liqSuppliersCount: document.getElementById('liqSuppliersCount'),
+
+  // Daily Cashflow Movement Ledger
+  netCashflowPill: document.getElementById('netCashflowPill'),
+  lblNetCashflowVal: document.getElementById('lblNetCashflowVal'),
+  cashInflowCount: document.getElementById('cashInflowCount'),
+  cfInflowCashSales: document.getElementById('cfInflowCashSales'),
+  cfInflowDigitalSales: document.getElementById('cfInflowDigitalSales'),
+  cfInflowDebtCollected: document.getElementById('cfInflowDebtCollected'),
+  cfInflowOtherIncome: document.getElementById('cfInflowOtherIncome'),
+  cfTotalInflow: document.getElementById('cfTotalInflow'),
+  cashOutflowCount: document.getElementById('cashOutflowCount'),
+  cfOutflowStoreCash: document.getElementById('cfOutflowStoreCash'),
+  cfOutflowStoreTransfer: document.getElementById('cfOutflowStoreTransfer'),
+  cfOutflowSupplierCash: document.getElementById('cfOutflowSupplierCash'),
+  cfOutflowSupplierTransfer: document.getElementById('cfOutflowSupplierTransfer'),
+  cfTotalOutflow: document.getElementById('cfTotalOutflow'),
+
+  // Anti-fraud Void & Waste
+  kpiVoidCountBadge: document.getElementById('kpiVoidCountBadge'),
+  voidListContainer: document.getElementById('voidListContainer'),
+
+  // Recent Activity Feeds
+  badgeRecentOrdersCount: document.getElementById('badgeRecentOrdersCount'),
+  recentOrdersList: document.getElementById('recentOrdersList'),
+  badgeRecentExpensesCount: document.getElementById('badgeRecentExpensesCount'),
+  recentExpensesList: document.getElementById('recentExpensesList'),
+  badgeRecentPurchasesCount: document.getElementById('badgeRecentPurchasesCount'),
+  recentPurchasesList: document.getElementById('recentPurchasesList'),
+  btnGoToSalesReport: document.getElementById('btnGoToSalesReport'),
+  btnGoToExpensesTab: document.getElementById('btnGoToExpensesTab'),
+  btnGoToSuppliersTab: document.getElementById('btnGoToSuppliersTab'),
+
+  // Revenue & Sales Charts
+  revenueTrendChart: document.getElementById('revenueTrendChart'),
+  chartTotalRevenue: document.getElementById('chartTotalRevenue'),
+  chartTotalOrders: document.getElementById('chartTotalOrders'),
+  chartAvgRevenue: document.getElementById('chartAvgRevenue'),
+  chartPeakSales: document.getElementById('chartPeakSales'),
+  reportSalesTrendChart: document.getElementById('reportSalesTrendChart'),
 
   // Anomaly Radar
   radarIndicatorDot: document.getElementById('radarIndicatorDot'),
@@ -116,6 +191,12 @@ const el = {
   btnAddNewProduct: document.getElementById('btnAddNewProduct'),
   btnRestockHeader: document.getElementById('btnRestockHeader'),
 
+  // Tablet Heartbeat Sync Elements
+  ownerTabletSyncPill: document.getElementById('ownerTabletSyncPill'),
+  tabletPulseDot: document.getElementById('tabletPulseDot'),
+  ownerTabletName: document.getElementById('ownerTabletName'),
+  ownerTabletLastSync: document.getElementById('ownerTabletLastSync'),
+
   // Modals
   modalNewProduct: document.getElementById('modalNewProduct'),
   btnCloseModalNewProduct: document.getElementById('btnCloseModalNewProduct'),
@@ -161,6 +242,19 @@ const el = {
   setConfirmOwnerPin: document.getElementById('setConfirmOwnerPin'),
   btnChangeOwnerPin: document.getElementById('btnChangeOwnerPin'),
   liveReceiptPreview: document.getElementById('liveReceiptPreview'),
+
+  // Hardware Kios: Printer Panda & Cash Drawer RJ-11
+  ownerHwPrinterIndicator: document.getElementById('ownerHwPrinterIndicator'),
+  ownerHwDeviceNameDisplay: document.getElementById('ownerHwDeviceNameDisplay'),
+  ownerHwDeviceStatusText: document.getElementById('ownerHwDeviceStatusText'),
+  ownerBtnConnectBluetooth: document.getElementById('ownerBtnConnectBluetooth'),
+  ownerBtnDisconnectBluetooth: document.getElementById('ownerBtnDisconnectBluetooth'),
+  ownerHwPrintMode: document.getElementById('ownerHwPrintMode'),
+  ownerHwPaperSize: document.getElementById('ownerHwPaperSize'),
+  ownerHwAutoDrawer: document.getElementById('ownerHwAutoDrawer'),
+  ownerBtnTestDrawer: document.getElementById('ownerBtnTestDrawer'),
+  ownerBtnTestPrint: document.getElementById('ownerBtnTestPrint'),
+  ownerBtnSaveHardware: document.getElementById('ownerBtnSaveHardware'),
 
   
   cashierCountBadge: document.getElementById('cashierCountBadge'),
@@ -219,7 +313,155 @@ const el = {
   resetPinUserUsername: document.getElementById('resetPinUserUsername'),
   resetPinNewPin: document.getElementById('resetPinNewPin'),
   resetPinConfirmPin: document.getElementById('resetPinConfirmPin'),
-  toastContainer: document.getElementById('toastContainer')
+  toastContainer: document.getElementById('toastContainer'),
+
+  // Mobile Navigation & Sheet Elements
+  mobileBottomNav: document.getElementById('mobileBottomNav'),
+  btnOpenMobileMenu: document.getElementById('btnOpenMobileMenu'),
+  mobileSheetBackdrop: document.getElementById('mobileSheetBackdrop'),
+  btnCloseMobileSheet: document.getElementById('btnCloseMobileSheet'),
+  sheetBtnToPos: document.getElementById('sheetBtnToPos'),
+  sheetBtnLogout: document.getElementById('sheetBtnLogout'),
+  bnavDebtBadge: document.getElementById('bnavDebtBadge'),
+  bnavProductBadge: document.getElementById('bnavProductBadge'),
+  sheetAuditBadge: document.getElementById('sheetAuditBadge'),
+  sheetCashierBadge: document.getElementById('sheetCashierBadge'),
+
+  // Mobile Header Telemetry Elements (Hari, Waktu & Kasir Online)
+  mobileDayDate: document.getElementById('mobileDayDate'),
+  mobileClockText: document.getElementById('mobileClockText'),
+  mobileShiftDot: document.getElementById('mobileShiftDot'),
+  mobileCashierName: document.getElementById('mobileCashierName'),
+
+  // Manajemen Pemasok & Kulakan
+  kpiTotalSuppliers: document.getElementById('kpiTotalSuppliers'),
+  kpiMonthlyPurchases: document.getElementById('kpiMonthlyPurchases'),
+  kpiTotalSupplierDebt: document.getElementById('kpiTotalSupplierDebt'),
+  kpiSuppliersWithDebtText: document.getElementById('kpiSuppliersWithDebtText'),
+  kpiOverdueSupplierDebt: document.getElementById('kpiOverdueSupplierDebt'),
+  btnViewSuppliersList: document.getElementById('btnViewSuppliersList'),
+  btnViewPurchasesList: document.getElementById('btnViewPurchasesList'),
+  searchSupplierInput: document.getElementById('searchSupplierInput'),
+  filterSupplierDebt: document.getElementById('filterSupplierDebt'),
+  btnRefreshSuppliers: document.getElementById('btnRefreshSuppliers'),
+  viewSuppliersContainer: document.getElementById('viewSuppliersContainer'),
+  viewPurchasesContainer: document.getElementById('viewPurchasesContainer'),
+  suppliersTableBody: document.getElementById('suppliersTableBody'),
+  purchasesTableBody: document.getElementById('purchasesTableBody'),
+
+  // Modal Tambah/Edit Supplier
+  btnOpenAddSupplierModal: document.getElementById('btnOpenAddSupplierModal'),
+  modalEditSupplier: document.getElementById('modalEditSupplier'),
+  modalSupplierTitle: document.getElementById('modalSupplierTitle'),
+  btnCloseModalSupplier: document.getElementById('btnCloseModalSupplier'),
+  btnCancelSupplierModal: document.getElementById('btnCancelSupplierModal'),
+  btnSaveSupplierSubmit: document.getElementById('btnSaveSupplierSubmit'),
+  supplierEditId: document.getElementById('supplierEditId'),
+  supInputName: document.getElementById('supInputName'),
+  supInputPhone: document.getElementById('supInputPhone'),
+  supInputAddress: document.getElementById('supInputAddress'),
+  supInputCommodities: document.getElementById('supInputCommodities'),
+  supInputBank: document.getElementById('supInputBank'),
+  supInputNotes: document.getElementById('supInputNotes'),
+
+  // Modal Supplier Detail
+  modalSupplierDetail: document.getElementById('modalSupplierDetail'),
+  supDetailName: document.getElementById('supDetailName'),
+  supDetailSubtitle: document.getElementById('supDetailSubtitle'),
+  btnCloseSupplierDetail: document.getElementById('btnCloseSupplierDetail'),
+  btnCloseSupplierDetailBottom: document.getElementById('btnCloseSupplierDetailBottom'),
+  supProfileCard: document.getElementById('supProfileCard'),
+  btnSupTabPurchases: document.getElementById('btnSupTabPurchases'),
+  btnSupTabPayments: document.getElementById('btnSupTabPayments'),
+  supPurchasesCount: document.getElementById('supPurchasesCount'),
+  supPaymentsCount: document.getElementById('supPaymentsCount'),
+  supPurchasesContainer: document.getElementById('supPurchasesContainer'),
+  supPaymentsContainer: document.getElementById('supPaymentsContainer'),
+  supPurchasesTableBody: document.getElementById('supPurchasesTableBody'),
+  supPaymentsTableBody: document.getElementById('supPaymentsTableBody'),
+
+  // Modal Bayar Hutang Supplier
+  modalSupplierPay: document.getElementById('modalSupplierPay'),
+  btnCloseSupplierPay: document.getElementById('btnCloseSupplierPay'),
+  btnCancelSupplierPay: document.getElementById('btnCancelSupplierPay'),
+  supPaySubtitle: document.getElementById('supPaySubtitle'),
+  supPayPurchaseId: document.getElementById('supPayPurchaseId'),
+  supPayRemainingText: document.getElementById('supPayRemainingText'),
+  supPayNoteDetails: document.getElementById('supPayNoteDetails'),
+  supPayAmountInput: document.getElementById('supPayAmountInput'),
+  btnSupPayFull: document.getElementById('btnSupPayFull'),
+  supPayMethodSelect: document.getElementById('supPayMethodSelect'),
+  supPayNotesInput: document.getElementById('supPayNotesInput'),
+  btnSubmitSupplierPay: document.getElementById('btnSubmitSupplierPay'),
+
+  // Modal Catat Kulakan Masuk
+  btnOpenRecordPurchaseModal: document.getElementById('btnOpenRecordPurchaseModal'),
+  modalOwnerRecordPurchase: document.getElementById('modalOwnerRecordPurchase'),
+  btnCloseOwnerRecordPurchase: document.getElementById('btnCloseOwnerRecordPurchase'),
+  btnCancelOwnerRecordPurchase: document.getElementById('btnCancelOwnerRecordPurchase'),
+  ownerPurchaseSupplierSelect: document.getElementById('ownerPurchaseSupplierSelect'),
+  ownerPurchaseProductSelect: document.getElementById('ownerPurchaseProductSelect'),
+  ownerPurchaseQtyInput: document.getElementById('ownerPurchaseQtyInput'),
+  ownerPurchaseCostInput: document.getElementById('ownerPurchaseCostInput'),
+  ownerPurchaseTotalVal: document.getElementById('ownerPurchaseTotalVal'),
+  ownerPurchasePaymentStatus: document.getElementById('ownerPurchasePaymentStatus'),
+  ownerPurchaseTempoFields: document.getElementById('ownerPurchaseTempoFields'),
+  ownerPurchaseDueDate: document.getElementById('ownerPurchaseDueDate'),
+  ownerPurchaseDpAmount: document.getElementById('ownerPurchaseDpAmount'),
+  ownerPurchaseNotesInput: document.getElementById('ownerPurchaseNotesInput'),
+  btnSubmitOwnerRecordPurchase: document.getElementById('btnSubmitOwnerRecordPurchase'),
+
+  // Modal Riwayat Stok Masuk Komoditas (Katalog)
+  modalProductRestockHistory: document.getElementById('modalProductRestockHistory'),
+  btnCloseProdRestockModal: document.getElementById('btnCloseProdRestockModal'),
+  btnCloseProdRestockModalFooter: document.getElementById('btnCloseProdRestockModalFooter'),
+  btnQuickRestockFromHistory: document.getElementById('btnQuickRestockFromHistory'),
+  prodRestockModalTitle: document.getElementById('prodRestockModalTitle'),
+  prodRestockModalSubtitle: document.getElementById('prodRestockModalSubtitle'),
+  prodRestockIconBadge: document.getElementById('prodRestockIconBadge'),
+  statProdCurrentStock: document.getElementById('statProdCurrentStock'),
+  statProdTotalReceived: document.getElementById('statProdTotalReceived'),
+  statProdEntriesCount: document.getElementById('statProdEntriesCount'),
+  statProdTotalCost: document.getElementById('statProdTotalCost'),
+  statProdDebtRemaining: document.getElementById('statProdDebtRemaining'),
+  prodRestockTableBody: document.getElementById('prodRestockTableBody'),
+
+  // Buku Biaya & Kas Operasional Toko (Owner)
+  expenseCountBadge: document.getElementById('expenseCountBadge'),
+  ownerKpiMonthExpenses: document.getElementById('ownerKpiMonthExpenses'),
+  ownerKpiExpensesCount: document.getElementById('ownerKpiExpensesCount'),
+  ownerKpiDrawerExpenses: document.getElementById('ownerKpiDrawerExpenses'),
+  ownerKpiTransferExpenses: document.getElementById('ownerKpiTransferExpenses'),
+  ownerKpiTotalIncome: document.getElementById('ownerKpiTotalIncome'),
+  ownerExpenseCategoryBars: document.getElementById('ownerExpenseCategoryBars'),
+  ownerSearchExpenseInput: document.getElementById('ownerSearchExpenseInput'),
+  ownerFilterExpenseCategory: document.getElementById('ownerFilterExpenseCategory'),
+  ownerFilterExpenseSource: document.getElementById('ownerFilterExpenseSource'),
+  btnRefreshOwnerExpenses: document.getElementById('btnRefreshOwnerExpenses'),
+  ownerExpensesTableBody: document.getElementById('ownerExpensesTableBody'),
+  btnOwnerAddExpense: document.getElementById('btnOwnerAddExpense'),
+  btnOwnerAddIncome: document.getElementById('btnOwnerAddIncome'),
+  modalOwnerAddExpense: document.getElementById('modalOwnerAddExpense'),
+  btnCloseOwnerAddExpense: document.getElementById('btnCloseOwnerAddExpense'),
+  btnCancelOwnerAddExpense: document.getElementById('btnCancelOwnerAddExpense'),
+  btnSubmitOwnerAddExpense: document.getElementById('btnSubmitOwnerAddExpense'),
+  ownerExpenseCategorySelect: document.getElementById('ownerExpenseCategorySelect'),
+  ownerSourceCash: document.getElementById('ownerSourceCash'),
+  ownerSourceTransfer: document.getElementById('ownerSourceTransfer'),
+  ownerExpenseAmountInput: document.getElementById('ownerExpenseAmountInput'),
+  ownerExpenseNotesInput: document.getElementById('ownerExpenseNotesInput'),
+  modalOwnerAddIncome: document.getElementById('modalOwnerAddIncome'),
+  btnCloseOwnerAddIncome: document.getElementById('btnCloseOwnerAddIncome'),
+  btnCancelOwnerAddIncome: document.getElementById('btnCancelOwnerAddIncome'),
+  btnSubmitOwnerAddIncome: document.getElementById('btnSubmitOwnerAddIncome'),
+  ownerIncomeCategorySelect: document.getElementById('ownerIncomeCategorySelect'),
+  ownerIncomeAmountInput: document.getElementById('ownerIncomeAmountInput'),
+  ownerIncomeSourceSelect: document.getElementById('ownerIncomeSourceSelect'),
+  ownerIncomeNotesInput: document.getElementById('ownerIncomeNotesInput'),
+  ownerExpenseShortageAlert: document.getElementById('ownerExpenseShortageAlert'),
+  lblOwnerDrawerAvail: document.getElementById('lblOwnerDrawerAvail'),
+  lblOwnerDrawerShortage: document.getElementById('lblOwnerDrawerShortage'),
+  btnOwnerQuickAddIncomeFromAlert: document.getElementById('btnOwnerQuickAddIncomeFromAlert')
 };
 
 
@@ -297,10 +539,25 @@ function formatRupiah(num) {
   return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
 }
 
+function formatShortRupiah(num) {
+  const val = Number(num || 0);
+  if (Math.abs(val) >= 1_000_000_000) {
+    return 'Rp ' + (val / 1_000_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' M';
+  }
+  if (Math.abs(val) >= 1_000_000) {
+    return 'Rp ' + (val / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt';
+  }
+  if (Math.abs(val) >= 1_000) {
+    return 'Rp ' + (val / 1_000).toLocaleString('id-ID', { maximumFractionDigits: 0 }) + ' rb';
+  }
+  return 'Rp ' + val.toLocaleString('id-ID');
+}
+
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<span>${type === 'success' ? '✅' : (type === 'error' ? '❌' : '⚠️')}</span> ${message}`;
+  const icon = type === 'success' ? '✅' : (type === 'error' ? '❌' : (type === 'info' ? '📱' : '⚠️'));
+  toast.innerHTML = `<span>${icon}</span> ${message}`;
   el.toastContainer.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -314,8 +571,12 @@ function showToast(message, type = 'success') {
 // -----------------------------------------------------------------------------
 async function initOwnerApp() {
   bindEvents();
+  initOwnerHardwareSupport();
   updateClock();
   setInterval(updateClock, 1000);
+
+  // Check Subscription & License Status
+  initSubscriptionGuard({ isOwner: true });
 
   if (!api.token) {
     alert('Sesi belum aktif. Silakan login sebagai Owner terlebih dahulu.');
@@ -334,6 +595,23 @@ async function initOwnerApp() {
     }
 
     await loadAllData();
+    await checkTabletSyncHeartbeat();
+
+    // Real-time mobile phone auto-polling every 30 seconds
+    setInterval(() => {
+      checkTabletSyncHeartbeat();
+      api.getDashboardReport().then(dashRes => {
+        state.dashboard = dashRes;
+        renderKPIs();
+        renderLiquiditySnapshot();
+        renderDailyCashflowLedger();
+        renderRevenueChart();
+        renderAnomalyRadar();
+        renderLowStockRadar();
+        renderVoidDetails();
+        renderRecentFeeds();
+      }).catch(() => {});
+    }, 30000);
   } catch (err) {
     console.error('Session error:', err);
     alert('Sesi kedaluwarsa. Silakan login kembali.');
@@ -355,18 +633,38 @@ function updateClock() {
   if (el.liveClockText) {
     el.liveClockText.textContent = now.toLocaleTimeString('id-ID') + ' WIB';
   }
+  if (el.mobileDayDate) {
+    el.mobileDayDate.textContent = now.toLocaleDateString('id-ID', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  }
+  if (el.mobileClockText) {
+    el.mobileClockText.textContent = now.toLocaleTimeString('id-ID') + ' WIB';
+  }
 }
 
 function bindEvents() {
   el.btnRefreshData.addEventListener('click', loadAllData);
   if (el.btnRefreshAudit) el.btnRefreshAudit.addEventListener('click', loadAllData);
-  el.btnBackToPos.addEventListener('click', () => { window.location.href = '/'; });
+  el.btnBackToPos.addEventListener('click', () => { window.location.href = '/?mode=pos'; });
 
   el.btnOwnerLogout.addEventListener('click', () => {
     if (confirm('Keluar dari sesi Owner?')) {
       api.clearSession();
       window.location.href = '/';
     }
+  });
+
+  // Revenue Chart Time Toggles (7 Days vs Today Hourly)
+  document.querySelectorAll('.btn-chart-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.btn-chart-toggle').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.currentChartTimeView = btn.dataset.view;
+      renderRevenueChart();
+    });
   });
 
   // Debts Tab Events
@@ -456,29 +754,131 @@ function bindEvents() {
     });
   }
 
-  // Tab switching
-  document.querySelectorAll('.tab-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.exec-section').forEach(s => {
-        s.classList.remove('active');
-        s.style.display = 'none';
-      });
+function switchTab(tabId) {
+  if (!tabId) return;
 
-      btn.classList.add('active');
-      const target = document.getElementById(btn.dataset.tab);
-      if (target) {
-        target.classList.add('active');
-        target.style.display = 'flex';
-        if (btn.dataset.tab === 'tab-reports') {
-          loadSalesReport();
-        }
-        if (btn.dataset.tab === 'tab-debts') {
-          loadDebtsData();
-        }
+  // 1. Sync Top Subnav Pills
+  document.querySelectorAll('.tab-pill').forEach(b => {
+    const isTarget = b.dataset.tab === tabId;
+    b.classList.toggle('active', isTarget);
+    b.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+    if (isTarget) {
+      b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  });
+
+  // 2. Sync Bottom Nav Items
+  document.querySelectorAll('.bottom-nav-item[data-tab]').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+
+  // 3. Show target section, hide others
+  document.querySelectorAll('.exec-section').forEach(s => {
+    const isTarget = s.id === tabId;
+    s.classList.toggle('active', isTarget);
+    s.style.display = isTarget ? 'flex' : 'none';
+  });
+
+  // 4. Trigger section-specific loaders / charts
+  if (tabId === 'tab-reports') {
+    loadSalesReport();
+    if (state.reportSalesChartInstance) {
+      setTimeout(() => state.reportSalesChartInstance && state.reportSalesChartInstance.resize(), 60);
+    }
+  } else if (tabId === 'tab-cashflow') {
+    if (state.revenueChartInstance) {
+      state.revenueChartInstance.resize();
+    } else {
+      renderRevenueChart();
+    }
+  } else if (tabId === 'tab-debts') {
+    loadDebtsData();
+  } else if (tabId === 'tab-suppliers') {
+    loadSuppliersData();
+    loadPurchasesData();
+  } else if (tabId === 'tab-expenses') {
+    loadOwnerExpensesData();
+  } else if (tabId === 'tab-settings') {
+    renderLiveReceiptPreview();
+    loadOwnerLicenseCard();
+  }
+
+  // 5. Close Mobile Action Sheet if open
+  if (el.mobileSheetBackdrop) {
+    el.mobileSheetBackdrop.style.display = 'none';
+  }
+
+  // Smooth scroll to top when switching
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+  // Tab switching (Desktop Subnav & Mobile Bottom Nav)
+  document.querySelectorAll('.tab-pill').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  document.querySelectorAll('.bottom-nav-item[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  document.querySelectorAll('.sheet-tile-btn[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // Recent Feeds Quick Navigation Links
+  if (el.btnGoToSalesReport) {
+    el.btnGoToSalesReport.addEventListener('click', () => switchTab('tab-reports'));
+  }
+  if (el.btnGoToExpensesTab) {
+    el.btnGoToExpensesTab.addEventListener('click', () => switchTab('tab-expenses'));
+  }
+  if (el.btnGoToSuppliersTab) {
+    el.btnGoToSuppliersTab.addEventListener('click', () => switchTab('tab-suppliers'));
+  }
+
+  // Mobile Bottom Sheet Trigger & Dismiss
+  if (el.btnOpenMobileMenu && el.mobileSheetBackdrop) {
+    el.btnOpenMobileMenu.addEventListener('click', () => {
+      el.mobileSheetBackdrop.style.display = 'flex';
+    });
+  }
+
+  if (el.btnCloseMobileSheet && el.mobileSheetBackdrop) {
+    el.btnCloseMobileSheet.addEventListener('click', () => {
+      el.mobileSheetBackdrop.style.display = 'none';
+    });
+  }
+
+  if (el.mobileSheetBackdrop) {
+    el.mobileSheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.mobileSheetBackdrop) {
+        el.mobileSheetBackdrop.style.display = 'none';
       }
     });
-  });
+  }
+
+  if (el.sheetBtnToPos) {
+    el.sheetBtnToPos.addEventListener('click', () => {
+      window.location.href = '/?mode=pos';
+    });
+  }
+
+  if (el.sheetBtnLogout) {
+    el.sheetBtnLogout.addEventListener('click', () => {
+      if (confirm('Keluar dari sesi Owner?')) {
+        api.clearSession();
+        window.location.href = '/';
+      }
+    });
+  }
+
+  // Tablet Sync Pill Tap (Show Device Info Toast)
+  if (el.ownerTabletSyncPill) {
+    el.ownerTabletSyncPill.addEventListener('click', () => {
+      const info = el.ownerTabletSyncPill.getAttribute('title') || 'Tablet Kios Pasar Aktif';
+      showToast(info, 'info');
+    });
+  }
 
   // Search and Category Chips in Products
   el.ownerSearchProd.addEventListener('input', (e) => {
@@ -579,6 +979,327 @@ function bindEvents() {
   if (el.btnSaveStoreSettings) el.btnSaveStoreSettings.addEventListener('click', handleSaveStoreSettings);
   if (el.btnChangeOwnerPin) el.btnChangeOwnerPin.addEventListener('click', handleChangeOwnerPin);
 
+  // License & Subscription Settings Listeners
+  const btnOwnerCopyAcc = document.getElementById('btnOwnerCopyAcc');
+  if (btnOwnerCopyAcc) {
+    btnOwnerCopyAcc.addEventListener('click', async () => {
+      const accEl = document.getElementById('ownerLicenseAccount');
+      if (!accEl) return;
+      const textToCopy = accEl.textContent.trim().replace(/[^0-9]/g, '');
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(textToCopy);
+        }
+        btnOwnerCopyAcc.textContent = '✅ Tersalin!';
+        setTimeout(() => { btnOwnerCopyAcc.textContent = '📋 Salin No. Rekening'; }, 2000);
+      } catch (err) {}
+    });
+  }
+
+  const btnOwnerCheckSub = document.getElementById('btnOwnerCheckSubStatus');
+  if (btnOwnerCheckSub) {
+    btnOwnerCheckSub.addEventListener('click', async () => {
+      btnOwnerCheckSub.disabled = true;
+      btnOwnerCheckSub.textContent = '⏳ Memeriksa...';
+      try {
+        await loadOwnerLicenseCard();
+        showToast('Status lisensi langganan berhasil diperiksa!', 'success');
+      } finally {
+        btnOwnerCheckSub.disabled = false;
+        btnOwnerCheckSub.textContent = '🔄 Periksa Status Lisensi Sekarang';
+      }
+    });
+  }
+
+  // Supplier View Toggle
+  if (el.btnViewSuppliersList) {
+    el.btnViewSuppliersList.addEventListener('click', () => {
+      state.currentSupplierView = 'suppliers';
+      el.btnViewSuppliersList.classList.add('active');
+      if (el.btnViewPurchasesList) el.btnViewPurchasesList.classList.remove('active');
+      if (el.viewSuppliersContainer) el.viewSuppliersContainer.style.display = 'block';
+      if (el.viewPurchasesContainer) el.viewPurchasesContainer.style.display = 'none';
+      loadSuppliersData();
+    });
+  }
+
+  if (el.btnViewPurchasesList) {
+    el.btnViewPurchasesList.addEventListener('click', () => {
+      state.currentSupplierView = 'purchases';
+      el.btnViewPurchasesList.classList.add('active');
+      if (el.btnViewSuppliersList) el.btnViewSuppliersList.classList.remove('active');
+      if (el.viewSuppliersContainer) el.viewSuppliersContainer.style.display = 'none';
+      if (el.viewPurchasesContainer) el.viewPurchasesContainer.style.display = 'block';
+      loadPurchasesData();
+    });
+  }
+
+  // Supplier Search & Filter
+  if (el.searchSupplierInput) {
+    let supSearchTimeout;
+    el.searchSupplierInput.addEventListener('input', () => {
+      clearTimeout(supSearchTimeout);
+      supSearchTimeout = setTimeout(() => {
+        if (state.currentSupplierView === 'suppliers') {
+          loadSuppliersData();
+        } else {
+          loadPurchasesData();
+        }
+      }, 300);
+    });
+  }
+
+  if (el.filterSupplierDebt) {
+    el.filterSupplierDebt.addEventListener('change', () => {
+      state.activeSupplierDebtFilter = el.filterSupplierDebt.value;
+      loadSuppliersData();
+    });
+  }
+
+  if (el.btnRefreshSuppliers) {
+    el.btnRefreshSuppliers.addEventListener('click', () => {
+      loadSuppliersData();
+      loadPurchasesData();
+    });
+  }
+
+  // Supplier Modal Add / Edit
+  if (el.btnOpenAddSupplierModal) {
+    el.btnOpenAddSupplierModal.addEventListener('click', () => openSupplierModal(null));
+  }
+  if (el.btnCloseModalSupplier) {
+    el.btnCloseModalSupplier.addEventListener('click', () => { if (el.modalEditSupplier) el.modalEditSupplier.style.display = 'none'; });
+  }
+  if (el.btnCancelSupplierModal) {
+    el.btnCancelSupplierModal.addEventListener('click', () => { if (el.modalEditSupplier) el.modalEditSupplier.style.display = 'none'; });
+  }
+  if (el.btnSaveSupplierSubmit) {
+    el.btnSaveSupplierSubmit.addEventListener('click', handleSaveSupplierSubmit);
+  }
+
+  // Supplier Detail Modal
+  if (el.btnCloseSupplierDetail) {
+    el.btnCloseSupplierDetail.addEventListener('click', () => { if (el.modalSupplierDetail) el.modalSupplierDetail.style.display = 'none'; });
+  }
+  if (el.btnCloseSupplierDetailBottom) {
+    el.btnCloseSupplierDetailBottom.addEventListener('click', () => { if (el.modalSupplierDetail) el.modalSupplierDetail.style.display = 'none'; });
+  }
+  if (el.btnSupTabPurchases) {
+    el.btnSupTabPurchases.addEventListener('click', () => {
+      el.btnSupTabPurchases.classList.add('active');
+      if (el.btnSupTabPayments) el.btnSupTabPayments.classList.remove('active');
+      if (el.supPurchasesContainer) el.supPurchasesContainer.style.display = 'block';
+      if (el.supPaymentsContainer) el.supPaymentsContainer.style.display = 'none';
+    });
+  }
+  if (el.btnSupTabPayments) {
+    el.btnSupTabPayments.addEventListener('click', () => {
+      el.btnSupTabPayments.classList.add('active');
+      if (el.btnSupTabPurchases) el.btnSupTabPurchases.classList.remove('active');
+      if (el.supPurchasesContainer) el.supPurchasesContainer.style.display = 'none';
+      if (el.supPaymentsContainer) el.supPaymentsContainer.style.display = 'block';
+    });
+  }
+
+  // Supplier Pay Modal
+  if (el.btnCloseSupplierPay) {
+    el.btnCloseSupplierPay.addEventListener('click', () => { if (el.modalSupplierPay) el.modalSupplierPay.style.display = 'none'; });
+  }
+  if (el.btnCancelSupplierPay) {
+    el.btnCancelSupplierPay.addEventListener('click', () => { if (el.modalSupplierPay) el.modalSupplierPay.style.display = 'none'; });
+  }
+  if (el.btnSupPayFull) {
+    el.btnSupPayFull.addEventListener('click', () => {
+      if (state.activePurchaseForPayment && el.supPayAmountInput) {
+        el.supPayAmountInput.value = state.activePurchaseForPayment.remaining_amount;
+      }
+    });
+  }
+  if (el.btnSubmitSupplierPay) {
+    el.btnSubmitSupplierPay.addEventListener('click', handleSubmitSupplierPay);
+  }
+
+  // Owner Record Purchase Modal
+  if (el.btnOpenRecordPurchaseModal) {
+    el.btnOpenRecordPurchaseModal.addEventListener('click', () => openOwnerRecordPurchaseModal());
+  }
+  if (el.btnCloseOwnerRecordPurchase) {
+    el.btnCloseOwnerRecordPurchase.addEventListener('click', () => { if (el.modalOwnerRecordPurchase) el.modalOwnerRecordPurchase.style.display = 'none'; });
+  }
+  if (el.btnCancelOwnerRecordPurchase) {
+    el.btnCancelOwnerRecordPurchase.addEventListener('click', () => { if (el.modalOwnerRecordPurchase) el.modalOwnerRecordPurchase.style.display = 'none'; });
+  }
+  if (el.ownerPurchaseProductSelect) {
+    el.ownerPurchaseProductSelect.addEventListener('change', () => {
+      const opt = el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex];
+      if (opt && opt.dataset.cost && el.ownerPurchaseCostInput) {
+        el.ownerPurchaseCostInput.value = opt.dataset.cost;
+      }
+      updateOwnerPurchaseTotal();
+    });
+  }
+  if (el.ownerPurchaseQtyInput) {
+    el.ownerPurchaseQtyInput.addEventListener('input', updateOwnerPurchaseTotal);
+  }
+  if (el.ownerPurchaseCostInput) {
+    el.ownerPurchaseCostInput.addEventListener('input', updateOwnerPurchaseTotal);
+  }
+  if (el.ownerPurchasePaymentStatus) {
+    el.ownerPurchasePaymentStatus.addEventListener('change', () => {
+      if (el.ownerPurchaseTempoFields) {
+        el.ownerPurchaseTempoFields.style.display = (el.ownerPurchasePaymentStatus.value === 'tempo') ? 'block' : 'none';
+      }
+    });
+  }
+  if (el.btnSubmitOwnerRecordPurchase) {
+    el.btnSubmitOwnerRecordPurchase.addEventListener('click', handleSubmitOwnerRecordPurchase);
+  }
+
+  // Owner Expenses & Petty Cash Listeners
+  if (el.btnOwnerAddExpense) {
+    el.btnOwnerAddExpense.addEventListener('click', () => {
+      if (el.modalOwnerAddExpense) el.modalOwnerAddExpense.style.display = 'flex';
+      if (el.ownerExpenseAmountInput) el.ownerExpenseAmountInput.value = '';
+      if (el.ownerExpenseNotesInput) el.ownerExpenseNotesInput.value = '';
+    });
+  }
+  if (el.btnCloseOwnerAddExpense) {
+    el.btnCloseOwnerAddExpense.addEventListener('click', () => {
+      if (el.modalOwnerAddExpense) el.modalOwnerAddExpense.style.display = 'none';
+    });
+  }
+  if (el.btnCancelOwnerAddExpense) {
+    el.btnCancelOwnerAddExpense.addEventListener('click', () => {
+      if (el.modalOwnerAddExpense) el.modalOwnerAddExpense.style.display = 'none';
+    });
+  }
+  if (el.ownerExpenseAmountInput) {
+    el.ownerExpenseAmountInput.addEventListener('input', checkOwnerExpenseSufficiency);
+  }
+  if (el.ownerSourceCash) {
+    el.ownerSourceCash.addEventListener('change', checkOwnerExpenseSufficiency);
+  }
+  if (el.ownerSourceTransfer) {
+    el.ownerSourceTransfer.addEventListener('change', checkOwnerExpenseSufficiency);
+  }
+  if (el.btnOwnerQuickAddIncomeFromAlert) {
+    el.btnOwnerQuickAddIncomeFromAlert.addEventListener('click', () => {
+      const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0) || 0;
+      const drawerCash = Number(state.currentDrawerCash) || 0;
+      const shortage = Math.max(50000, amount - drawerCash);
+      if (el.modalOwnerAddExpense) el.modalOwnerAddExpense.style.display = 'none';
+      if (el.modalOwnerAddIncome) el.modalOwnerAddIncome.style.display = 'flex';
+      if (el.ownerIncomeAmountInput) el.ownerIncomeAmountInput.value = shortage;
+      if (el.ownerIncomeNotesInput) el.ownerIncomeNotesInput.value = 'Tambah modal kas laci toko';
+    });
+  }
+  if (el.btnSubmitOwnerAddExpense) {
+    el.btnSubmitOwnerAddExpense.addEventListener('click', handleSaveOwnerExpense);
+  }
+
+  if (el.btnOwnerAddIncome) {
+    el.btnOwnerAddIncome.addEventListener('click', () => {
+      if (el.modalOwnerAddIncome) el.modalOwnerAddIncome.style.display = 'flex';
+      if (el.ownerIncomeAmountInput) el.ownerIncomeAmountInput.value = '';
+      if (el.ownerIncomeNotesInput) el.ownerIncomeNotesInput.value = '';
+    });
+  }
+  if (el.btnCloseOwnerAddIncome) {
+    el.btnCloseOwnerAddIncome.addEventListener('click', () => {
+      if (el.modalOwnerAddIncome) el.modalOwnerAddIncome.style.display = 'none';
+    });
+  }
+  if (el.btnCancelOwnerAddIncome) {
+    el.btnCancelOwnerAddIncome.addEventListener('click', () => {
+      if (el.modalOwnerAddIncome) el.modalOwnerAddIncome.style.display = 'none';
+    });
+  }
+  if (el.btnSubmitOwnerAddIncome) {
+    el.btnSubmitOwnerAddIncome.addEventListener('click', handleSaveOwnerIncome);
+  }
+
+  if (el.ownerSearchExpenseInput) {
+    el.ownerSearchExpenseInput.addEventListener('input', renderOwnerExpensesTable);
+  }
+  if (el.ownerFilterExpenseCategory) {
+    el.ownerFilterExpenseCategory.addEventListener('change', renderOwnerExpensesTable);
+  }
+  if (el.ownerFilterExpenseSource) {
+    el.ownerFilterExpenseSource.addEventListener('change', renderOwnerExpensesTable);
+  }
+  if (el.btnRefreshOwnerExpenses) {
+    el.btnRefreshOwnerExpenses.addEventListener('click', () => loadOwnerExpensesData());
+  }
+}
+
+async function checkTabletSyncHeartbeat() {
+  try {
+    const statusRes = await api.getSyncStatus();
+    if (!statusRes || !statusRes.success) return;
+
+    if (el.ownerTabletLastSync) {
+      const lastSyncDate = statusRes.last_sync_updated_at ? new Date(statusRes.last_sync_updated_at.replace(' ', 'T')) : null;
+      if (lastSyncDate && !isNaN(lastSyncDate.getTime())) {
+        const diffMinutes = (Date.now() - lastSyncDate.getTime()) / 60000;
+        const timeStr = lastSyncDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+        if (diffMinutes <= 2) {
+          el.ownerTabletLastSync.textContent = `🟢 Online (${timeStr})`;
+          el.ownerTabletLastSync.style.color = '#34d399';
+        } else if (diffMinutes <= 10) {
+          el.ownerTabletLastSync.textContent = `Sync: ${timeStr}`;
+          el.ownerTabletLastSync.style.color = '#f59e0b';
+        } else {
+          el.ownerTabletLastSync.textContent = `Offline sejak ${timeStr}`;
+          el.ownerTabletLastSync.style.color = '#f87171';
+        }
+      } else if (statusRes.last_sync) {
+        el.ownerTabletLastSync.textContent = `Sync: ${statusRes.last_sync}`;
+      } else {
+        el.ownerTabletLastSync.textContent = 'Belum pernah sync';
+      }
+    }
+
+    if (el.ownerTabletName && statusRes.device_info) {
+      const devClean = statusRes.device_info.split(' ')[0];
+      const cashierName = statusRes.active_shift ? ` (${statusRes.active_shift.cashier_name.split(' ')[0]})` : '';
+      el.ownerTabletName.textContent = `📱 ${devClean}${cashierName}`;
+    }
+
+    if (el.ownerTabletSyncPill) {
+      const syncStatusText = statusRes.last_sync ? `Sync: ${statusRes.last_sync}` : 'Sinkronisasi Aktif';
+      el.ownerTabletSyncPill.setAttribute('title', `Tablet Kios: ${statusRes.device_info || 'Online'} • ${syncStatusText}`);
+    }
+
+    if (el.tabletPulseDot) {
+      if (statusRes.last_sync_updated_at) {
+        const lastSyncDate = new Date(statusRes.last_sync_updated_at.replace(' ', 'T'));
+        const diffMinutes = (Date.now() - lastSyncDate.getTime()) / 60000;
+        if (diffMinutes <= 3) {
+          el.tabletPulseDot.style.backgroundColor = '#22c55e';
+          el.tabletPulseDot.style.boxShadow = '0 0 10px rgba(34, 197, 94, 0.8)';
+        } else if (diffMinutes <= 10) {
+          el.tabletPulseDot.style.backgroundColor = '#f59e0b';
+          el.tabletPulseDot.style.boxShadow = '0 0 10px rgba(245, 158, 11, 0.8)';
+        } else {
+          el.tabletPulseDot.style.backgroundColor = '#ef4444';
+          el.tabletPulseDot.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.8)';
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Gagal cek heartbeat tablet:', e);
+  }
+}
+
+function setRefreshButtonState(isLoading) {
+  if (!el.btnRefreshData) return;
+  if (isLoading) {
+    el.btnRefreshData.classList.add('loading');
+    el.btnRefreshData.innerHTML = '<span class="icon">⏳</span><span class="btn-text-full">Memuat...</span>';
+  } else {
+    el.btnRefreshData.classList.remove('loading');
+    el.btnRefreshData.innerHTML = '<span class="icon">🔄</span><span class="btn-text-full">Segarkan</span>';
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -586,7 +1307,7 @@ function bindEvents() {
 // -----------------------------------------------------------------------------
 async function loadAllData() {
   try {
-    el.btnRefreshData.innerHTML = '<span class="icon">⏳</span> Memuat...';
+    setRefreshButtonState(true);
     const [dashRes, shiftRes, prodRes, auditRes, usersRes, settingsRes] = await Promise.all([
       api.getDashboardReport(),
       api.getShiftHistory(),
@@ -605,49 +1326,531 @@ async function loadAllData() {
     state.settings = (settingsRes && settingsRes.settings) || {};
 
     el.productCountBadge.textContent = state.products.length;
+    if (el.bnavProductBadge) el.bnavProductBadge.textContent = state.products.length;
+
     el.auditCountBadge.textContent = state.auditLogs.length;
+    if (el.sheetAuditBadge) el.sheetAuditBadge.textContent = state.auditLogs.length;
+
     if (el.cashierCountBadge) el.cashierCountBadge.textContent = state.users.length;
+    if (el.sheetCashierBadge) el.sheetCashierBadge.textContent = state.users.length;
 
     renderKPIs();
+    renderLiquiditySnapshot();
+    renderDailyCashflowLedger();
+    renderRecentFeeds();
+    renderRevenueChart();
     renderAnomalyRadar();
     renderLowStockRadar();
     renderShifts();
+    renderVoidDetails();
     renderWaste();
     renderProductsGrid();
     filterAuditLogs();
     renderCashiers();
     await loadDebtsData();
+    await loadSuppliersData();
     populateSettingsForm();
     renderLiveReceiptPreview();
+    await loadOwnerLicenseCard();
+    await checkTabletSyncHeartbeat();
 
     showToast('Data toko berhasil diperbarui real-time!', 'success');
   } catch (err) {
     showToast('Gagal memuat data dashboard: ' + err.message, 'error');
   } finally {
-    el.btnRefreshData.innerHTML = '<span class="icon">🔄</span> Segarkan';
+    setRefreshButtonState(false);
   }
 }
 
 // -----------------------------------------------------------------------------
-// TAB 1 RENDERERS
+// TAB 1 RENDERERS (EXECUTIVE CASHFLOW & FRAUD INTELLIGENCE)
 // -----------------------------------------------------------------------------
 function renderKPIs() {
-  const s = state.dashboard.summary;
-  el.kpiCashDrawer.textContent = formatRupiah(s.cash_in_drawer);
-  el.kpiRevenueToday.textContent = formatRupiah(s.total_revenue);
-  el.kpiOrdersCount.textContent = `${s.total_orders} Nota Selesai Diproses`;
-  el.kpiNonCash.textContent = formatRupiah(Number(s.total_qris) + Number(s.total_transfer));
-  el.kpiVoidAmount.textContent = formatRupiah(s.void_total_amount);
-  el.kpiVoidCount.textContent = `${s.void_count} Nota Dibatalkan`;
+  const s = state.dashboard.summary || {};
+  if (el.kpiCashDrawer) el.kpiCashDrawer.textContent = formatRupiah(s.cash_in_drawer || 0);
+  if (el.kpiRevenueToday) el.kpiRevenueToday.textContent = formatRupiah(s.total_revenue || 0);
+  if (el.kpiOrdersCount) el.kpiOrdersCount.textContent = `${s.total_orders || 0} Nota Selesai Diproses`;
 
+  // Total Kas Keluar Hari Ini (Store Expenses + Supplier Payments)
+  const totalOutflow = s.total_cash_outflow_today || 0;
+  if (el.kpiTotalExpenseToday) el.kpiTotalExpenseToday.textContent = formatRupiah(totalOutflow);
+  if (el.kpiExpenseSubLabel) {
+    const storeExp = s.total_expenses_today || 0;
+    const supExp = s.total_supplier_paid_today || 0;
+    el.kpiExpenseSubLabel.textContent = `Operasional: ${formatRupiah(storeExp)} | Kulakan: ${formatRupiah(supExp)}`;
+  }
+
+  // Laba Bersih Riil Toko (Net Operating Profit)
+  const netProfit = s.net_profit_today !== undefined ? s.net_profit_today : 0;
+  if (el.kpiNetProfitToday) el.kpiNetProfitToday.textContent = formatRupiah(netProfit);
+  if (el.cardNetProfitWrap) {
+    el.cardNetProfitWrap.className = netProfit >= 0 ? 'kpi-card-v2 kpi-emerald' : 'kpi-card-v2 kpi-rose';
+  }
+  if (el.kpiProfitSubLabel) {
+    const marginPct = s.gross_margin_pct || 0;
+    if (netProfit >= 0) {
+      el.kpiProfitSubLabel.innerHTML = `<span class="sub-dot green"></span><span>Margin: ${marginPct}% (Net Profit)</span>`;
+    } else {
+      el.kpiProfitSubLabel.innerHTML = `<span class="sub-dot red"></span><span style="color:#e11d48; font-weight:600;">Defisit Pengeluaran Hari Ini</span>`;
+    }
+  }
+
+  const shiftDot = document.getElementById('quickShiftDot');
   if (state.dashboard.active_shift) {
     const act = state.dashboard.active_shift;
-    el.quickCashierName.textContent = act.cashier_name;
-    el.kpiDrawerStatus.innerHTML = `<span class="sub-dot green"></span> Shift #${act.id} Aktif: ${act.cashier_name} (Modal: ${formatRupiah(act.starting_cash)})`;
+    if (el.quickCashierName) el.quickCashierName.textContent = act.cashier_name;
+    if (shiftDot) shiftDot.classList.add('active');
+    if (el.mobileCashierName) el.mobileCashierName.textContent = act.cashier_name;
+    if (el.mobileShiftDot) el.mobileShiftDot.classList.add('active');
+    if (el.kpiDrawerStatus) el.kpiDrawerStatus.innerHTML = `<span class="sub-dot green"></span> Shift #${act.id} Aktif: ${act.cashier_name} (Modal: ${formatRupiah(act.starting_cash)})`;
   } else {
-    el.quickCashierName.textContent = 'Tidak Ada Shift Aktif';
-    el.kpiDrawerStatus.textContent = 'Tidak ada shift kasir yang aktif';
+    if (el.quickCashierName) el.quickCashierName.textContent = 'Tidak Ada Shift Aktif';
+    if (shiftDot) shiftDot.classList.remove('active');
+    if (el.mobileCashierName) el.mobileCashierName.textContent = 'Tidak Ada Shift';
+    if (el.mobileShiftDot) el.mobileShiftDot.classList.remove('active');
+    if (el.kpiDrawerStatus) el.kpiDrawerStatus.textContent = 'Tidak ada shift kasir yang aktif';
   }
+}
+
+function renderLiquiditySnapshot() {
+  const liq = state.dashboard.liquidity_snapshot || {};
+  if (el.liqCashDrawer) el.liqCashDrawer.textContent = formatRupiah(liq.cash_in_drawer || 0);
+  if (el.liqBankIncoming) el.liqBankIncoming.textContent = formatRupiah(liq.bank_incoming_today || 0);
+  if (el.liqCustomerDebts) el.liqCustomerDebts.textContent = formatRupiah(liq.total_customer_debts || 0);
+  if (el.liqCustomerDebtorsCount) el.liqCustomerDebtorsCount.textContent = `${liq.total_debtors || 0} Pelanggan belum lunas`;
+  if (el.liqSupplierDebts) el.liqSupplierDebts.textContent = formatRupiah(liq.total_supplier_debt || 0);
+  if (el.liqSuppliersCount) el.liqSuppliersCount.textContent = `${liq.total_suppliers_debt || 0} Pemasok tempo aktif`;
+
+  if (el.lblWorkingCapitalStatus) {
+    const cashTotal = (liq.cash_in_drawer || 0) + (liq.bank_incoming_today || 0);
+    const supplierPayables = liq.total_supplier_debt || 0;
+    if (cashTotal >= supplierPayables) {
+      el.lblWorkingCapitalStatus.style.background = '#ecfdf5';
+      el.lblWorkingCapitalStatus.style.borderColor = '#a7f3d0';
+      el.lblWorkingCapitalStatus.style.color = '#059669';
+      el.lblWorkingCapitalStatus.innerHTML = '🟢 Likuiditas Aman Terkendali';
+    } else {
+      el.lblWorkingCapitalStatus.style.background = '#fff1f2';
+      el.lblWorkingCapitalStatus.style.borderColor = '#fecdd3';
+      el.lblWorkingCapitalStatus.style.color = '#e11d48';
+      el.lblWorkingCapitalStatus.innerHTML = '⚠️ Perhatian: Hutang Supplier > Kas Toko';
+    }
+  }
+}
+
+function renderDailyCashflowLedger() {
+  const cf = state.dashboard.cashflow_today || { inflow: {}, outflow: {} };
+  const inf = cf.inflow || {};
+  const outf = cf.outflow || {};
+
+  if (el.cfInflowCashSales) el.cfInflowCashSales.textContent = formatRupiah(inf.cash_sales || 0);
+  if (el.cfInflowDigitalSales) el.cfInflowDigitalSales.textContent = formatRupiah(inf.digital_sales || 0);
+  if (el.cfInflowDebtCollected) el.cfInflowDebtCollected.textContent = formatRupiah(inf.debt_collected || 0);
+  if (el.cfInflowOtherIncome) el.cfInflowOtherIncome.textContent = formatRupiah(inf.other_income || 0);
+  if (el.cfTotalInflow) el.cfTotalInflow.textContent = formatRupiah(inf.total_inflow || 0);
+
+  if (el.cfOutflowStoreCash) el.cfOutflowStoreCash.textContent = formatRupiah(outf.store_expenses_cash || 0);
+  if (el.cfOutflowStoreTransfer) el.cfOutflowStoreTransfer.textContent = formatRupiah(outf.store_expenses_transfer || 0);
+  if (el.cfOutflowSupplierCash) el.cfOutflowSupplierCash.textContent = formatRupiah(outf.supplier_paid_cash || 0);
+  if (el.cfOutflowSupplierTransfer) el.cfOutflowSupplierTransfer.textContent = formatRupiah(outf.supplier_paid_transfer || 0);
+  if (el.cfTotalOutflow) el.cfTotalOutflow.textContent = formatRupiah(outf.total_cash_outflow || 0);
+
+  const netCf = cf.net_cashflow !== undefined ? cf.net_cashflow : ((inf.total_inflow || 0) - (outf.total_cash_outflow || 0));
+  if (el.lblNetCashflowVal) el.lblNetCashflowVal.textContent = (netCf >= 0 ? '+' : '') + formatRupiah(netCf);
+
+  if (el.netCashflowPill) {
+    if (netCf >= 0) {
+      el.netCashflowPill.style.background = '#ecfdf5';
+      el.netCashflowPill.style.color = '#059669';
+      el.netCashflowPill.style.borderColor = '#a7f3d0';
+      el.netCashflowPill.innerHTML = `<span>Surplus Kas Bersih:</span> <strong id="lblNetCashflowVal" style="font-family: monospace;">+${formatRupiah(netCf)}</strong>`;
+    } else {
+      el.netCashflowPill.style.background = '#fff1f2';
+      el.netCashflowPill.style.color = '#e11d48';
+      el.netCashflowPill.style.borderColor = '#fecdd3';
+      el.netCashflowPill.innerHTML = `<span>Defisit Kas Bersih:</span> <strong id="lblNetCashflowVal" style="font-family: monospace;">${formatRupiah(netCf)}</strong>`;
+    }
+  }
+}
+
+function formatDateTimeDetailed(dateInput) {
+  if (!dateInput) return '-';
+  const d = parseSafeDate(dateInput);
+  if (isNaN(d.getTime())) return String(dateInput);
+
+  const dateStr = d.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+  const timeStr = d.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }).replace('.', ':');
+
+  return `${dateStr} • ${timeStr} WIB`;
+}
+
+function renderRecentFeeds() {
+  const dash = state.dashboard || {};
+  const orders = dash.recent_orders || [];
+  const expenses = dash.recent_expenses || [];
+  const purchases = dash.recent_purchases || [];
+
+  // 1. Recent Sales Orders
+  if (el.badgeRecentOrdersCount) {
+    el.badgeRecentOrdersCount.textContent = `${orders.length} Nota`;
+  }
+  if (el.recentOrdersList) {
+    if (orders.length === 0) {
+      el.recentOrdersList.innerHTML = `
+        <div style="color: #64748b; font-size: 12px; padding: 20px; text-align: center; background: #f8fafc; border-radius: 8px;">
+          Belum ada transaksi penjualan yang dicatat.
+        </div>
+      `;
+    } else {
+      el.recentOrdersList.innerHTML = orders.map(o => {
+        const fullTimeStr = formatDateTimeDetailed(o.created_at);
+        const isCash = o.payment_method === 'cash';
+        const methodBadge = isCash 
+          ? '<span style="font-size: 10px; background: #ecfdf5; color: #059669; padding: 1px 6px; border-radius: 4px; font-weight: 700;">TUNAI</span>'
+          : (o.payment_method === 'tempo'
+              ? '<span style="font-size: 10px; background: #fffbeb; color: #d97706; padding: 1px 6px; border-radius: 4px; font-weight: 700;">TEMPO</span>'
+              : `<span style="font-size: 10px; background: #eff6ff; color: #2563eb; padding: 1px 6px; border-radius: 4px; font-weight: 700;">${escapeHtml(o.payment_method ? o.payment_method.toUpperCase() : 'NON-TUNAI')}</span>`);
+
+        return `
+          <div class="feed-item-card feed-order">
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <strong style="font-size: 12.5px; color: #0f172a; white-space: nowrap;">#${escapeHtml(o.order_no)}</strong>
+                ${methodBadge}
+              </div>
+              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${escapeHtml(o.customer_name || 'Pelanggan Umum')} • <span style="color: #64748b;">Kasir: ${escapeHtml(o.cashier_name || 'Kasir')}</span>
+              </div>
+              <div style="margin-top: 4px;">
+                <span class="feed-time-chip">📅 ${fullTimeStr}</span>
+              </div>
+            </div>
+            <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
+              <div style="font-family: monospace; font-size: 13.5px; font-weight: 800; color: #2563eb;">
+                ${formatRupiah(o.total_amount)}
+              </div>
+              <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">
+                ${o.total_kg > 0 ? `${o.total_kg} kg` : `${o.item_count || 1} item`}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // 2. Recent Store Expenses
+  if (el.badgeRecentExpensesCount) {
+    el.badgeRecentExpensesCount.textContent = `${expenses.length} Biaya`;
+  }
+  if (el.recentExpensesList) {
+    if (expenses.length === 0) {
+      el.recentExpensesList.innerHTML = `
+        <div style="color: #64748b; font-size: 12px; padding: 20px; text-align: center; background: #f8fafc; border-radius: 8px;">
+          Belum ada catatan biaya operasional toko.
+        </div>
+      `;
+    } else {
+      el.recentExpensesList.innerHTML = expenses.map(e => {
+        const fullTimeStr = formatDateTimeDetailed(e.created_at);
+        const isIncome = e.type === 'income';
+        const sourceLabel = e.source === 'cash' ? '💵 Laci' : '🏦 Bank';
+        const cardClass = isIncome ? 'feed-item-card feed-income' : 'feed-item-card feed-expense';
+        const amountColor = isIncome ? '#059669' : '#e11d48';
+        const amountPrefix = isIncome ? '+' : '-';
+
+        return `
+          <div class="${cardClass}">
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <strong style="font-size: 12.5px; color: #0f172a; white-space: nowrap;">${escapeHtml(e.category_name)}</strong>
+                <span style="font-size: 10px; background: #f1f5f9; color: #475569; padding: 1px 6px; border-radius: 4px; font-weight: 600;">${sourceLabel}</span>
+              </div>
+              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${escapeHtml(e.notes || 'Biaya operasional')} • <span style="color: #64748b;">Oleh: ${escapeHtml(e.recorded_by_name || 'Staff')}</span>
+              </div>
+              <div style="margin-top: 4px;">
+                <span class="feed-time-chip">📅 ${fullTimeStr}</span>
+              </div>
+            </div>
+            <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
+              <div style="font-family: monospace; font-size: 13.5px; font-weight: 800; color: ${amountColor};">
+                ${amountPrefix}${formatRupiah(e.amount)}
+              </div>
+              <div style="font-size: 10px; color: ${amountColor}; margin-top: 2px; font-weight: 700;">
+                ${isIncome ? 'KAS MASUK' : 'KAS KELUAR'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // 3. Recent Supplier Purchases (Stock Restock)
+  if (el.badgeRecentPurchasesCount) {
+    el.badgeRecentPurchasesCount.textContent = `${purchases.length} Kulakan`;
+  }
+  if (el.recentPurchasesList) {
+    if (purchases.length === 0) {
+      el.recentPurchasesList.innerHTML = `
+        <div style="color: #64748b; font-size: 12px; padding: 20px; text-align: center; background: #f8fafc; border-radius: 8px;">
+          Belum ada riwayat kulakan komoditas dari supplier.
+        </div>
+      `;
+    } else {
+      el.recentPurchasesList.innerHTML = purchases.map(p => {
+        const fullTimeStr = formatDateTimeDetailed(p.created_at);
+        const isTempo = p.payment_status === 'tempo' || Number(p.remaining_amount) > 0;
+        const statusBadge = isTempo
+          ? `<span style="font-size: 10px; background: #fff1f2; color: #e11d48; padding: 1px 6px; border-radius: 4px; font-weight: 700;">TEMPO (Sisa ${formatRupiah(p.remaining_amount)})</span>`
+          : '<span style="font-size: 10px; background: #ecfdf5; color: #059669; padding: 1px 6px; border-radius: 4px; font-weight: 700;">LUNAS</span>';
+
+        return `
+          <div class="feed-item-card feed-purchase">
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <strong style="font-size: 12.5px; color: #0f172a;">${escapeHtml(p.supplier_name)}</strong>
+                ${statusBadge}
+              </div>
+              <div style="font-size: 11.5px; color: #334155; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <strong>${escapeHtml(p.product_name)}</strong>: ${p.qty_kg} kg @ ${formatRupiah(p.cost_price)}
+                ${p.notes ? ` • <em>"${escapeHtml(p.notes)}"</em>` : ''}
+              </div>
+              <div style="margin-top: 4px;">
+                <span class="feed-time-chip">📅 ${fullTimeStr}</span>
+              </div>
+            </div>
+            <div style="text-align: right; margin-left: 8px; flex-shrink: 0;">
+              <div style="font-family: monospace; font-size: 13.5px; font-weight: 800; color: #059669;">
+                ${formatRupiah(p.total_cost)}
+              </div>
+              <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">
+                +${p.qty_kg} kg stok
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+}
+
+function renderVoidDetails() {
+  const voidDetails = state.dashboard.void_today_details || [];
+  const s = state.dashboard.summary || {};
+  const count = s.void_count !== undefined ? s.void_count : voidDetails.length;
+
+  if (el.kpiVoidCountBadge) {
+    el.kpiVoidCountBadge.textContent = `${count} Void`;
+    el.kpiVoidCountBadge.style.background = count > 0 ? '#fee2e2' : '#f1f5f9';
+    el.kpiVoidCountBadge.style.color = count > 0 ? '#dc2626' : '#64748b';
+  }
+
+  if (!el.voidListContainer) return;
+
+  if (voidDetails.length === 0) {
+    el.voidListContainer.innerHTML = `
+      <div style="color: #64748b; font-size: 12.5px; padding: 18px 12px; text-align: center; background: #f8fafc; border-radius: 8px;">
+        ✅ Tidak ada nota dibatalkan hari ini (Integritas Aman).
+      </div>
+    `;
+    return;
+  }
+
+  el.voidListContainer.innerHTML = voidDetails.map(v => {
+    const time = parseSafeDate(v.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #fee2e2; background: #fff5f5; border-radius: 8px; margin-bottom: 6px;">
+        <div>
+          <div style="font-weight: 700; font-size: 13px; color: #991b1b; display: flex; align-items: center; gap: 6px;">
+            <span>🚫 #${v.order_no}</span>
+            <span style="font-size: 11px; background: #fee2e2; color: #dc2626; padding: 1px 6px; border-radius: 4px; font-weight: 600;">${time}</span>
+          </div>
+          <div style="font-size: 11.5px; color: #475569; margin-top: 3px;">
+            Kasir: <strong>${escapeHtml(v.cashier_name || 'Kasir')}</strong>
+            ${v.void_reason ? ` • <em>"${escapeHtml(v.void_reason)}"</em>` : ''}
+          </div>
+        </div>
+        <div style="font-family: monospace; font-size: 13.5px; font-weight: 800; color: #b91c1c;">
+          ${formatRupiah(v.total_amount)}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderRevenueChart() {
+  if (!el.revenueTrendChart || !state.dashboard || !state.dashboard.trends) return;
+
+  const isToday = state.currentChartTimeView === 'today';
+  const data = isToday 
+    ? (state.dashboard.trends.hourly_today || []) 
+    : (state.dashboard.trends.last_7_days || []);
+
+  const labels = data.map(d => isToday ? d.hour : (d.label || d.date));
+  const revenues = data.map(d => Number(d.revenue) || 0);
+  const ordersCount = data.map(d => Number(d.orders_count) || 0);
+
+  // Compute telemetry summary
+  const totalRevenue = revenues.reduce((acc, v) => acc + v, 0);
+  const totalOrders = ordersCount.reduce((acc, v) => acc + v, 0);
+  const avgBasket = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+  
+  // Find peak
+  let peakItem = null;
+  let peakVal = 0;
+  data.forEach(d => {
+    const rev = Number(d.revenue) || 0;
+    if (rev > peakVal) {
+      peakVal = rev;
+      peakItem = d;
+    }
+  });
+
+  if (el.chartTotalRevenue) el.chartTotalRevenue.textContent = formatRupiah(totalRevenue);
+  if (el.chartTotalOrders) el.chartTotalOrders.textContent = `${totalOrders} Nota`;
+  if (el.chartAvgRevenue) el.chartAvgRevenue.textContent = formatRupiah(avgBasket);
+  if (el.chartPeakSales) {
+    if (peakItem && peakVal > 0) {
+      const peakLabel = isToday ? peakItem.hour : peakItem.label;
+      el.chartPeakSales.textContent = `${peakLabel} (${formatShortRupiah(peakVal)})`;
+    } else {
+      el.chartPeakSales.textContent = '-';
+    }
+  }
+
+  // Destroy previous chart instance
+  if (state.revenueChartInstance) {
+    state.revenueChartInstance.destroy();
+    state.revenueChartInstance = null;
+  }
+
+  const ctx = el.revenueTrendChart.getContext('2d');
+  if (!ctx) return;
+
+  // Linear gradient for revenue line fill
+  const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+  gradient.addColorStop(0, 'rgba(37, 99, 235, 0.28)');
+  gradient.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
+
+  state.revenueChartInstance = new Chart(ctx, {
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          type: 'line',
+          label: 'Omzet Penjualan (Rp)',
+          data: revenues,
+          borderColor: '#2563eb',
+          borderWidth: 2.5,
+          backgroundColor: gradient,
+          fill: true,
+          tension: 0.35,
+          pointRadius: isToday ? 2.5 : 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#2563eb',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          yAxisID: 'yRevenue',
+          order: 1
+        },
+        {
+          type: 'bar',
+          label: 'Jumlah Transaksi (Nota)',
+          data: ordersCount,
+          backgroundColor: 'rgba(16, 185, 129, 0.65)',
+          hoverBackgroundColor: '#10b981',
+          borderRadius: 4,
+          maxBarThickness: isToday ? 14 : 26,
+          yAxisID: 'yOrders',
+          order: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'end',
+          labels: {
+            boxWidth: 10,
+            usePointStyle: true,
+            font: { family: 'Plus Jakarta Sans', size: 11.5, weight: '600' },
+            color: '#475569'
+          }
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { family: 'Plus Jakarta Sans', size: 12, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 11.5 },
+          padding: 10,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              if (context.dataset.yAxisID === 'yRevenue') {
+                return ' Omzet: ' + formatRupiah(context.raw);
+              }
+              return ' Transaksi: ' + context.raw + ' Nota';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { family: 'Plus Jakarta Sans', size: 11 },
+            color: '#64748b',
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: isToday ? 8 : 7
+          }
+        },
+        yRevenue: {
+          type: 'linear',
+          position: 'left',
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(226, 232, 240, 0.6)',
+            drawBorder: false
+          },
+          ticks: {
+            font: { family: 'JetBrains Mono', size: 10.5 },
+            color: '#64748b',
+            callback: (val) => formatShortRupiah(val)
+          }
+        },
+        yOrders: {
+          type: 'linear',
+          position: 'right',
+          beginAtZero: true,
+          grid: { display: false },
+          ticks: {
+            stepSize: 1,
+            precision: 0,
+            font: { family: 'JetBrains Mono', size: 10.5 },
+            color: '#059669',
+            callback: (val) => Number.isInteger(val) ? val + ' n' : ''
+          }
+        }
+      }
+    }
+  });
 }
 
 function renderAnomalyRadar() {
@@ -891,7 +2094,7 @@ function renderProductsGrid() {
           <!-- Pricing Breakdown Matrix -->
           <div class="pricing-matrix-box">
             <div class="matrix-item">
-              <span class="matrix-label">Modal (Beli)</span>
+              <span class="matrix-label">Nota (Modal)</span>
               <span class="matrix-val">${formatRupiah(p.cost_price)}</span>
             </div>
             <div class="matrix-item">
@@ -899,29 +2102,61 @@ function renderProductsGrid() {
               <span class="matrix-val">${formatRupiah(p.retail_price)}</span>
             </div>
             <div class="matrix-item">
-              <span class="matrix-label">Grosir (&ge;${p.wholesale_min_qty}${p.unit})</span>
+              <span class="matrix-label">Harga Karungan</span>
               <span class="matrix-val reseller">${formatRupiah(p.reseller_price)}</span>
             </div>
           </div>
 
           <!-- Margin Indicator -->
           <div class="margin-indicator-bar">
-            <span class="margin-text-left">Laba Bersih per Kg:</span>
+            <span class="margin-text-left">Laba per ${p.unit}:</span>
             <span class="margin-number">+${formatRupiah(marginRetail)} (${marginPercent}%)</span>
+          </div>
+
+          <!-- Incoming Stock Summary Strip (Riwayat Masuk Terakhir & Supplier) -->
+          <div class="prod-restock-strip">
+            <div class="prod-restock-head">
+              <span class="prod-restock-lbl">📦 Pasokan Terakhir:</span>
+              <span class="prod-restock-badge ${p.last_restock_date ? 'has-stock' : ''}">
+                ${(p.restock_count || 0) > 0 ? `${p.restock_count}x Masuk` : 'Belum Ada'}
+              </span>
+            </div>
+            ${p.last_restock_date ? `
+              <div class="prod-restock-detail">
+                <div class="prod-restock-date">
+                  📅 ${parseSafeDate(p.last_restock_date).toLocaleString('id-ID', {
+                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })}
+                </div>
+                <div class="prod-restock-sup">
+                  <span title="Juragan Pemasok">👤 ${escapeHtml(p.last_supplier_name || 'Supplier Tanpa Nama')}</span>
+                  <span class="prod-restock-qty">+${Number(p.last_restock_qty || 0).toLocaleString('id-ID')} ${p.unit}</span>
+                </div>
+              </div>
+            ` : `
+              <div class="prod-restock-empty">Belum pernah tercatat kulakan stok masuk</div>
+            `}
           </div>
         </div>
 
         <div class="prod-card-bottom">
-          <button class="btn-card-stock" data-id="${p.id}">
-            📦 + Masuk Stok
+          <button class="btn-card-history" data-id="${p.id}" title="Lihat riwayat lengkap barang masuk & juragan supplier">
+            📜 Riwayat
           </button>
-          <button class="btn-card-price" data-id="${p.id}">
-            ✏️ Edit Harga
+          <button class="btn-card-stock" data-id="${p.id}" title="Tambah stok kulakan masuk">
+            📦 +Stok
+          </button>
+          <button class="btn-card-price" data-id="${p.id}" title="Edit harga modal & harga jual">
+            ✏️ Edit
           </button>
         </div>
       </div>
     `;
   }).join('');
+
+  el.productsCardsGrid.querySelectorAll('.btn-card-history').forEach(btn => {
+    btn.addEventListener('click', () => openProductRestockHistoryModal(Number(btn.dataset.id)));
+  });
 
   el.productsCardsGrid.querySelectorAll('.btn-card-stock').forEach(btn => {
     btn.addEventListener('click', () => openRestockModal(Number(btn.dataset.id)));
@@ -932,6 +2167,165 @@ function renderProductsGrid() {
       const prod = state.products.find(p => p.id === Number(btn.dataset.id));
       if (prod) openEditPriceModal(prod);
     });
+  });
+}
+
+// -----------------------------------------------------------------------------
+// MODAL: RIWAYAT STOK MASUK KOMODITAS (SUPPLIER & TANGGAL MASUK)
+// -----------------------------------------------------------------------------
+let currentRestockHistoryProductId = null;
+
+async function openProductRestockHistoryModal(productId) {
+  currentRestockHistoryProductId = productId;
+  const prod = state.products.find(p => p.id === productId);
+  if (!prod) return;
+
+  if (el.modalProductRestockHistory) {
+    el.modalProductRestockHistory.style.display = 'flex';
+  }
+
+  // Set Header & Subtitle
+  if (el.prodRestockIconBadge) el.prodRestockIconBadge.textContent = prod.image_emoji || '📦';
+  if (el.prodRestockModalTitle) el.prodRestockModalTitle.textContent = `Riwayat Stok Masuk: ${prod.name}`;
+  if (el.prodRestockModalSubtitle) {
+    el.prodRestockModalSubtitle.textContent = `Kategori: ${prod.category.toUpperCase()} • Satuan: ${prod.unit} • Harga Modal Saat Ini: ${formatRupiah(prod.cost_price)} / ${prod.unit}`;
+  }
+
+  // Set initial placeholders
+  if (el.statProdCurrentStock) el.statProdCurrentStock.textContent = `${Number(prod.stock_qty || 0).toLocaleString('id-ID')} ${prod.unit}`;
+  if (el.statProdTotalReceived) el.statProdTotalReceived.textContent = 'Memuat...';
+  if (el.statProdEntriesCount) el.statProdEntriesCount.textContent = '...';
+  if (el.statProdTotalCost) el.statProdTotalCost.textContent = 'Memuat...';
+  if (el.statProdDebtRemaining) el.statProdDebtRemaining.textContent = 'Memuat...';
+
+  if (el.prodRestockTableBody) {
+    el.prodRestockTableBody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding: 30px; color: #64748b;">Memuat riwayat stok masuk dari juragan...</td></tr>';
+  }
+
+  try {
+    const res = await api.getProductRestockHistory(productId);
+    if (!res || !res.success) throw new Error(res?.message || 'Gagal memuat riwayat stok masuk');
+
+    const summary = res.summary || {};
+    const purchases = res.purchases || [];
+
+    if (el.statProdTotalReceived) {
+      el.statProdTotalReceived.textContent = `${(Number(summary.total_qty_received) || 0).toLocaleString('id-ID')} ${prod.unit}`;
+    }
+    if (el.statProdEntriesCount) {
+      el.statProdEntriesCount.textContent = `${summary.total_entries || 0}x Kulakan Masuk`;
+    }
+    if (el.statProdTotalCost) {
+      el.statProdTotalCost.textContent = formatRupiah(summary.total_cost_spent || 0);
+    }
+    if (el.statProdDebtRemaining) {
+      const debt = Number(summary.total_debt_remaining) || 0;
+      el.statProdDebtRemaining.textContent = formatRupiah(debt);
+      el.statProdDebtRemaining.className = debt > 0 ? 'kpi-v2-main text-danger' : 'kpi-v2-main text-success';
+    }
+
+    if (purchases.length === 0) {
+      el.prodRestockTableBody.innerHTML = `
+        <tr>
+          <td colspan="9" class="text-center" style="padding: 40px 20px; color: #64748b;">
+            <div style="font-size: 32px; margin-bottom: 8px;">📦</div>
+            <strong style="color: #0f172a; font-size: 15px; display: block;">Belum Ada Riwayat Kulakan Masuk</strong>
+            <p style="margin: 4px 0 16px 0; font-size: 13px;">Belum pernah ada pasokan stok yang dicatat dari juragan petani untuk komoditas ini.</p>
+            <button class="btn-action-emerald" id="btnRestockFromEmptyModal" style="margin: 0 auto; padding: 8px 18px; border-radius: 8px;">
+              <span>📦</span> + Catat Kulakan Masuk Sekarang
+            </button>
+          </td>
+        </tr>
+      `;
+      const btnEmpty = document.getElementById('btnRestockFromEmptyModal');
+      if (btnEmpty) {
+        btnEmpty.addEventListener('click', () => {
+          if (el.modalProductRestockHistory) el.modalProductRestockHistory.style.display = 'none';
+          openRestockModal(productId);
+        });
+      }
+      return;
+    }
+
+    el.prodRestockTableBody.innerHTML = purchases.map(p => {
+      const timeFormatted = parseSafeDate(p.created_at).toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      let statusBadge = '';
+      if (p.payment_status === 'lunas') {
+        statusBadge = '<span class="kpi-badge success" style="font-size: 11px;">🟢 Lunas</span>';
+      } else if (p.remaining_amount > 0) {
+        statusBadge = `<span class="kpi-badge amber" style="font-size: 11px;">⏳ Tempo (Sisa: ${formatRupiah(p.remaining_amount)})</span>`;
+      } else {
+        statusBadge = '<span class="kpi-badge success" style="font-size: 11px;">🟢 Lunas</span>';
+      }
+
+      const waBtn = p.supplier_phone 
+        ? `<a href="https://wa.me/${p.supplier_phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}" target="_blank" class="btn-wa-chip" style="padding: 2px 7px; font-size: 11px; margin-left: 6px;" title="Hubungi via WhatsApp">💬 WA</a>`
+        : '';
+
+      return `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="font-weight: 600; color: #0f172a; font-size: 12.5px; white-space: nowrap;">
+            📅 ${timeFormatted}
+          </td>
+          <td>
+            <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; color: #0f172a; font-weight: 700;">${p.purchase_no || '-'}</code>
+          </td>
+          <td>
+            <div style="font-weight: 700; color: #0f172a; font-size: 13px; display: flex; align-items: center;">
+              <span>👤 ${escapeHtml(p.supplier_name || 'Tanpa Nama / Non-Supplier')}</span>
+              ${waBtn}
+            </div>
+            ${p.supplier_address ? `<div style="font-size: 11px; color: #64748b;">📍 ${escapeHtml(p.supplier_address)}</div>` : ''}
+          </td>
+          <td class="text-right" style="font-weight: 800; color: #059669; font-family: var(--font-mono); font-size: 13.5px; white-space: nowrap;">
+            +${Number(p.qty_kg).toLocaleString('id-ID')} ${prod.unit}
+          </td>
+          <td class="text-right" style="font-family: var(--font-mono); font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">
+            ${formatRupiah(p.cost_price)}
+          </td>
+          <td class="text-right" style="font-family: var(--font-mono); font-weight: 800; color: #0f172a; font-size: 13.5px; white-space: nowrap;">
+            ${formatRupiah(p.total_cost)}
+          </td>
+          <td class="text-center" style="white-space: nowrap;">
+            ${statusBadge}
+          </td>
+          <td style="font-size: 12px; color: #475569; white-space: nowrap;">
+            ${escapeHtml(p.recorded_by_name || 'Admin')}
+          </td>
+          <td style="font-size: 12px; color: #64748b; max-width: 200px;">
+            ${escapeHtml(p.notes || '-')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading product restock history:', err);
+    if (el.prodRestockTableBody) {
+      el.prodRestockTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger" style="padding: 24px;">Gagal memuat: ${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+}
+
+// Hook up restock history modal listeners once
+if (el.btnCloseProdRestockModal) {
+  el.btnCloseProdRestockModal.addEventListener('click', () => {
+    if (el.modalProductRestockHistory) el.modalProductRestockHistory.style.display = 'none';
+  });
+}
+if (el.btnCloseProdRestockModalFooter) {
+  el.btnCloseProdRestockModalFooter.addEventListener('click', () => {
+    if (el.modalProductRestockHistory) el.modalProductRestockHistory.style.display = 'none';
+  });
+}
+if (el.btnQuickRestockFromHistory) {
+  el.btnQuickRestockFromHistory.addEventListener('click', () => {
+    if (el.modalProductRestockHistory) el.modalProductRestockHistory.style.display = 'none';
+    if (currentRestockHistoryProductId) {
+      openRestockModal(currentRestockHistoryProductId);
+    }
   });
 }
 
@@ -1591,12 +2985,111 @@ async function loadSalesReport() {
         }).join('');
       }
     }
+
+    // 5. Render Sales Trend Chart for Tab 2
+    renderReportSalesChart(res.daily_trend || []);
   } catch (err) {
     if (el.repOrdersTableBody) {
       el.repOrdersTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Gagal memuat laporan: ${err.message}</td></tr>`;
     }
     showToast('Gagal memuat laporan penjualan: ' + err.message, 'error');
   }
+}
+
+function renderReportSalesChart(dailyTrend = []) {
+  if (!el.reportSalesTrendChart) return;
+
+  if (state.reportSalesChartInstance) {
+    state.reportSalesChartInstance.destroy();
+    state.reportSalesChartInstance = null;
+  }
+
+  if (!dailyTrend || dailyTrend.length === 0) {
+    return;
+  }
+
+  const labels = dailyTrend.map(d => {
+    const dt = parseSafeDate(d.date);
+    return dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  });
+
+  const revenues = dailyTrend.map(d => Number(d.revenue) || 0);
+  const profits = dailyTrend.map(d => Number(d.profit) || 0);
+
+  const ctx = el.reportSalesTrendChart.getContext('2d');
+  if (!ctx) return;
+
+  state.reportSalesChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Omzet (Penjualan)',
+          data: revenues,
+          backgroundColor: 'rgba(37, 99, 235, 0.85)',
+          hoverBackgroundColor: '#1d4ed8',
+          borderRadius: 4,
+          maxBarThickness: 32
+        },
+        {
+          label: 'Laba Kotor',
+          data: profits,
+          backgroundColor: 'rgba(16, 185, 129, 0.85)',
+          hoverBackgroundColor: '#059669',
+          borderRadius: 4,
+          maxBarThickness: 32
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { family: 'Plus Jakarta Sans', size: 12, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 11.5 },
+          padding: 10,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const label = context.dataset.label || '';
+              return ` ${label}: ${formatRupiah(context.raw)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { family: 'Plus Jakarta Sans', size: 11 },
+            color: '#64748b'
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(226, 232, 240, 0.6)',
+            drawBorder: false
+          },
+          ticks: {
+            font: { family: 'JetBrains Mono', size: 10.5 },
+            color: '#64748b',
+            callback: (val) => formatShortRupiah(val)
+          }
+        }
+      }
+    }
+  });
 }
 
 function exportSalesReportToCSV() {
@@ -1774,14 +3267,19 @@ async function loadDebtsData() {
       el.badgeOverdueAlert.style.display = (state.debtSummary.total_overdue > 0) ? 'inline-block' : 'none';
     }
 
-    // Quick badge count on Tab
+    // Quick badge count on Tab & Mobile Bottom Nav
     if (el.debtCountBadge) {
       const activeCount = state.debtSummary.total_debtors || 0;
       if (activeCount > 0) {
         el.debtCountBadge.textContent = activeCount;
         el.debtCountBadge.style.display = 'inline-block';
+        if (el.bnavDebtBadge) {
+          el.bnavDebtBadge.textContent = activeCount;
+          el.bnavDebtBadge.style.display = 'inline-block';
+        }
       } else {
         el.debtCountBadge.style.display = 'none';
+        if (el.bnavDebtBadge) el.bnavDebtBadge.style.display = 'none';
       }
     }
 
@@ -2021,6 +3519,702 @@ async function openOwnerDebtDetailModal(debtId) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// TAB: MANAJEMEN PEMASOK / JURAGAN & BUKU KULAKAN (SUPPLIER MANAGEMENT)
+// -----------------------------------------------------------------------------
+async function loadSuppliersData() {
+  try {
+    if (el.btnRefreshSuppliers) {
+      el.btnRefreshSuppliers.innerHTML = '⏳ Memuat...';
+    }
+
+    const searchVal = el.searchSupplierInput ? el.searchSupplierInput.value.trim() : '';
+    const hasDebt = state.activeSupplierDebtFilter === 'has_debt' ? 'true' : '';
+
+    const res = await api.getSuppliers({
+      search: searchVal,
+      has_debt: hasDebt
+    });
+
+    if (!res.success) {
+      console.error('Failed to load suppliers:', res.message);
+      return;
+    }
+
+    state.suppliers = res.suppliers || [];
+    state.supplierSummary = res.summary || {};
+
+    // Filter lunas locally if selected
+    let displayedSuppliers = state.suppliers;
+    if (state.activeSupplierDebtFilter === 'lunas') {
+      displayedSuppliers = state.suppliers.filter(s => Number(s.total_debt_remaining || 0) <= 0);
+    }
+
+    // Update KPI Cards
+    if (el.kpiTotalSuppliers) {
+      el.kpiTotalSuppliers.textContent = `${state.supplierSummary.total_suppliers || 0} Juragan`;
+    }
+    if (el.kpiMonthlyPurchases) {
+      el.kpiMonthlyPurchases.textContent = formatRupiah(state.supplierSummary.total_purchases_month || 0);
+    }
+    if (el.kpiTotalSupplierDebt) {
+      el.kpiTotalSupplierDebt.textContent = formatRupiah(state.supplierSummary.total_debt_outstanding || 0);
+    }
+    if (el.kpiSuppliersWithDebtText) {
+      el.kpiSuppliersWithDebtText.textContent = `${state.supplierSummary.total_suppliers_with_debt || 0} pemasok belum lunas`;
+    }
+    if (el.kpiOverdueSupplierDebt) {
+      el.kpiOverdueSupplierDebt.textContent = formatRupiah(state.supplierSummary.total_overdue_debt || 0);
+    }
+
+    renderSuppliersTable(displayedSuppliers);
+  } catch (err) {
+    console.error('Error loading suppliers:', err);
+  } finally {
+    if (el.btnRefreshSuppliers) {
+      el.btnRefreshSuppliers.innerHTML = '🔄 Segarkan Data';
+    }
+  }
+}
+
+function renderSuppliersTable(suppliersList) {
+  if (!el.suppliersTableBody) return;
+
+  if (!suppliersList || suppliersList.length === 0) {
+    el.suppliersTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+          Tidak ada data pemasok / juragan yang sesuai.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  el.suppliersTableBody.innerHTML = suppliersList.map(s => {
+    const totalDebt = Number(s.total_debt_remaining || 0);
+    const hasOverdue = s.has_overdue_debt === 1;
+
+    let debtBadge = '';
+    if (totalDebt <= 0) {
+      debtBadge = '<span class="kpi-badge success" style="font-size:11px;">🟢 Lunas</span>';
+    } else if (hasOverdue) {
+      debtBadge = '<span class="kpi-badge danger" style="font-size:11px;">🚨 Lewat Jatuh Tempo</span>';
+    } else {
+      debtBadge = '<span class="kpi-badge amber" style="font-size:11px;">⏳ Ada Tempo</span>';
+    }
+
+    let phoneClean = (s.phone || '').replace(/[^0-9]/g, '');
+    if (phoneClean.startsWith('0')) {
+      phoneClean = '62' + phoneClean.slice(1);
+    }
+    const waLink = phoneClean 
+      ? `<a href="https://wa.me/${phoneClean}" target="_blank" rel="noopener noreferrer" class="btn-wa-chip">
+          <span>💬</span> ${s.phone || '-'}
+        </a>`
+      : `<span style="color:#94a3b8;">-</span>`;
+
+    const totalPurchasesFormatted = formatRupiah(s.total_purchases_amount || 0);
+    const totalKgFormatted = Number(s.total_purchases_kg || 0).toLocaleString('id-ID');
+    const totalDebtFormatted = totalDebt > 0 ? formatRupiah(totalDebt) : 'Rp 0';
+
+    return `
+      <tr>
+        <td>
+          <div style="font-weight: 700; color: #0f172a; font-size: 13.5px;">${s.name}</div>
+          <div style="font-size: 11.5px; color: #64748b; margin-top: 3px;">
+            📍 ${s.address || 'Daerah asal belum diisi'}
+            ${s.bank_info ? ` • 🏦 <span style="font-family: var(--font-mono); color: #0284c7; font-weight: 600;">${s.bank_info}</span>` : ''}
+          </div>
+        </td>
+        <td>${waLink}</td>
+        <td>
+          <span style="display: inline-block; padding: 3px 10px; border-radius: 6px; background: #eff6ff; color: #1d4ed8; font-size: 11.5px; font-weight: 600; border: 1px solid #bfdbfe;">
+            ${s.supplied_commodities || 'Semua Komoditas'}
+          </span>
+        </td>
+        <td class="text-right">
+          <div style="font-weight: 700; color: #0f172a; font-family: var(--font-mono); font-size: 13px;">${totalPurchasesFormatted}</div>
+          <div style="font-size: 11px; color: #64748b;">${totalKgFormatted} kg (${s.total_purchases_count || 0} nota)</div>
+        </td>
+        <td class="text-right">
+          <strong style="font-family: var(--font-mono); font-size: 13.5px; font-weight: 800; color: ${totalDebt > 0 ? (hasOverdue ? '#dc2626' : '#d97706') : '#059669'};">
+            ${totalDebtFormatted}
+          </strong>
+        </td>
+        <td class="text-center">${debtBadge}</td>
+        <td class="text-center">
+          <div style="display: inline-flex; gap: 5px; justify-content: center;">
+            <button class="btn-table-action btn-sup-purchase" data-id="${s.id}" data-name="${encodeURIComponent(s.name)}" title="Catat Kulakan Masuk" style="padding: 5px 10px; font-size: 12px; background: #059669; color: #ffffff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+              📦 Masuk
+            </button>
+            <button class="btn-table-action btn-sup-detail" data-id="${s.id}" title="Lihat Profil & Riwayat" style="padding: 5px 10px; font-size: 12px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+              📋 Detail
+            </button>
+            <button class="btn-table-action btn-sup-edit" data-id="${s.id}" title="Edit Data Pemasok" style="padding: 5px 8px; font-size: 12px; background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600;">
+              ✏️
+            </button>
+            <button class="btn-table-action btn-sup-delete" data-id="${s.id}" data-name="${encodeURIComponent(s.name)}" title="Nonaktifkan Pemasok" style="padding: 5px 8px; font-size: 12px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px; cursor: pointer;">
+              🗑️
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  el.suppliersTableBody.querySelectorAll('.btn-sup-purchase').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openOwnerRecordPurchaseModal(Number(btn.dataset.id));
+    });
+  });
+
+  el.suppliersTableBody.querySelectorAll('.btn-sup-detail').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openSupplierDetailModal(Number(btn.dataset.id));
+    });
+  });
+
+  el.suppliersTableBody.querySelectorAll('.btn-sup-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const sup = state.suppliers.find(s => s.id === Number(btn.dataset.id));
+      if (sup) openSupplierModal(sup);
+    });
+  });
+
+  el.suppliersTableBody.querySelectorAll('.btn-sup-delete').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = decodeURIComponent(btn.dataset.name);
+      handleDeleteSupplier(Number(btn.dataset.id), name);
+    });
+  });
+}
+
+async function loadPurchasesData() {
+  try {
+    const searchVal = el.searchSupplierInput ? el.searchSupplierInput.value.trim() : '';
+    const res = await api.getPurchases({ search: searchVal });
+    if (!res.success) {
+      console.error('Failed to load purchases:', res.message);
+      return;
+    }
+
+    state.purchases = res.purchases || [];
+    renderPurchasesTable(state.purchases);
+  } catch (err) {
+    console.error('Error loading purchases:', err);
+  }
+}
+
+function renderPurchasesTable(purchasesList) {
+  if (!el.purchasesTableBody) return;
+
+  if (!purchasesList || purchasesList.length === 0) {
+    el.purchasesTableBody.innerHTML = `
+      <tr>
+        <td colspan="10" style="text-align: center; padding: 40px; color: #94a3b8;">
+          Belum ada riwayat nota kulakan masuk.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  el.purchasesTableBody.innerHTML = purchasesList.map(p => {
+    const timeFormatted = parseSafeDate(p.created_at).toLocaleString('id-ID', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    let statusBadge = '';
+    if (p.payment_status === 'lunas') {
+      statusBadge = '<span class="kpi-badge success" style="font-size:11px;">🟢 Lunas</span>';
+    } else if (p.is_overdue) {
+      statusBadge = '<span class="kpi-badge danger" style="font-size:11px;">🚨 Lewat Tempo</span>';
+    } else if (p.payment_status === 'partial') {
+      statusBadge = '<span class="kpi-badge amber" style="font-size:11px;">🟡 Sebagian</span>';
+    } else {
+      statusBadge = '<span class="kpi-badge amber" style="font-size:11px;">⏳ Belum Bayar</span>';
+    }
+
+    let dueDateStr = '-';
+    if (p.due_date) {
+      const parts = p.due_date.split('-');
+      if (parts.length === 3) dueDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    const remaining = Number(p.remaining_amount || 0);
+
+    return `
+      <tr>
+        <td>
+          <div style="font-weight: 700; color: #0284c7; font-family: var(--font-mono); font-size: 13px;">${p.purchase_no}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Oleh: ${p.recorded_by_name || 'Owner'}</div>
+        </td>
+        <td style="color: #475569; font-size: 12px;">${timeFormatted}</td>
+        <td>
+          <div style="font-weight: 700; color: #0f172a;">${p.supplier_name || 'Bebas'}</div>
+          ${p.supplier_phone ? `<div style="font-size: 11px; color: #059669; margin-top: 2px;">📞 ${p.supplier_phone}</div>` : ''}
+        </td>
+        <td>
+          <span style="font-weight: 700; color: #0f172a;">${p.product_emoji || '🥔'} ${p.product_name}</span>
+        </td>
+        <td class="text-right font-mono font-bold" style="color: #0f172a;">${Number(p.qty_kg).toLocaleString('id-ID')} ${p.product_unit || 'kg'}</td>
+        <td class="text-right font-mono" style="color: #475569;">${formatRupiah(p.cost_price)}</td>
+        <td class="text-right font-mono font-bold" style="color: #059669; font-size: 13px;">${formatRupiah(p.total_cost)}</td>
+        <td class="text-center">${statusBadge}</td>
+        <td class="text-right">
+          <strong class="font-mono font-bold" style="color: ${remaining > 0 ? (p.is_overdue ? '#dc2626' : '#d97706') : '#059669'}; font-size: 13px;">
+            ${formatRupiah(remaining)}
+          </strong>
+          ${p.due_date ? `<div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Tempo: ${dueDateStr}</div>` : ''}
+        </td>
+        <td class="text-center">
+          ${remaining > 0 ? `
+            <button class="btn-table-action btn-pay-purchase" data-id="${p.id}" style="padding: 5px 12px; font-size: 12px; background: #059669; color: #ffffff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+              💵 Bayar
+            </button>
+          ` : `
+            <span style="font-size: 12px; color: #059669; font-weight: 700;">✅ Beres</span>
+          `}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  el.purchasesTableBody.querySelectorAll('.btn-pay-purchase').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = state.purchases.find(item => item.id === Number(btn.dataset.id));
+      if (p) openSupplierPayModal(p);
+    });
+  });
+}
+
+function openSupplierModal(supplier = null) {
+  if (supplier) {
+    if (el.modalSupplierTitle) el.modalSupplierTitle.textContent = 'Edit Data Pemasok';
+    if (el.supplierEditId) el.supplierEditId.value = supplier.id;
+    if (el.supInputName) el.supInputName.value = supplier.name || '';
+    if (el.supInputPhone) el.supInputPhone.value = supplier.phone || '';
+    if (el.supInputAddress) el.supInputAddress.value = supplier.address || '';
+    if (el.supInputCommodities) el.supInputCommodities.value = supplier.supplied_commodities || '';
+    if (el.supInputBank) el.supInputBank.value = supplier.bank_info || '';
+    if (el.supInputNotes) el.supInputNotes.value = supplier.notes || '';
+  } else {
+    if (el.modalSupplierTitle) el.modalSupplierTitle.textContent = 'Tambah Pemasok / Juragan Baru';
+    if (el.supplierEditId) el.supplierEditId.value = '';
+    if (el.supInputName) el.supInputName.value = '';
+    if (el.supInputPhone) el.supInputPhone.value = '';
+    if (el.supInputAddress) el.supInputAddress.value = '';
+    if (el.supInputCommodities) el.supInputCommodities.value = '';
+    if (el.supInputBank) el.supInputBank.value = '';
+    if (el.supInputNotes) el.supInputNotes.value = '';
+  }
+  if (el.modalEditSupplier) el.modalEditSupplier.style.display = 'flex';
+}
+
+async function handleSaveSupplierSubmit() {
+  const editId = el.supplierEditId ? el.supplierEditId.value : '';
+  const name = el.supInputName ? el.supInputName.value.trim() : '';
+  const phone = el.supInputPhone ? el.supInputPhone.value.trim() : '';
+  const address = el.supInputAddress ? el.supInputAddress.value.trim() : '';
+  const commodities = el.supInputCommodities ? el.supInputCommodities.value.trim() : '';
+  const bank = el.supInputBank ? el.supInputBank.value.trim() : '';
+  const notes = el.supInputNotes ? el.supInputNotes.value.trim() : '';
+
+  if (!name) {
+    showToast('Nama juragan / pemasok wajib diisi!', 'error');
+    if (el.supInputName) el.supInputName.focus();
+    return;
+  }
+
+  const payload = {
+    name,
+    phone,
+    address,
+    supplied_commodities: commodities,
+    bank_info: bank,
+    notes
+  };
+
+  try {
+    if (el.btnSaveSupplierSubmit) {
+      el.btnSaveSupplierSubmit.disabled = true;
+      el.btnSaveSupplierSubmit.textContent = 'Menyimpan...';
+    }
+
+    let res;
+    if (editId) {
+      res = await api.updateSupplier(editId, payload);
+    } else {
+      res = await api.createSupplier(payload);
+    }
+
+    if (res.success) {
+      showToast(res.message || 'Data pemasok berhasil disimpan!', 'success');
+      if (el.modalEditSupplier) el.modalEditSupplier.style.display = 'none';
+      await loadSuppliersData();
+    } else {
+      showToast('Gagal: ' + res.message, 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan: ' + err.message, 'error');
+  } finally {
+    if (el.btnSaveSupplierSubmit) {
+      el.btnSaveSupplierSubmit.disabled = false;
+      el.btnSaveSupplierSubmit.textContent = 'Simpan Data Pemasok';
+    }
+  }
+}
+
+async function handleDeleteSupplier(supplierId, name) {
+  if (!confirm(`Apakah Anda yakin ingin menonaktifkan pemasok "${name}"? Data riwayat belanja akan tetap tersimpan.`)) {
+    return;
+  }
+
+  try {
+    const res = await api.deleteSupplier(supplierId);
+    if (res.success) {
+      showToast(res.message || 'Pemasok berhasil dinonaktifkan', 'success');
+      await loadSuppliersData();
+    } else {
+      showToast('Gagal: ' + res.message, 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan: ' + err.message, 'error');
+  }
+}
+
+async function openSupplierDetailModal(supplierId) {
+  try {
+    const res = await api.getSupplierDetail(supplierId);
+    if (!res.success) {
+      showToast('Gagal memuat profil supplier: ' + res.message, 'error');
+      return;
+    }
+
+    const { supplier, purchases, payments } = res;
+
+    if (el.supDetailName) el.supDetailName.textContent = supplier.name;
+    if (el.supDetailSubtitle) {
+      el.supDetailSubtitle.textContent = `Pemasok Komoditas • ${supplier.address || 'Asal belum diisi'}`;
+    }
+
+    let phoneClean = (supplier.phone || '').replace(/[^0-9]/g, '');
+    if (phoneClean.startsWith('0')) phoneClean = '62' + phoneClean.slice(1);
+    const waLink = phoneClean
+      ? `<a href="https://wa.me/${phoneClean}" target="_blank" rel="noopener noreferrer" class="btn-wa-chip" style="margin-left: 8px;">💬 Chat WhatsApp (${supplier.phone})</a>`
+      : '';
+
+    if (el.supProfileCard) {
+      el.supProfileCard.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+          <div>
+            <div style="font-size: 17px; font-weight: 800; color: #0f172a; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span>${supplier.name}</span>
+              ${waLink}
+            </div>
+            <div style="font-size: 12.5px; color: #64748b; margin-top: 6px;">
+              📍 Daerah / Alamat: <span style="color: #1e293b; font-weight: 600;">${supplier.address || '-'}</span>
+            </div>
+            <div style="font-size: 12.5px; color: #64748b; margin-top: 3px;">
+              🏦 Rekening Bank: <span style="color: #0284c7; font-family: var(--font-mono); font-weight: 700;">${supplier.bank_info || 'Belum diisi'}</span>
+            </div>
+            <div style="font-size: 12.5px; color: #64748b; margin-top: 3px;">
+              📦 Komoditas Pasokan: <span style="color: #059669; font-weight: 700;">${supplier.supplied_commodities || '-'}</span>
+            </div>
+            ${supplier.notes ? `<div style="font-size: 12px; color: #d97706; margin-top: 6px; font-weight: 500;">📝 Catatan: ${supplier.notes}</div>` : ''}
+          </div>
+          <div style="text-align: right; background: #ffffff; border: 1px solid #e2e8f0; padding: 12px 18px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Total Belanja Toko:</div>
+            <strong style="font-size: 16px; color: #0f172a; font-family: var(--font-mono); font-weight: 800;">${formatRupiah(supplier.total_purchases_amount || 0)}</strong>
+            <div style="font-size: 11px; color: #64748b; margin-top: 8px; font-weight: 600; text-transform: uppercase;">Sisa Hutang Toko ke Juragan:</div>
+            <strong style="font-size: 19px; color: ${Number(supplier.total_debt_remaining || 0) > 0 ? '#dc2626' : '#059669'}; font-family: var(--font-mono); font-weight: 800;">
+              ${formatRupiah(supplier.total_debt_remaining || 0)}
+            </strong>
+          </div>
+        </div>
+      `;
+    }
+
+    if (el.supPurchasesCount) el.supPurchasesCount.textContent = (purchases || []).length;
+    if (el.supPaymentsCount) el.supPaymentsCount.textContent = (payments || []).length;
+
+    // Render Purchases
+    if (el.supPurchasesTableBody) {
+      if (!purchases || purchases.length === 0) {
+        el.supPurchasesTableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 24px; color: #94a3b8;">Belum ada riwayat nota kulakan masuk.</td></tr>';
+      } else {
+        el.supPurchasesTableBody.innerHTML = purchases.map(p => {
+          const timeFormatted = parseSafeDate(p.created_at).toLocaleString('id-ID', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+
+          let statusBadge = '';
+          if (p.payment_status === 'lunas') {
+            statusBadge = '<span class="kpi-badge success" style="font-size:11px;">🟢 Lunas</span>';
+          } else if (p.is_overdue) {
+            statusBadge = '<span class="kpi-badge danger" style="font-size:11px;">🚨 Lewat Tempo</span>';
+          } else {
+            statusBadge = '<span class="kpi-badge amber" style="font-size:11px;">⏳ Tempo</span>';
+          }
+
+          const rem = Number(p.remaining_amount || 0);
+
+          return `
+            <tr>
+              <td style="font-family: var(--font-mono); font-weight: 700; color: #0284c7;">${p.purchase_no}</td>
+              <td style="font-size: 12px; color: #475569;">${timeFormatted}</td>
+              <td style="font-weight: 600; color: #0f172a;">${p.product_emoji || '🥔'} ${p.product_name}</td>
+              <td class="text-right font-mono font-bold" style="color: #0f172a;">${Number(p.qty_kg).toLocaleString('id-ID')} ${p.product_unit || 'kg'}</td>
+              <td class="text-right font-mono" style="color: #475569;">${formatRupiah(p.cost_price)}</td>
+              <td class="text-right font-mono font-bold" style="color: #059669;">${formatRupiah(p.total_cost)}</td>
+              <td class="text-center">${statusBadge}</td>
+              <td class="text-right font-mono font-bold" style="color: ${rem > 0 ? '#dc2626' : '#059669'};">${formatRupiah(rem)}</td>
+              <td class="text-center">
+                ${rem > 0 ? `
+                  <button class="btn-table-action btn-pay-subpurchase" data-id="${p.id}" style="padding: 4px 10px; font-size: 11px; background: #059669; color: #fff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">
+                    Bayar
+                  </button>
+                ` : `<span style="font-size: 11px; color: #059669; font-weight: 700;">Lunas</span>`}
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        el.supPurchasesTableBody.querySelectorAll('.btn-pay-subpurchase').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const p = purchases.find(item => item.id === Number(btn.dataset.id));
+            if (p) {
+              if (el.modalSupplierDetail) el.modalSupplierDetail.style.display = 'none';
+              openSupplierPayModal(p);
+            }
+          });
+        });
+      }
+    }
+
+    // Render Payments
+    if (el.supPaymentsTableBody) {
+      if (!payments || payments.length === 0) {
+        el.supPaymentsTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">Belum ada riwayat pembayaran hutang ke supplier ini.</td></tr>';
+      } else {
+        el.supPaymentsTableBody.innerHTML = payments.map(pm => {
+          const timeFormatted = parseSafeDate(pm.payment_date).toLocaleString('id-ID', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+          return `
+            <tr>
+              <td style="font-size: 12px; color: #475569;">${timeFormatted}</td>
+              <td style="font-family: var(--font-mono); font-weight: 700; color: #0284c7;">${pm.purchase_no}</td>
+              <td class="text-right font-mono font-bold" style="color: #059669;">${formatRupiah(pm.amount_paid)}</td>
+              <td style="text-transform: uppercase; font-size: 11.5px; font-weight: 600; color: #334155;">${pm.payment_method}</td>
+              <td style="color: #64748b; font-size: 12px;">${pm.recorded_by_name || 'Owner'}</td>
+              <td style="color: #334155; font-size: 12px;">${pm.notes || '-'}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // Default to Purchases tab view
+    if (el.btnSupTabPurchases) el.btnSupTabPurchases.classList.add('active');
+    if (el.btnSupTabPayments) el.btnSupTabPayments.classList.remove('active');
+    if (el.supPurchasesContainer) el.supPurchasesContainer.style.display = 'block';
+    if (el.supPaymentsContainer) el.supPaymentsContainer.style.display = 'none';
+
+    if (el.modalSupplierDetail) el.modalSupplierDetail.style.display = 'flex';
+  } catch (err) {
+    showToast('Terjadi kesalahan membuka detail supplier: ' + err.message, 'error');
+  }
+}
+
+function openSupplierPayModal(purchase) {
+  state.activePurchaseForPayment = purchase;
+  if (el.supPayPurchaseId) el.supPayPurchaseId.value = purchase.id;
+  if (el.supPaySubtitle) {
+    el.supPaySubtitle.textContent = `Nota: ${purchase.purchase_no} • ${purchase.product_name} (${purchase.supplier_name || 'Bebas'})`;
+  }
+  if (el.supPayRemainingText) {
+    el.supPayRemainingText.textContent = formatRupiah(purchase.remaining_amount);
+  }
+  if (el.supPayNoteDetails) {
+    el.supPayNoteDetails.textContent = `Total nota: ${formatRupiah(purchase.total_cost)} • Sudah dibayar: ${formatRupiah(purchase.paid_amount || 0)}`;
+  }
+  if (el.supPayAmountInput) {
+    el.supPayAmountInput.value = purchase.remaining_amount;
+  }
+  if (el.supPayNotesInput) {
+    el.supPayNotesInput.value = '';
+  }
+  if (el.modalSupplierPay) el.modalSupplierPay.style.display = 'flex';
+}
+
+async function handleSubmitSupplierPay() {
+  if (!state.activePurchaseForPayment) return;
+
+  const purchaseId = state.activePurchaseForPayment.id;
+  const remaining = Number(state.activePurchaseForPayment.remaining_amount);
+  const amount = Number(el.supPayAmountInput ? el.supPayAmountInput.value : 0);
+  const method = el.supPayMethodSelect ? el.supPayMethodSelect.value : 'transfer';
+  const notes = el.supPayNotesInput ? el.supPayNotesInput.value.trim() : '';
+
+  if (!amount || amount <= 0) {
+    showToast('Nominal pembayaran harus lebih dari Rp 0', 'error');
+    if (el.supPayAmountInput) el.supPayAmountInput.focus();
+    return;
+  }
+
+  if (amount > remaining) {
+    showToast(`Nominal bayar (${formatRupiah(amount)}) melebihi sisa hutang (${formatRupiah(remaining)})!`, 'error');
+    return;
+  }
+
+  try {
+    if (el.btnSubmitSupplierPay) {
+      el.btnSubmitSupplierPay.disabled = true;
+      el.btnSubmitSupplierPay.textContent = 'Menyimpan...';
+    }
+
+    const res = await api.paySupplierDebt(purchaseId, {
+      amount,
+      payment_method: method,
+      notes
+    });
+
+    if (res.success) {
+      showToast(res.message || 'Pembayaran berhasil disimpan!', 'success');
+      if (el.modalSupplierPay) el.modalSupplierPay.style.display = 'none';
+      await loadSuppliersData();
+      await loadPurchasesData();
+    } else {
+      showToast('Gagal: ' + res.message, 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitSupplierPay) {
+      el.btnSubmitSupplierPay.disabled = false;
+      el.btnSubmitSupplierPay.textContent = 'Simpan Pembayaran';
+    }
+  }
+}
+
+function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
+  // Populate supplier select
+  if (el.ownerPurchaseSupplierSelect) {
+    el.ownerPurchaseSupplierSelect.innerHTML = `
+      <option value="">-- Bebas (Tanpa Pemasok Terdaftar) --</option>
+      ${state.suppliers.map(s => `
+        <option value="${s.id}" ${preselectedSupplierId === s.id ? 'selected' : ''}>
+          ${s.name} (${s.address || 'Petani'})
+        </option>
+      `).join('')}
+    `;
+  }
+
+  // Populate products select
+  if (el.ownerPurchaseProductSelect) {
+    el.ownerPurchaseProductSelect.innerHTML = state.products.map(p => `
+      <option value="${p.id}" data-cost="${p.cost_price || 0}" data-unit="${p.unit || 'kg'}">
+        ${p.image_emoji || '🥔'} ${p.name} (Stok: ${p.stock} ${p.unit || 'kg'})
+      </option>
+    `).join('');
+
+    const firstProduct = state.products[0];
+    if (firstProduct && el.ownerPurchaseCostInput) {
+      el.ownerPurchaseCostInput.value = firstProduct.cost_price || 0;
+    }
+  }
+
+  if (el.ownerPurchaseQtyInput) el.ownerPurchaseQtyInput.value = '';
+  if (el.ownerPurchasePaymentStatus) el.ownerPurchasePaymentStatus.value = 'lunas';
+  if (el.ownerPurchaseTempoFields) el.ownerPurchaseTempoFields.style.display = 'none';
+  if (el.ownerPurchaseDpAmount) el.ownerPurchaseDpAmount.value = '';
+  if (el.ownerPurchaseNotesInput) el.ownerPurchaseNotesInput.value = '';
+
+  // Set default due date to 14 days ahead
+  if (el.ownerPurchaseDueDate) {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    el.ownerPurchaseDueDate.value = d.toISOString().slice(0, 10);
+  }
+
+  updateOwnerPurchaseTotal();
+
+  if (el.modalOwnerRecordPurchase) el.modalOwnerRecordPurchase.style.display = 'flex';
+}
+
+function updateOwnerPurchaseTotal() {
+  const qty = parseFloat(el.ownerPurchaseQtyInput ? el.ownerPurchaseQtyInput.value : 0) || 0;
+  const cost = parseFloat(el.ownerPurchaseCostInput ? el.ownerPurchaseCostInput.value : 0) || 0;
+  const total = qty * cost;
+  if (el.ownerPurchaseTotalVal) {
+    el.ownerPurchaseTotalVal.textContent = formatRupiah(total);
+  }
+}
+
+async function handleSubmitOwnerRecordPurchase() {
+  const supplierId = el.ownerPurchaseSupplierSelect ? el.ownerPurchaseSupplierSelect.value : '';
+  const productId = el.ownerPurchaseProductSelect ? el.ownerPurchaseProductSelect.value : '';
+  const qty = parseFloat(el.ownerPurchaseQtyInput ? el.ownerPurchaseQtyInput.value : 0);
+  const cost = parseFloat(el.ownerPurchaseCostInput ? el.ownerPurchaseCostInput.value : 0);
+  const paymentStatus = el.ownerPurchasePaymentStatus ? el.ownerPurchasePaymentStatus.value : 'lunas';
+  const dueDate = (paymentStatus === 'tempo' && el.ownerPurchaseDueDate) ? el.ownerPurchaseDueDate.value : null;
+  const dpAmount = (paymentStatus === 'tempo' && el.ownerPurchaseDpAmount) ? parseFloat(el.ownerPurchaseDpAmount.value || 0) : 0;
+  const notes = el.ownerPurchaseNotesInput ? el.ownerPurchaseNotesInput.value.trim() : '';
+
+  if (!productId) {
+    showToast('Silakan pilih komoditas toko!', 'error');
+    return;
+  }
+  if (!qty || qty <= 0) {
+    showToast('Berat riil barang masuk harus lebih dari 0 kg!', 'error');
+    if (el.ownerPurchaseQtyInput) el.ownerPurchaseQtyInput.focus();
+    return;
+  }
+  if (!cost || cost <= 0) {
+    showToast('Harga modal kulakan harus lebih dari Rp 0!', 'error');
+    if (el.ownerPurchaseCostInput) el.ownerPurchaseCostInput.focus();
+    return;
+  }
+
+  const payload = {
+    supplier_id: supplierId ? Number(supplierId) : null,
+    product_id: Number(productId),
+    qty_kg: qty,
+    cost_price: cost,
+    payment_status: paymentStatus,
+    due_date: dueDate,
+    dp_amount: dpAmount,
+    notes
+  };
+
+  try {
+    if (el.btnSubmitOwnerRecordPurchase) {
+      el.btnSubmitOwnerRecordPurchase.disabled = true;
+      el.btnSubmitOwnerRecordPurchase.textContent = 'Menyimpan...';
+    }
+
+    const res = await api.createPurchase(payload);
+    if (res.success) {
+      showToast(res.message || 'Nota kulakan berhasil dicatat!', 'success');
+      if (el.modalOwnerRecordPurchase) el.modalOwnerRecordPurchase.style.display = 'none';
+      await loadAllData();
+      await loadSuppliersData();
+      await loadPurchasesData();
+    } else {
+      showToast('Gagal: ' + res.message, 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitOwnerRecordPurchase) {
+      el.btnSubmitOwnerRecordPurchase.disabled = false;
+      el.btnSubmitOwnerRecordPurchase.textContent = 'Simpan & Tambah Stok Masuk';
+    }
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 // TAB 7: IDENTITAS TOKO & FOOTER STRUK (SETTINGS & LIVE PREVIEW)
@@ -2028,13 +4222,13 @@ async function openOwnerDebtDetailModal(debtId) {
 function populateSettingsForm() {
   if (!state.settings) return;
   if (el.setStoreName && !el.setStoreName.matches(':focus')) {
-    el.setStoreName.value = state.settings.store_name || 'TOKO UMBI JAYA';
+    el.setStoreName.value = state.settings.store_name || 'PD. HASIL BUMI RAYA 1';
   }
   if (el.setStoreTagline && !el.setStoreTagline.matches(':focus')) {
     el.setStoreTagline.value = state.settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas Pasar';
   }
   if (el.setStoreAddress && !el.setStoreAddress.matches(':focus')) {
-    el.setStoreAddress.value = state.settings.store_address || 'Pasar Induk Kramat Jati, Blok B No. 12-14';
+    el.setStoreAddress.value = state.settings.store_address || 'Pasar induk modern, Cikopo, Kec. Campaka, Kabupaten Purwakarta, Jawa Barat 41183';
   }
   if (el.setStorePhone && !el.setStorePhone.matches(':focus')) {
     el.setStorePhone.value = state.settings.store_phone || '0812-3456-7890';
@@ -2047,9 +4241,9 @@ function populateSettingsForm() {
 function renderLiveReceiptPreview() {
   if (!el.liveReceiptPreview) return;
 
-  const sName = (el.setStoreName && el.setStoreName.value.trim()) || 'TOKO UMBI JAYA';
+  const sName = (el.setStoreName && el.setStoreName.value.trim()) || 'PD. HASIL BUMI RAYA 1';
   const sTagline = (el.setStoreTagline && el.setStoreTagline.value.trim()) || 'Pusat Umbi, Bawang & Komoditas Pasar';
-  const sAddress = (el.setStoreAddress && el.setStoreAddress.value.trim()) || 'Pasar Induk Kramat Jati, Blok B No. 12-14';
+  const sAddress = (el.setStoreAddress && el.setStoreAddress.value.trim()) || 'Pasar induk modern, Cikopo, Kec. Campaka, Kabupaten Purwakarta, Jawa Barat 41183';
   const sPhone = (el.setStorePhone && el.setStorePhone.value.trim()) || '0812-3456-7890';
   const sFooter = (el.setReceiptFooter && el.setReceiptFooter.value.trim()) || 'Terima kasih atas kunjungan Anda!\nBarang yang sudah ditimbang & dibeli tidak dapat ditukar/dikembalikan.';
 
@@ -2175,6 +4369,432 @@ async function handleChangeOwnerPin() {
   } finally {
     el.btnChangeOwnerPin.disabled = false;
     el.btnChangeOwnerPin.textContent = '🔒 Perbarui PIN Owner';
+  }
+}
+
+// -----------------------------------------------------------------------------
+// TAB 7: STATUS LISENSI & LANGGANAN SOFTWARE (SAAS ENFORCEMENT)
+// -----------------------------------------------------------------------------
+async function loadOwnerLicenseCard() {
+  try {
+    const res = await api.getSubscriptionStatus();
+    if (!res || !res.success) return;
+
+    const badge = document.getElementById('ownerLicenseBadge');
+    const dueDate = document.getElementById('ownerLicenseDueDate');
+    const diffDays = document.getElementById('ownerLicenseDiffDays');
+    const amount = document.getElementById('ownerLicenseAmount');
+    const bankName = document.getElementById('ownerLicenseBankName');
+    const bankAccount = document.getElementById('ownerLicenseAccount');
+    const bankHolder = document.getElementById('ownerLicenseHolder');
+    const waBtn = document.getElementById('ownerLicenseWaBtn');
+
+    if (dueDate) dueDate.textContent = `${res.due_date_formatted} (${res.due_date})`;
+    if (amount && res.payment_info) amount.textContent = res.payment_info.amount_formatted + ' / bulan';
+    if (bankName && res.payment_info) bankName.textContent = res.payment_info.bank_name;
+    if (bankAccount && res.payment_info) bankAccount.textContent = res.payment_info.account_number;
+    if (bankHolder && res.payment_info) bankHolder.textContent = 'A/N ' + res.payment_info.account_holder;
+    if (waBtn && res.payment_info) waBtn.href = res.payment_info.wa_url;
+
+    if (badge && diffDays) {
+      if (res.is_locked) {
+        badge.textContent = '⛔ TERKUNCI / EXPIRED';
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#dc2626';
+        badge.style.borderColor = '#fca5a5';
+        diffDays.textContent = `Telat ${Math.abs(res.diff_days)} hari (Akses Terkunci)`;
+        diffDays.style.color = '#dc2626';
+      } else if (res.status === 'grace_period') {
+        const rem = res.grace_days - Math.abs(res.diff_days);
+        badge.textContent = `⏳ MASA TENGGANG (${rem} HARI)`;
+        badge.style.background = '#ffedd5';
+        badge.style.color = '#c2410c';
+        badge.style.borderColor = '#fed7aa';
+        diffDays.textContent = `Telat bayar - sisa toleransi ${rem} hari`;
+        diffDays.style.color = '#c2410c';
+      } else if (res.status === 'warning') {
+        badge.textContent = `⚠️ JATUH TEMPO (${res.diff_days} HARI)`;
+        badge.style.background = '#fef08a';
+        badge.style.color = '#854d0e';
+        badge.style.borderColor = '#fde047';
+        diffDays.textContent = `Masa aktif segera berakhir dalam ${res.diff_days} hari`;
+        diffDays.style.color = '#854d0e';
+      } else {
+        badge.textContent = '🟢 AKTIF BERLANGGANAN';
+        badge.style.background = '#ecfdf5';
+        badge.style.color = '#059669';
+        badge.style.borderColor = '#a7f3d0';
+        diffDays.textContent = `Masa aktif aman (${res.diff_days} hari tersisa)`;
+        diffDays.style.color = '#059669';
+      }
+    }
+  } catch (err) {
+    console.warn('Gagal memuat status lisensi owner:', err);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// OWNER HARDWARE SUPPORT (PRINTER & CASH DRAWER RJ-11)
+// -----------------------------------------------------------------------------
+function updateOwnerHardwareUI(hwState) {
+  if (el.ownerHwPrinterIndicator) {
+    el.ownerHwPrinterIndicator.className = hwState.isConnected ? 'status-indicator-circle connected' : 'status-indicator-circle';
+  }
+  if (el.ownerHwDeviceNameDisplay) {
+    el.ownerHwDeviceNameDisplay.textContent = hwState.isConnected ? (hwState.deviceName || 'Printer Thermal') : 'Belum Terhubung';
+  }
+  if (el.ownerHwDeviceStatusText) {
+    el.ownerHwDeviceStatusText.textContent = hwState.isConnected ? 'Siap mencetak & kick laci kasir' : 'Nyalakan Bluetooth printer & tablet';
+  }
+  if (el.ownerBtnConnectBluetooth) {
+    el.ownerBtnConnectBluetooth.style.display = hwState.isConnected ? 'none' : 'inline-block';
+  }
+  if (el.ownerBtnDisconnectBluetooth) {
+    el.ownerBtnDisconnectBluetooth.style.display = hwState.isConnected ? 'inline-block' : 'none';
+  }
+  if (el.ownerHwPrintMode) el.ownerHwPrintMode.value = hwState.config.mode;
+  if (el.ownerHwPaperSize) el.ownerHwPaperSize.value = hwState.config.paperSize;
+  if (el.ownerHwAutoDrawer) el.ownerHwAutoDrawer.checked = hwState.config.autoDrawer;
+}
+
+function initOwnerHardwareSupport() {
+  hardwareManager.subscribeState(updateOwnerHardwareUI);
+
+  if (el.ownerBtnConnectBluetooth) {
+    el.ownerBtnConnectBluetooth.addEventListener('click', async () => {
+      el.ownerBtnConnectBluetooth.disabled = true;
+      el.ownerBtnConnectBluetooth.textContent = '⏳ Mencari Printer...';
+      try {
+        const res = await hardwareManager.connectBluetooth();
+        showToast(`Terhubung ke ${res.deviceName}!`, 'success');
+      } catch (err) {
+        showToast('Gagal konek Bluetooth: ' + err.message, 'error');
+      } finally {
+        el.ownerBtnConnectBluetooth.disabled = false;
+        el.ownerBtnConnectBluetooth.textContent = '🔵 Hubungkan Printer';
+      }
+    });
+  }
+
+  if (el.ownerBtnDisconnectBluetooth) {
+    el.ownerBtnDisconnectBluetooth.addEventListener('click', async () => {
+      await hardwareManager.disconnectBluetooth();
+      showToast('Printer Bluetooth diputuskan', 'info');
+    });
+  }
+
+  if (el.ownerBtnTestDrawer) {
+    el.ownerBtnTestDrawer.addEventListener('click', async () => {
+      try {
+        await hardwareManager.kickCashDrawer();
+        showToast('Sinyal kick RJ-11 dikirim ke printer!', 'success');
+      } catch (err) {
+        showToast('Gagal buka laci: ' + err.message, 'error');
+      }
+    });
+  }
+
+  if (el.ownerBtnTestPrint) {
+    el.ownerBtnTestPrint.addEventListener('click', async () => {
+      el.ownerBtnTestPrint.disabled = true;
+      el.ownerBtnTestPrint.textContent = '⏳ Mencetak test...';
+      try {
+        await hardwareManager.printTest();
+        showToast('Cetak struk uji coba berhasil!', 'success');
+      } catch (err) {
+        showToast('Gagal test print: ' + err.message, 'error');
+      } finally {
+        el.ownerBtnTestPrint.disabled = false;
+        el.ownerBtnTestPrint.textContent = '🖨️ Cetak Struk Uji Coba (Test Print)';
+      }
+    });
+  }
+
+  if (el.ownerBtnSaveHardware) {
+    el.ownerBtnSaveHardware.addEventListener('click', () => {
+      hardwareManager.saveConfig({
+        mode: el.ownerHwPrintMode ? el.ownerHwPrintMode.value : 'bluetooth',
+        paperSize: el.ownerHwPaperSize ? el.ownerHwPaperSize.value : '58mm',
+        autoDrawer: el.ownerHwAutoDrawer ? el.ownerHwAutoDrawer.checked : true
+      });
+      showToast('Pengaturan hardware kios disimpan!', 'success');
+    });
+  }
+}
+
+// Owner Expenses & Petty Cash Management Functions
+async function loadOwnerExpensesData() {
+  try {
+    const [expRes, catRes, shiftRes] = await Promise.all([
+      api.getExpenses(),
+      api.getExpenseCategories(),
+      api.getCurrentShift()
+    ]);
+
+    if (shiftRes && shiftRes.shift) {
+      state.currentDrawerCash = Number(shiftRes.shift.current_drawer_cash) || 0;
+    } else {
+      state.currentDrawerCash = 0;
+    }
+
+    if (catRes && catRes.success) {
+      state.ownerExpenseCategories = catRes.categories || [];
+      populateOwnerExpenseCategoryFilter();
+    }
+
+    if (expRes && expRes.success) {
+      state.ownerExpenses = expRes.expenses || [];
+      state.ownerExpenseSummary = expRes.summary || {};
+
+      const summary = state.ownerExpenseSummary;
+      if (el.ownerKpiMonthExpenses) {
+        el.ownerKpiMonthExpenses.textContent = formatRupiah(summary.month_expenses || summary.total_expenses || 0);
+      }
+      if (el.ownerKpiExpensesCount) {
+        el.ownerKpiExpensesCount.textContent = `${state.ownerExpenses.filter(e => e.type === 'expense').length} transaksi pengeluaran`;
+      }
+      if (el.ownerKpiDrawerExpenses) {
+        el.ownerKpiDrawerExpenses.textContent = formatRupiah(summary.total_cash_drawer_out || 0);
+      }
+      if (el.ownerKpiTransferExpenses) {
+        el.ownerKpiTransferExpenses.textContent = formatRupiah(summary.total_transfer_out || 0);
+      }
+      if (el.ownerKpiTotalIncome) {
+        el.ownerKpiTotalIncome.textContent = formatRupiah(summary.total_income || 0);
+      }
+      if (el.expenseCountBadge) {
+        el.expenseCountBadge.textContent = state.ownerExpenses.length;
+        el.expenseCountBadge.style.display = state.ownerExpenses.length > 0 ? 'inline-block' : 'none';
+      }
+
+      renderOwnerExpenseCategoryBars(summary.category_breakdown || []);
+      renderOwnerExpensesTable();
+    }
+
+    checkOwnerExpenseSufficiency();
+  } catch (err) {
+    console.warn('Gagal memuat data biaya operasional owner:', err);
+  }
+}
+
+function checkOwnerExpenseSufficiency() {
+  if (!el.ownerExpenseShortageAlert) return;
+  const isCash = el.ownerSourceCash && el.ownerSourceCash.checked;
+  const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0) || 0;
+  const drawerCash = Number(state.currentDrawerCash) || 0;
+
+  if (isCash && amount > drawerCash) {
+    const shortage = amount - drawerCash;
+    if (el.lblOwnerDrawerAvail) el.lblOwnerDrawerAvail.textContent = formatRupiah(drawerCash);
+    if (el.lblOwnerDrawerShortage) el.lblOwnerDrawerShortage.textContent = formatRupiah(shortage);
+    el.ownerExpenseShortageAlert.style.display = 'block';
+    if (el.btnSubmitOwnerAddExpense) {
+      el.btnSubmitOwnerAddExpense.style.background = '#94a3b8';
+      el.btnSubmitOwnerAddExpense.title = 'Saldo kas laci kasir tidak mencukupi.';
+    }
+  } else {
+    el.ownerExpenseShortageAlert.style.display = 'none';
+    if (el.btnSubmitOwnerAddExpense) {
+      el.btnSubmitOwnerAddExpense.style.background = '#e11d48';
+      el.btnSubmitOwnerAddExpense.title = '';
+    }
+  }
+}
+
+function populateOwnerExpenseCategoryFilter() {
+  if (!el.ownerFilterExpenseCategory) return;
+  const currentVal = el.ownerFilterExpenseCategory.value;
+  const options = ['<option value="all">Semua Kategori</option>'];
+  (state.ownerExpenseCategories || []).forEach(c => {
+    options.push(`<option value="${c.key}">${c.icon} ${escapeHtml(c.name)}</option>`);
+  });
+  el.ownerFilterExpenseCategory.innerHTML = options.join('');
+  if (currentVal) el.ownerFilterExpenseCategory.value = currentVal;
+}
+
+function renderOwnerExpenseCategoryBars(breakdown = []) {
+  if (!el.ownerExpenseCategoryBars) return;
+  if (!breakdown || breakdown.length === 0) {
+    el.ownerExpenseCategoryBars.innerHTML = '<span style="color: #94a3b8; font-size: 12px;">Belum ada data pengeluaran terdistribusi.</span>';
+    return;
+  }
+
+  el.ownerExpenseCategoryBars.innerHTML = breakdown.slice(0, 5).map(cat => {
+    return `
+      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 12px; display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 700; color: #0f172a;">${escapeHtml(cat.category_name)}:</span>
+        <strong style="color: #e11d48; font-family: monospace;">${formatRupiah(cat.total_amount)}</strong>
+        <span style="font-size: 11px; background: #fee2e2; color: #dc2626; padding: 1px 6px; border-radius: 4px; font-weight: 700;">${cat.percentage}%</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderOwnerExpensesTable() {
+  if (!el.ownerExpensesTableBody) return;
+  const q = el.ownerSearchExpenseInput ? el.ownerSearchExpenseInput.value.toLowerCase().trim() : '';
+  const filterCat = el.ownerFilterExpenseCategory ? el.ownerFilterExpenseCategory.value : 'all';
+  const filterSrc = el.ownerFilterExpenseSource ? el.ownerFilterExpenseSource.value : 'all';
+
+  const list = (state.ownerExpenses || []).filter(e => {
+    const matchSearch = !q || (e.expense_no && e.expense_no.toLowerCase().includes(q)) || (e.category_name && e.category_name.toLowerCase().includes(q)) || (e.notes && e.notes.toLowerCase().includes(q));
+    const matchCat = filterCat === 'all' || e.category === filterCat;
+    const matchSrc = filterSrc === 'all' || e.source === filterSrc;
+    return matchSearch && matchCat && matchSrc;
+  });
+
+  if (list.length === 0) {
+    el.ownerExpensesTableBody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 30px; color: #94a3b8;">Tidak ada data pengeluaran yang cocok dengan kriteria.</td></tr>';
+    return;
+  }
+
+  el.ownerExpensesTableBody.innerHTML = list.map(e => {
+    const timeFormatted = parseSafeDate(e.created_at).toLocaleString('id-ID', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    const isIncome = e.type === 'income';
+    const isCash = e.source === 'cash';
+
+    return `
+      <tr style="border-bottom: 1px solid #f1f5f9; background: ${isIncome ? '#f0fdf4' : '#ffffff'};">
+        <td style="padding: 10px 12px;">
+          <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #0f172a;">${e.expense_no}</code>
+        </td>
+        <td style="padding: 10px 12px; font-size: 12px; color: #0f172a; white-space: nowrap;">
+          ${timeFormatted}
+        </td>
+        <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">
+          ${escapeHtml(e.category_name)}
+        </td>
+        <td style="padding: 10px 12px; text-align: right; font-family: monospace; font-weight: 800; font-size: 13.5px; color: ${isIncome ? '#059669' : '#dc2626'}; white-space: nowrap;">
+          ${isIncome ? '+' : '-'}${formatRupiah(e.amount)}
+        </td>
+        <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
+          <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: ${isCash ? '#fee2e2' : '#eff6ff'}; color: ${isCash ? '#dc2626' : '#2563eb'}; font-weight: 700;">
+            ${isCash ? '💵 Kas Laci' : '🏦 Transfer'}
+          </span>
+        </td>
+        <td style="padding: 10px 12px; color: #334155; font-size: 12px;">
+          ${escapeHtml(e.notes || '-')}
+        </td>
+        <td style="padding: 10px 12px; font-size: 12px; color: #64748b; white-space: nowrap;">
+          👤 ${escapeHtml(e.recorded_by_name || 'Kasir')} <span style="font-size: 10px; color: #94a3b8;">(${e.recorded_by_role || '-'})</span>
+        </td>
+        <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
+          <button type="button" class="btn-delete-owner-expense" data-id="${e.id}" style="padding: 3px 8px; border-radius: 6px; background: #fee2e2; border: 1px solid #fecdd3; color: #dc2626; cursor: pointer; font-size: 11px; font-weight: 700;" title="Hapus Catatan">
+            🗑️ Hapus
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  el.ownerExpensesTableBody.querySelectorAll('.btn-delete-owner-expense').forEach(btn => {
+    btn.addEventListener('click', () => {
+      handleDeleteOwnerExpense(Number(btn.dataset.id));
+    });
+  });
+}
+
+async function handleSaveOwnerExpense() {
+  const category = el.ownerExpenseCategorySelect ? el.ownerExpenseCategorySelect.value : 'makan_rokok';
+  const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0);
+  const source = el.ownerSourceCash && el.ownerSourceCash.checked ? 'cash' : 'transfer';
+  const notes = el.ownerExpenseNotesInput ? el.ownerExpenseNotesInput.value.trim() : '';
+
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Masukkan nominal pengeluaran yang valid!', 'error');
+    if (el.ownerExpenseAmountInput) el.ownerExpenseAmountInput.focus();
+    return;
+  }
+
+  // Pre-check drawer cash balance if source is cash
+  if (source === 'cash' && amount > (Number(state.currentDrawerCash) || 0)) {
+    const shortage = amount - (Number(state.currentDrawerCash) || 0);
+    showToast(`Saldo kas laci tidak mencukupi! Kurang ${formatRupiah(shortage)}. Tambah modal kas laci terlebih dahulu atau gunakan Transfer Bank.`, 'error');
+    checkOwnerExpenseSufficiency();
+    return;
+  }
+
+  try {
+    if (el.btnSubmitOwnerAddExpense) {
+      el.btnSubmitOwnerAddExpense.disabled = true;
+      el.btnSubmitOwnerAddExpense.textContent = 'Menyimpan...';
+    }
+
+    const res = await api.createExpense({
+      category,
+      amount,
+      source,
+      notes,
+      type: 'expense'
+    });
+
+    showToast(res.message || 'Pengeluaran berhasil dicatat!', 'success');
+    if (el.modalOwnerAddExpense) el.modalOwnerAddExpense.style.display = 'none';
+
+    await loadOwnerExpensesData();
+    await loadDashboardData();
+  } catch (err) {
+    showToast('Gagal mencatat pengeluaran: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitOwnerAddExpense) {
+      el.btnSubmitOwnerAddExpense.disabled = false;
+      el.btnSubmitOwnerAddExpense.textContent = 'Simpan Pengeluaran';
+    }
+  }
+}
+
+async function handleSaveOwnerIncome() {
+  const category = el.ownerIncomeCategorySelect ? el.ownerIncomeCategorySelect.value : 'kas_masuk_modal';
+  const amount = Number(el.ownerIncomeAmountInput ? el.ownerIncomeAmountInput.value : 0);
+  const source = el.ownerIncomeSourceSelect ? el.ownerIncomeSourceSelect.value : 'cash';
+  const notes = el.ownerIncomeNotesInput ? el.ownerIncomeNotesInput.value.trim() : '';
+
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Masukkan nominal kas masuk yang valid!', 'error');
+    if (el.ownerIncomeAmountInput) el.ownerIncomeAmountInput.focus();
+    return;
+  }
+
+  try {
+    if (el.btnSubmitOwnerAddIncome) {
+      el.btnSubmitOwnerAddIncome.disabled = true;
+      el.btnSubmitOwnerAddIncome.textContent = 'Menyimpan...';
+    }
+
+    const res = await api.createExpense({
+      category,
+      amount,
+      source,
+      notes,
+      type: 'income'
+    });
+
+    showToast(res.message || 'Kas masuk berhasil dicatat!', 'success');
+    if (el.modalOwnerAddIncome) el.modalOwnerAddIncome.style.display = 'none';
+
+    await loadOwnerExpensesData();
+    await loadDashboardData();
+  } catch (err) {
+    showToast('Gagal mencatat kas masuk: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitOwnerAddIncome) {
+      el.btnSubmitOwnerAddIncome.disabled = false;
+      el.btnSubmitOwnerAddIncome.textContent = 'Simpan Kas Masuk';
+    }
+  }
+}
+
+async function handleDeleteOwnerExpense(id) {
+  if (!confirm('Yakin ingin menghapus catatan biaya ini?')) return;
+  try {
+    const res = await api.deleteExpense(id);
+    showToast(res.message || 'Catatan biaya berhasil dihapus', 'success');
+    await loadOwnerExpensesData();
+    await loadDashboardData();
+  } catch (err) {
+    showToast('Gagal menghapus biaya: ' + err.message, 'error');
   }
 }
 

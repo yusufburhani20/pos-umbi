@@ -1,3 +1,4 @@
+require('dotenv').config({ path: __dirname + '/.env' });
 const { spawn } = require('child_process');
 const http = require('http');
 
@@ -78,34 +79,34 @@ async function runTests() {
 
   // 5. Fetch Products
   const productsRes = await request('GET', '/products', null, cashierToken);
-  const kentang = productsRes.body.products.find((p) => p.name.includes('Kentang'));
-  console.log('5. Products fetched:', productsRes.body.products.length, 'items. Kentang: Eceran Rp', kentang.retail_price, '| Reseller Rp', kentang.reseller_price);
+  const commodity = productsRes.body.products.find((p) => p.name.includes('Ubi Cilembu')) || productsRes.body.products[0];
+  console.log('5. Products fetched:', productsRes.body.products.length, 'items. Komoditas:', commodity.name, 'Eceran Rp', commodity.retail_price, '| Karungan Rp', commodity.reseller_price);
 
-  // 6. Test Multi-tier Pricing Case A: Walk-in buyer buys 3 kg Kentang (< 10kg min qty) -> Should get RETAIL price
+  // 6. Test 2-Price Mode: Kasir enters item with default Eceran tier -> Should get RETAIL price
   const orderRetail = await request('POST', '/orders', {
     shift_id: shiftId,
     customer_id: null,
     payment_method: 'cash',
     cash_tendered: 50000,
-    items: [{ product_id: kentang.id, qty: 3 }]
+    items: [{ product_id: commodity.id, qty: 3, price_tier: 'retail' }]
   }, cashierToken);
 
   const itemA = orderRetail.body.order.items[0];
-  const passedRetailRule = itemA.price_tier === 'retail' && itemA.unit_price === kentang.retail_price;
-  console.log('6. Order 1 (3 kg Kentang Walk-in): Tier =', itemA.price_tier, 'Subtotal =', itemA.subtotal, passedRetailRule ? '✅ PASSED (Eceran Rp 16.000)' : '❌ FAILED');
+  const passedRetailRule = itemA.price_tier === 'retail' && itemA.unit_price === commodity.retail_price;
+  console.log('6. Order 1 (3 kg Eceran): Tier =', itemA.price_tier, 'Subtotal =', itemA.subtotal, passedRetailRule ? '✅ PASSED (Eceran)' : '❌ FAILED');
 
-  // 7. Test Multi-tier Pricing Case B: Walk-in buyer buys 15 kg Kentang (>= 10kg threshold) -> Should AUTO-SWITCH to RESELLER price!
+  // 7. Test 2-Price Mode: Kasir selects 'karungan' tier in cart -> Should apply RESELLER / KARUNGAN price!
   const orderWholesale = await request('POST', '/orders', {
     shift_id: shiftId,
     customer_id: null,
     payment_method: 'cash',
     cash_tendered: 250000,
-    items: [{ product_id: kentang.id, qty: 15 }]
+    items: [{ product_id: commodity.id, qty: 15, price_tier: 'karungan' }]
   }, cashierToken);
 
   const itemB = orderWholesale.body.order.items[0];
-  const passedWholesaleRule = itemB.price_tier === 'reseller' && itemB.unit_price === kentang.reseller_price;
-  console.log('7. Order 2 (15 kg Kentang Volume Threshold): Tier =', itemB.price_tier, 'Subtotal =', itemB.subtotal, passedWholesaleRule ? '✅ PASSED (Auto Reseller Rp 13.500)' : '❌ FAILED');
+  const passedWholesaleRule = (itemB.price_tier === 'reseller' || itemB.price_tier === 'karungan') && itemB.unit_price === commodity.reseller_price;
+  console.log('7. Order 2 (15 kg Pilihan Karungan): Tier =', itemB.price_tier, 'Subtotal =', itemB.subtotal, passedWholesaleRule ? '✅ PASSED (Karungan)' : '❌ FAILED');
 
   // 8. Test Multi-tier Pricing Case C: Registered Reseller buys 2 kg Kentang (< 10kg) -> Should get RESELLER price because customer profile is reseller!
   const customersRes = await request('GET', '/customers?tier=reseller', null, cashierToken);
@@ -116,21 +117,21 @@ async function runTests() {
     customer_id: resellerCustomer.id,
     payment_method: 'cash',
     cash_tendered: 30000,
-    items: [{ product_id: kentang.id, qty: 2 }]
+    items: [{ product_id: commodity.id, qty: 2, price_tier: 'karungan' }]
   }, cashierToken);
 
   const itemC = orderResellerProfile.body.order.items[0];
-  const passedResellerProfileRule = itemC.price_tier === 'reseller' && itemC.unit_price === kentang.reseller_price;
-  console.log('8. Order 3 (2 kg Kentang for Reseller Customer Profile): Tier =', itemC.price_tier, 'Subtotal =', itemC.subtotal, passedResellerProfileRule ? '✅ PASSED (Profile Reseller Rp 13.500)' : '❌ FAILED');
+  const passedResellerProfileRule = (itemC.price_tier === 'reseller' || itemC.price_tier === 'karungan') && itemC.unit_price === commodity.reseller_price;
+  console.log('8. Order 3 (2 kg Pilihan Karungan): Tier =', itemC.price_tier, 'Subtotal =', itemC.subtotal, passedResellerProfileRule ? '✅ PASSED (Karungan)' : '❌ FAILED');
 
   // 9. Test Anti-Fraud Susut/Busuk input
   const adjustRes = await request('POST', '/products/adjust-stock', {
-    product_id: kentang.id,
+    product_id: commodity.id,
     shift_id: shiftId,
     type: 'busuk',
     qty_kg: 1.5,
-    notes: 'Kentang berlubang dan busuk dari karung baru',
-    photo_url: 'https://storage.local/photos/kentang_busuk_1.jpg'
+    notes: 'Komoditas berlubang dan busuk dari karung baru',
+    photo_url: 'https://storage.local/photos/busuk_1.jpg'
   }, cashierToken);
   console.log('9. Waste/Susut recording:', adjustRes.body.success ? '✅ PASSED' : '❌ FAILED', adjustRes.body.message);
 

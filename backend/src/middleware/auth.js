@@ -21,10 +21,21 @@ function authenticateToken(req, res, next) {
 }
 
 function requireOwner(req, res, next) {
+  // Kasir sekaligus berperan sebagai admin sesuai wewenang operasional kios pasar
+  if (!req.user || (req.user.role !== 'owner' && req.user.role !== 'cashier' && req.user.role !== 'admin')) {
+    return res.status(403).json({
+      success: false,
+      message: 'Akses ditolak: Hanya Owner atau Kasir/Admin yang berwenang untuk tindakan ini'
+    });
+  }
+  next();
+}
+
+function requireStrictOwner(req, res, next) {
   if (!req.user || req.user.role !== 'owner') {
     return res.status(403).json({
       success: false,
-      message: 'Akses ditolak: Hanya Owner yang berwenang untuk tindakan ini'
+      message: 'Akses ditolak: Hanya Owner toko yang berwenang untuk tindakan ini'
     });
   }
   next();
@@ -47,5 +58,6 @@ module.exports = {
   JWT_SECRET,
   authenticateToken,
   requireOwner,
+  requireStrictOwner,
   logAudit
 };

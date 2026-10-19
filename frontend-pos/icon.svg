@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="potatoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+  
+  <!-- Potato Shape -->
+  <path d="M160 210 C 130 130, 260 110, 340 150 C 420 190, 420 290, 370 360 C 320 430, 200 420, 150 350 C 110 300, 180 260, 160 210 Z" fill="url(#potatoGrad)"/>
+  <!-- Potato spots -->
+  <circle cx="210" cy="200" r="10" fill="#b45309" opacity="0.6"/>
+  <circle cx="300" cy="230" r="14" fill="#b45309" opacity="0.6"/>
+  <circle cx="250" cy="310" r="12" fill="#b45309" opacity="0.6"/>
+  <circle cx="330" cy="320" r="9" fill="#b45309" opacity="0.6"/>
+  <circle cx="190" cy="280" r="8" fill="#b45309" opacity="0.6"/>
+
+  <!-- Weighing Scale Badge -->
+  <circle cx="380" cy="380" r="80" fill="#0f172a" stroke="#ffffff" stroke-width="10"/>
+  <path d="M380 330 L380 395 M340 365 L420 365 M340 365 L330 405 L360 405 Z M420 365 L410 405 L440 405 Z" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

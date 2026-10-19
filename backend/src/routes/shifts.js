@@ -19,10 +19,57 @@ router.get('/current', authenticateToken, async (req, res) => {
       return res.json({ success: true, has_active_shift: false, shift: null });
     }
 
+    // Calculate current live cash in drawer for active shift
+    const cashSalesRow = await dbQuery.get(
+      `SELECT COALESCE(SUM(total_amount), 0) as cash_sales
+       FROM orders
+       WHERE shift_id = ? AND payment_method = 'cash' AND status = 'completed'`,
+      [shift.id]
+    );
+
+    const expensesRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses,
+         COALESCE(SUM(CASE WHEN type = 'income' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_income
+       FROM store_expenses
+       WHERE shift_id = ?`,
+      [shift.id]
+    );
+
+    const supplierCashRow = await dbQuery.get(
+      `SELECT COALESCE(SUM(amount_paid), 0) as cash_supplier_payments
+       FROM supplier_payments
+       WHERE payment_method = 'cash' AND payment_date >= ?`,
+      [shift.start_time]
+    );
+
+    const debtCashRow = await dbQuery.get(
+      `SELECT COALESCE(SUM(amount_paid), 0) as cash_debt_collected
+       FROM debt_payments
+       WHERE (shift_id = ? OR (payment_date >= ? AND shift_id IS NULL)) AND payment_method = 'cash'`,
+      [shift.id, shift.start_time]
+    );
+
+    const cashSales = cashSalesRow.cash_sales || 0;
+    const cashExpenses = expensesRow.cash_expenses || 0;
+    const cashIncome = expensesRow.cash_income || 0;
+    const cashSupplier = supplierCashRow.cash_supplier_payments || 0;
+    const cashDebt = debtCashRow.cash_debt_collected || 0;
+
+    const currentDrawerCash = Number(shift.starting_cash) + Number(cashSales) + Number(cashIncome) + Number(cashDebt) - Number(cashExpenses) - Number(cashSupplier);
+
     return res.json({
       success: true,
       has_active_shift: true,
-      shift
+      shift: {
+        ...shift,
+        cash_sales: cashSales,
+        cash_expenses: cashExpenses,
+        cash_income: cashIncome,
+        cash_debt_collected: cashDebt,
+        cash_supplier_payments: cashSupplier,
+        current_drawer_cash: currentDrawerCash
+      }
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -113,8 +160,44 @@ router.post('/close', authenticateToken, async (req, res) => {
       [shift_id]
     );
 
+    // Cash expenses & cash income in this shift
+    const cashExpensesRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as total_cash_expenses,
+         COALESCE(SUM(CASE WHEN type = 'income' AND source = 'cash' THEN amount ELSE 0 END), 0) as total_cash_income
+       FROM store_expenses
+       WHERE shift_id = ?`,
+      [shift_id]
+    );
+
+    // Cash paid to suppliers during this shift
+    const cashSupplierPaymentsRow = await dbQuery.get(
+      `SELECT COALESCE(SUM(amount_paid), 0) as total_cash_supplier
+       FROM supplier_payments
+       WHERE payment_method = 'cash' AND payment_date >= ?`,
+      [shift.start_time]
+    );
+
+    const debtCashRow = await dbQuery.get(
+      `SELECT COALESCE(SUM(amount_paid), 0) as total_cash_debt
+       FROM debt_payments
+       WHERE (shift_id = ? OR (payment_date >= ? AND shift_id IS NULL)) AND payment_method = 'cash'`,
+      [shift_id, shift.start_time]
+    );
+
     const totalCashSales = cashSalesRow.total_cash_sales || 0;
-    const expectedSystemCash = Number(shift.starting_cash) + Number(totalCashSales);
+    const totalCashExpenses = cashExpensesRow.total_cash_expenses || 0;
+    const totalCashIncome = cashExpensesRow.total_cash_income || 0;
+    const totalCashSupplierPaid = cashSupplierPaymentsRow.total_cash_supplier || 0;
+    const totalCashDebtCollected = debtCashRow.total_cash_debt || 0;
+
+    const expectedSystemCash = Number(shift.starting_cash) 
+      + Number(totalCashSales) 
+      + Number(totalCashIncome) 
+      + Number(totalCashDebtCollected)
+      - Number(totalCashExpenses) 
+      - Number(totalCashSupplierPaid);
+
     const cashDifference = Number(actual_cash) - Number(expectedSystemCash);
 
     // Save notes with breakdown if provided
@@ -143,6 +226,9 @@ router.post('/close', authenticateToken, async (req, res) => {
       shift_id,
       starting_cash: shift.starting_cash,
       total_cash_sales: totalCashSales,
+      total_cash_expenses: totalCashExpenses,
+      total_cash_income: totalCashIncome,
+      total_cash_supplier_paid: totalCashSupplierPaid,
       expected: expectedSystemCash,
       actual: actual_cash,
       difference: cashDifference
@@ -155,6 +241,9 @@ router.post('/close', authenticateToken, async (req, res) => {
         shift_id,
         starting_cash: shift.starting_cash,
         total_cash_sales: totalCashSales,
+        total_cash_expenses: totalCashExpenses,
+        total_cash_income: totalCashIncome,
+        total_cash_supplier_paid: totalCashSupplierPaid,
         total_qris: nonCashSalesRow.total_qris,
         total_transfer: nonCashSalesRow.total_transfer,
         expected_system_cash: expectedSystemCash,

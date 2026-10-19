@@ -58,17 +58,19 @@ npm install
 npm run dev
 ```
 *Aplikasi web akan dapat diakses di browser:*
-- **Kasir POS**: [http://localhost:3000/](http://localhost:3000/)
-- **Owner Dashboard**: [http://localhost:3000/owner.html](http://localhost:3000/owner.html)
+Buka di browser atau tablet:
+- **Kasir POS (Online)**: [https://kassa.konfigin.my.id/](https://kassa.konfigin.my.id/)
+- **Owner Dashboard (Online)**: [https://kassa.konfigin.my.id/owner.html](https://kassa.konfigin.my.id/owner.html)
 
 ---
 
-## 🔐 Akun Default Sistem
+## 🔐 Akun Bawaan Sistem (Data Pengguna)
 
 | Peran | Username | PIN Akses | Keterangan |
 | :--- | :--- | :--- | :--- |
 | **👑 Pemilik (Owner)** | `owner` | `123456` | Akses penuh dashboard eksekutif, margin laba, pengaturan toko, dan void |
-| **👤 Kasir Pagi** | `kasir1` | `112233` | Akses operasional transaksi kasir, input timbangan, dan kasbon |
+| **👤 Kasir Pagi** | `kasir` | `654321` | Akses operasional kasir, input timbangan, kasbon, dan tutup shift |
+
 
 ---
 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { dbQuery } = require('../db');
-const { authenticateToken, requireOwner } = require('../middleware/auth');
+const { authenticateToken, requireOwner, requireStrictOwner } = require('../middleware/auth');
 
 // GET /api/reports/dashboard
 // Primary endpoint for Owner's smartphone dashboard
@@ -68,6 +68,112 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        ORDER BY s.id DESC LIMIT 1`
     );
 
+    let activeShiftCashExpenses = 0;
+    let activeShiftCashIncome = 0;
+    let activeShiftCashSupplier = 0;
+    let activeShiftCashDebtCollected = 0;
+
+    if (activeShift) {
+      const expRow = await dbQuery.get(
+        `SELECT 
+           COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses,
+           COALESCE(SUM(CASE WHEN type = 'income' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_income
+         FROM store_expenses
+         WHERE shift_id = ?`,
+        [activeShift.id]
+      );
+      activeShiftCashExpenses = expRow ? expRow.cash_expenses : 0;
+      activeShiftCashIncome = expRow ? expRow.cash_income : 0;
+
+      const supRow = await dbQuery.get(
+        `SELECT COALESCE(SUM(amount_paid), 0) as cash_supplier
+         FROM supplier_payments
+         WHERE payment_method = 'cash' AND payment_date >= ?`,
+        [activeShift.start_time]
+      );
+      activeShiftCashSupplier = supRow ? supRow.cash_supplier : 0;
+
+      const debtCollectRow = await dbQuery.get(
+        `SELECT COALESCE(SUM(amount_paid), 0) as cash_debt_collected
+         FROM debt_payments
+         WHERE (shift_id = ? OR (payment_date >= ? AND shift_id IS NULL)) AND payment_method = 'cash'`,
+        [activeShift.id, activeShift.start_time]
+      );
+      activeShiftCashDebtCollected = debtCollectRow ? debtCollectRow.cash_debt_collected : 0;
+    }
+
+    // 4b. Expenses summary today
+    const expensesToday = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses_today,
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses_today,
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_expenses_today
+       FROM store_expenses
+       WHERE date(created_at) = date('now', 'localtime')`
+    );
+
+    // 4c. Other income today (suntikan modal / non-sales cash income)
+    const incomeTodayRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(amount), 0) as total_income_today,
+         COALESCE(SUM(CASE WHEN source = 'cash' THEN amount ELSE 0 END), 0) as cash_income_today,
+         COALESCE(SUM(CASE WHEN source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_income_today
+       FROM store_expenses
+       WHERE date(created_at) = date('now', 'localtime') AND type = 'income'`
+    );
+
+    // 4d. Supplier payments made today (Kulakan bayar tunai / transfer)
+    const supPayTodayRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(amount_paid), 0) as total_supplier_paid_today,
+         COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN amount_paid ELSE 0 END), 0) as cash_supplier_paid_today,
+         COALESCE(SUM(CASE WHEN payment_method = 'transfer' THEN amount_paid ELSE 0 END), 0) as transfer_supplier_paid_today
+       FROM supplier_payments
+       WHERE date(payment_date) = date('now', 'localtime')`
+    );
+
+    // 4e. Debt installments collected today from customers
+    const debtPayTodayRow = await dbQuery.get(
+      `SELECT COALESCE(SUM(amount_paid), 0) as total_debt_collected_today
+       FROM debt_payments
+       WHERE date(payment_date) = date('now', 'localtime')`
+    );
+
+    // 4f. COGS (HPP modal barang terjual) today for real profitability calculation
+    const cogsRow = await dbQuery.get(
+      `SELECT COALESCE(SUM(oi.qty * oi.cost_price), 0) as total_cogs
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       WHERE date(o.created_at) = date('now', 'localtime') AND o.status = 'completed'`
+    );
+
+    // 4g. Working capital / liquidity positions
+    const customerDebtsRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(remaining_amount), 0) as total_customer_debts,
+         COUNT(DISTINCT customer_id) as total_debtors
+       FROM customer_debts
+       WHERE status != 'paid' AND remaining_amount > 0`
+    );
+
+    const supplierPayablesRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(remaining_amount), 0) as total_supplier_debt,
+         COUNT(DISTINCT supplier_id) as total_suppliers_debt
+       FROM purchases
+       WHERE remaining_amount > 0`
+    );
+
+    // 4h. Detailed void transactions today
+    const voidOrdersList = await dbQuery.all(
+      `SELECT o.id, o.order_no, o.total_amount, o.created_at, o.void_reason, u.name as cashier_name
+       FROM orders o
+       LEFT JOIN shifts sh ON o.shift_id = sh.id
+       LEFT JOIN users u ON sh.cashier_id = u.id
+       WHERE date(o.created_at) = date('now', 'localtime') AND o.status = 'void'
+       ORDER BY o.id DESC LIMIT 5`
+    );
+
     // 5. Recent Shift Discrepancies (Shortages in the last 7 days)
     const recentDiscrepancies = await dbQuery.all(
       `SELECT s.id, u.name as cashier_name, s.end_time, s.system_cash, s.actual_cash, s.cash_difference
@@ -87,37 +193,219 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        ORDER BY sa.id DESC`
     );
 
+    // 7. Last 7 Days Daily Revenue Trend
+    const rawDaily = await dbQuery.all(
+      `SELECT date(created_at) as date, COALESCE(SUM(total_amount), 0) as revenue, COUNT(id) as orders_count
+       FROM orders
+       WHERE status = 'completed' AND date(created_at) >= date('now', 'localtime', '-6 days')
+       GROUP BY date(created_at)
+       ORDER BY date(created_at) ASC`
+    );
+
+    const dailyMap = {};
+    for (const d of rawDaily) {
+      dailyMap[d.date] = d;
+    }
+
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayName = d.toLocaleDateString('id-ID', { weekday: 'short' });
+      const dayFormatted = `${dayName}, ${d.getDate()}/${d.getMonth() + 1}`;
+      const found = dailyMap[dateStr];
+      last7Days.push({
+        date: dateStr,
+        label: dayFormatted,
+        revenue: found ? Number(found.revenue) : 0,
+        orders_count: found ? Number(found.orders_count) : 0
+      });
+    }
+
+    // 8. Today's Hourly Sales Trend (06:00 to 21:00)
+    const rawHourly = await dbQuery.all(
+      `SELECT strftime('%H', created_at) as hour, COALESCE(SUM(total_amount), 0) as revenue, COUNT(id) as orders_count
+       FROM orders
+       WHERE status = 'completed' AND date(created_at) = date('now', 'localtime')
+       GROUP BY strftime('%H', created_at)
+       ORDER BY hour ASC`
+    );
+    const hourlyMap = {};
+    for (const h of rawHourly) {
+      hourlyMap[h.hour] = h;
+    }
+    const hourlyTrend = [];
+    for (let h = 6; h <= 21; h++) {
+      const hStr = h.toString().padStart(2, '0');
+      const found = hourlyMap[hStr];
+      hourlyTrend.push({
+        hour: `${hStr}:00`,
+        revenue: found ? Number(found.revenue) : 0,
+        orders_count: found ? Number(found.orders_count) : 0
+      });
+    }
+
+    // 9. Today's Top Commodity Volume Breakdown
+    const topCommodities = await dbQuery.all(
+      `SELECT oi.product_name, COALESCE(SUM(oi.qty), 0) as total_kg, COALESCE(SUM(oi.subtotal), 0) as total_revenue
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       WHERE date(o.created_at) = date('now', 'localtime') AND o.status = 'completed'
+       GROUP BY oi.product_name
+       ORDER BY total_kg DESC
+       LIMIT 5`
+    );
+
+    // 10. Recent Activity Feeds (Latest Orders, Store Expenses & Stock Restock Purchases)
+    const recentOrders = await dbQuery.all(`
+      SELECT o.id, o.order_no, o.total_amount, o.payment_method, o.customer_name, o.created_at,
+             u.name as cashier_name,
+             (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count,
+             (SELECT COALESCE(SUM(qty), 0) FROM order_items WHERE order_id = o.id) as total_kg
+      FROM orders o
+      LEFT JOIN shifts sh ON o.shift_id = sh.id
+      LEFT JOIN users u ON sh.cashier_id = u.id
+      WHERE o.status = 'completed'
+      ORDER BY o.id DESC
+      LIMIT 6
+    `);
+
+    const recentExpenses = await dbQuery.all(`
+      SELECT se.id, se.expense_no, se.category, se.category_name, se.type, se.amount, se.source, se.notes, se.created_at,
+             u.name as recorded_by_name
+      FROM store_expenses se
+      LEFT JOIN users u ON se.user_id = u.id
+      ORDER BY se.id DESC
+      LIMIT 6
+    `);
+
+    const recentPurchases = await dbQuery.all(`
+      SELECT pu.id, pu.purchase_no, pu.qty_kg, pu.cost_price, pu.total_cost, pu.payment_status,
+             pu.paid_amount, pu.remaining_amount, pu.notes, pu.created_at,
+             COALESCE(s.name, 'Pemasok Umum') as supplier_name,
+             p.name as product_name,
+             u.name as recorded_by_name
+      FROM purchases pu
+      LEFT JOIN suppliers s ON pu.supplier_id = s.id
+      JOIN products p ON pu.product_id = p.id
+      LEFT JOIN users u ON pu.recorded_by = u.id
+      ORDER BY pu.id DESC
+      LIMIT 6
+    `);
+
+    // Computations
+    const totalRevenue = Number(salesSummary.total_revenue) || 0;
+    const totalCogs = Number(cogsRow ? cogsRow.total_cogs : 0) || 0;
+    const grossProfit = totalRevenue - totalCogs;
+    const grossMarginPct = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 1000) / 10 : 0;
+    const totalStoreExpenses = Number(expensesToday ? expensesToday.total_expenses_today : 0) || 0;
+    const otherIncomeToday = Number(incomeTodayRow ? incomeTodayRow.total_income_today : 0) || 0;
+    const netProfitToday = grossProfit + otherIncomeToday - totalStoreExpenses;
+
+    const cashSalesToday = Number(salesSummary.total_cash) || 0;
+    const digitalSalesToday = (Number(salesSummary.total_qris) || 0) + (Number(salesSummary.total_transfer) || 0);
+    const debtCollectedToday = Number(debtPayTodayRow ? debtPayTodayRow.total_debt_collected_today : 0) || 0;
+    const totalInflow = cashSalesToday + digitalSalesToday + debtCollectedToday + otherIncomeToday;
+
+    const totalSupplierPaidToday = Number(supPayTodayRow ? supPayTodayRow.total_supplier_paid_today : 0) || 0;
+    const totalCashOutflow = totalStoreExpenses + totalSupplierPaidToday;
+    const netCashflowMovement = totalInflow - totalCashOutflow;
+
+    const estimatedDrawerCash = activeShift 
+      ? Number(activeShift.starting_cash) 
+        + Number(activeShift.current_cash_sales) 
+        + Number(activeShiftCashIncome) 
+        + Number(activeShiftCashDebtCollected)
+        - Number(activeShiftCashExpenses) 
+        - Number(activeShiftCashSupplier)
+      : cashSalesToday;
+
     return res.json({
       success: true,
       timestamp: new Date().toISOString(),
       summary: {
-        total_revenue: salesSummary.total_revenue,
-        cash_in_drawer: activeShift 
-          ? Number(activeShift.starting_cash) + Number(activeShift.current_cash_sales) 
-          : salesSummary.total_cash,
-        total_cash_today: salesSummary.total_cash,
-        total_qris: salesSummary.total_qris,
-        total_transfer: salesSummary.total_transfer,
-        total_tempo: salesSummary.total_tempo,
-        total_orders: salesSummary.total_orders,
-        void_count: voidSummary.void_count,
-        void_total_amount: voidSummary.void_total_amount
+        total_revenue: totalRevenue,
+        cash_in_drawer: estimatedDrawerCash,
+        total_cash_today: cashSalesToday,
+        total_qris: Number(salesSummary.total_qris) || 0,
+        total_transfer: Number(salesSummary.total_transfer) || 0,
+        total_tempo: Number(salesSummary.total_tempo) || 0,
+        total_orders: Number(salesSummary.total_orders) || 0,
+        void_count: Number(voidSummary.void_count) || 0,
+        void_total_amount: Number(voidSummary.void_total_amount) || 0,
+        total_expenses_today: totalStoreExpenses,
+        total_supplier_paid_today: totalSupplierPaidToday,
+        total_cash_outflow_today: totalCashOutflow,
+        net_profit_today: netProfitToday,
+        gross_profit_today: grossProfit,
+        gross_margin_pct: grossMarginPct
+      },
+      profitability_today: {
+        total_revenue: totalRevenue,
+        total_cogs: totalCogs,
+        gross_profit: grossProfit,
+        gross_margin_pct: grossMarginPct,
+        total_operating_expenses: totalStoreExpenses,
+        other_income: otherIncomeToday,
+        net_profit: netProfitToday
+      },
+      cashflow_today: {
+        inflow: {
+          cash_sales: cashSalesToday,
+          digital_sales: digitalSalesToday,
+          debt_collected: debtCollectedToday,
+          other_income: otherIncomeToday,
+          total_inflow: totalInflow
+        },
+        outflow: {
+          store_expenses_cash: Number(expensesToday ? expensesToday.cash_expenses_today : 0) || 0,
+          store_expenses_transfer: Number(expensesToday ? expensesToday.transfer_expenses_today : 0) || 0,
+          total_store_expenses: totalStoreExpenses,
+          supplier_paid_cash: Number(supPayTodayRow ? supPayTodayRow.cash_supplier_paid_today : 0) || 0,
+          supplier_paid_transfer: Number(supPayTodayRow ? supPayTodayRow.transfer_supplier_paid_today : 0) || 0,
+          total_supplier_paid: totalSupplierPaidToday,
+          total_cash_outflow: totalCashOutflow
+        },
+        net_cashflow: netCashflowMovement
+      },
+      liquidity_snapshot: {
+        cash_in_drawer: estimatedDrawerCash,
+        bank_incoming_today: digitalSalesToday,
+        total_customer_debts: Number(customerDebtsRow ? customerDebtsRow.total_customer_debts : 0) || 0,
+        total_debtors: Number(customerDebtsRow ? customerDebtsRow.total_debtors : 0) || 0,
+        total_supplier_debt: Number(supplierPayablesRow ? supplierPayablesRow.total_supplier_debt : 0) || 0,
+        total_suppliers_debt: Number(supplierPayablesRow ? supplierPayablesRow.total_suppliers_debt : 0) || 0
       },
       anti_fraud: {
         retail_percentage: retailPercentage,
         reseller_percentage: resellerPercentage,
-        is_ratio_anomalous: resellerPercentage > 75, // Flag if reseller tier dominates unexpectedly
+        is_ratio_anomalous: resellerPercentage > 75,
         recent_cash_shortages: recentDiscrepancies
       },
+      void_today_details: voidOrdersList,
+      expenses_today: expensesToday,
       active_shift: activeShift ? {
         id: activeShift.id,
         cashier_name: activeShift.cashier_name,
         start_time: activeShift.start_time,
         starting_cash: activeShift.starting_cash,
         cash_collected: activeShift.current_cash_sales,
-        estimated_cash_now: Number(activeShift.starting_cash) + Number(activeShift.current_cash_sales)
+        cash_expenses: activeShiftCashExpenses,
+        cash_income: activeShiftCashIncome,
+        cash_debt_collected: activeShiftCashDebtCollected,
+        cash_supplier_paid: activeShiftCashSupplier,
+        estimated_cash_now: estimatedDrawerCash
       } : null,
-      waste_today: wasteToday
+      waste_today: wasteToday,
+      recent_orders: recentOrders,
+      recent_expenses: recentExpenses,
+      recent_purchases: recentPurchases,
+      trends: {
+        last_7_days: last7Days,
+        hourly_today: hourlyTrend,
+        top_commodities: topCommodities
+      }
     });
   } catch (err) {
     console.error('Error fetching dashboard reports:', err);
@@ -126,8 +414,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
 });
 
 // GET /api/reports/audit-logs
-// Audit logs viewable by Owner
-router.get('/audit-logs', authenticateToken, requireOwner, async (req, res) => {
+// Audit logs viewable strictly by Owner
+router.get('/audit-logs', authenticateToken, requireStrictOwner, async (req, res) => {
   try {
     const { limit = 50 } = req.query;
     const logs = await dbQuery.all(
@@ -219,6 +507,22 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
       [startDate, endDate]
     );
 
+    // 3b. Store Operational Expenses in the same period
+    const expenseSummary = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses,
+         COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_other_income,
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses,
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_expenses
+       FROM store_expenses
+       WHERE date(created_at) >= date(?) AND date(created_at) <= date(?)`,
+      [startDate, endDate]
+    );
+
+    const totalExpenses = Number(expenseSummary.total_expenses) || 0;
+    const totalOtherIncome = Number(expenseSummary.total_other_income) || 0;
+    const netProfit = grossProfit - totalExpenses + totalOtherIncome;
+
     // 4. Top Selling Products in this period
     const topProducts = await dbQuery.all(
       `SELECT 
@@ -267,6 +571,22 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
       orderParams
     );
 
+    // 6. Daily trend for the selected period
+    const dailyTrend = await dbQuery.all(
+      `SELECT date(o.created_at) as date,
+              COALESCE(SUM(o.total_amount), 0) as revenue,
+              COALESCE(SUM(oi.cost_price * oi.qty), 0) as cogs,
+              (COALESCE(SUM(o.total_amount), 0) - COALESCE(SUM(oi.cost_price * oi.qty), 0)) as profit,
+              COUNT(DISTINCT o.id) as orders_count
+       FROM orders o
+       JOIN shifts s ON o.shift_id = s.id
+       LEFT JOIN order_items oi ON o.id = oi.order_id
+       ${orderFilter} AND o.status = 'completed'
+       GROUP BY date(o.created_at)
+       ORDER BY date(o.created_at) ASC`,
+      orderParams
+    );
+
     return res.json({
       success: true,
       period: {
@@ -289,10 +609,16 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
         void_count: Number(voidSummary.void_count) || 0,
         void_total_amount: Number(voidSummary.void_total_amount) || 0,
         waste_kg: Math.round(Number(wasteSummary.total_waste_kg) * 100) / 100,
-        waste_loss_cost: Math.round(Number(wasteSummary.total_waste_loss))
+        waste_loss_cost: Math.round(Number(wasteSummary.total_waste_loss)),
+        total_expenses: totalExpenses,
+        total_other_income: totalOtherIncome,
+        cash_expenses: Number(expenseSummary.cash_expenses) || 0,
+        transfer_expenses: Number(expenseSummary.transfer_expenses) || 0,
+        net_profit: netProfit
       },
       top_products: topProducts,
-      orders: ordersList
+      orders: ordersList,
+      daily_trend: dailyTrend
     });
   } catch (err) {
     console.error('Error generating sales report:', err);

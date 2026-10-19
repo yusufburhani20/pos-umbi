@@ -2,6 +2,7 @@
   "name": "frontend-pos",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "vite --port 3000 --host",
@@ -13,5 +14,8 @@
   "license": "ISC",
   "devDependencies": {
     "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1"
   }
 }

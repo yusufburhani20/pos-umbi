@@ -40,38 +40,72 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
 });
 
 // GET /api/products
-// Fetch all products for POS grid or inventory management
+// Fetch all products for POS grid or inventory management with latest restock history info
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { category, search, low_stock } = req.query;
     let sql = `
-      SELECT *,
+      SELECT p.*,
         CASE 
-          WHEN stock_qty <= 0 THEN 1 
+          WHEN p.stock_qty <= 0 THEN 1 
           ELSE 0 
         END as is_out_of_stock,
         CASE 
-          WHEN stock_qty > 0 AND stock_qty <= COALESCE(min_stock_alert, 15.0) THEN 1 
+          WHEN p.stock_qty > 0 AND p.stock_qty <= COALESCE(p.min_stock_alert, 15.0) THEN 1 
           ELSE 0 
-        END as is_low_stock
-      FROM products 
-      WHERE is_active = 1
+        END as is_low_stock,
+        (
+          SELECT pu.created_at 
+          FROM purchases pu 
+          WHERE pu.product_id = p.id 
+          ORDER BY pu.id DESC 
+          LIMIT 1
+        ) as last_restock_date,
+        (
+          SELECT s.name 
+          FROM purchases pu 
+          LEFT JOIN suppliers s ON pu.supplier_id = s.id 
+          WHERE pu.product_id = p.id 
+          ORDER BY pu.id DESC 
+          LIMIT 1
+        ) as last_supplier_name,
+        (
+          SELECT pu.qty_kg 
+          FROM purchases pu 
+          WHERE pu.product_id = p.id 
+          ORDER BY pu.id DESC 
+          LIMIT 1
+        ) as last_restock_qty,
+        (
+          SELECT pu.cost_price 
+          FROM purchases pu 
+          WHERE pu.product_id = p.id 
+          ORDER BY pu.id DESC 
+          LIMIT 1
+        ) as last_cost_price,
+        (
+          SELECT COUNT(*) 
+          FROM purchases pu 
+          WHERE pu.product_id = p.id
+        ) as restock_count
+      FROM products p
+      WHERE p.is_active = 1
     `;
     const params = [];
 
     if (category) {
-      sql += ' AND category = ?';
+      sql += ' AND p.category = ?';
       params.push(category);
     }
     if (search) {
-      sql += ' AND name LIKE ?';
+      sql += ' AND p.name LIKE ?';
       params.push(`%${search}%`);
     }
     if (low_stock === 'true' || low_stock === '1') {
-      sql += ' AND stock_qty <= COALESCE(min_stock_alert, 15.0)';
+      sql += ' AND p.stock_qty <= COALESCE(p.min_stock_alert, 15.0)';
     }
 
-    sql += ' ORDER BY name ASC';
+    sql += ' ORDER BY p.name ASC';
     const products = await dbQuery.all(sql, params);
     return res.json({ success: true, products });
   } catch (err) {
@@ -79,8 +113,54 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/products (Owner only)
-router.post('/', authenticateToken, requireOwner, async (req, res) => {
+// GET /api/products/:id/restock-history
+// Fetch complete chronological incoming stock / purchases history for a single product
+router.get('/:id/restock-history', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await dbQuery.get('SELECT * FROM products WHERE id = ?', [id]);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Komoditas tidak ditemukan' });
+    }
+
+    const purchases = await dbQuery.all(`
+      SELECT 
+        p.*,
+        s.name as supplier_name,
+        s.phone as supplier_phone,
+        s.address as supplier_address,
+        u.name as recorded_by_name
+      FROM purchases p
+      LEFT JOIN suppliers s ON p.supplier_id = s.id
+      LEFT JOIN users u ON p.recorded_by = u.id
+      WHERE p.product_id = ?
+      ORDER BY p.id DESC
+    `, [id]);
+
+    const summary = await dbQuery.get(`
+      SELECT 
+        COUNT(*) as total_entries,
+        COALESCE(SUM(qty_kg), 0) as total_qty_received,
+        COALESCE(SUM(total_cost), 0) as total_cost_spent,
+        COALESCE(SUM(remaining_amount), 0) as total_debt_remaining
+      FROM purchases
+      WHERE product_id = ?
+    `, [id]);
+
+    return res.json({
+      success: true,
+      product,
+      summary: summary || { total_entries: 0, total_qty_received: 0, total_cost_spent: 0, total_debt_remaining: 0 },
+      purchases
+    });
+  } catch (err) {
+    console.error('Error fetching product restock history:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/products (Cashier / Owner)
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       name,
@@ -115,8 +195,8 @@ router.post('/', authenticateToken, requireOwner, async (req, res) => {
   }
 });
 
-// PUT /api/products/:id (Owner only)
-router.put('/:id', authenticateToken, requireOwner, async (req, res) => {
+// PUT /api/products/:id (Cashier / Owner)
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -244,6 +324,58 @@ router.post('/restock', authenticateToken, async (req, res) => {
       [product_id, req.user.id, addedQty, `[KULAKAN/MASUK] ${notes || 'Barang masuk'}`]
     );
 
+    // Record purchase transaction
+    try {
+      const today = new Date();
+      const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+      const prefix = `KUL-${dateStr}-`;
+      const lastP = await dbQuery.get(
+        `SELECT purchase_no FROM purchases WHERE purchase_no LIKE ? ORDER BY id DESC LIMIT 1`,
+        [`${prefix}%`]
+      );
+      let seq = 1;
+      if (lastP && lastP.purchase_no) {
+        const parts = lastP.purchase_no.split('-');
+        if (parts.length >= 3) seq = parseInt(parts[2], 10) + 1;
+      }
+      const purchaseNo = `${prefix}${String(seq).padStart(4, '0')}`;
+      const totalCost = addedQty * finalCostPrice;
+      const isTempo = req.body.payment_status === 'tempo';
+      const dpVal = Math.max(0, Math.min(totalCost, Number(req.body.dp_amount) || 0));
+      const paidAmt = isTempo ? dpVal : totalCost;
+      const remAmt = isTempo ? Math.max(0, totalCost - dpVal) : 0;
+      const pStatus = isTempo ? (remAmt === 0 ? 'lunas' : (paidAmt > 0 ? 'partial' : 'tempo')) : 'lunas';
+
+      const pResult = await dbQuery.run(
+        `INSERT INTO purchases (purchase_no, supplier_id, product_id, qty_kg, cost_price, total_cost, payment_status, paid_amount, remaining_amount, due_date, notes, recorded_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))`,
+        [
+          purchaseNo,
+          req.body.supplier_id ? Number(req.body.supplier_id) : null,
+          product_id,
+          addedQty,
+          finalCostPrice,
+          totalCost,
+          pStatus,
+          paidAmt,
+          remAmt,
+          req.body.due_date || null,
+          notes || '',
+          req.user.id
+        ]
+      );
+
+      if (paidAmt > 0 && req.body.supplier_id) {
+        await dbQuery.run(
+          `INSERT INTO supplier_payments (purchase_id, supplier_id, amount_paid, payment_method, payment_date, notes, recorded_by)
+           VALUES (?, ?, ?, 'cash', datetime('now', 'localtime'), ?, ?)`,
+          [pResult.lastID, Number(req.body.supplier_id), paidAmt, pStatus === 'lunas' ? 'Lunas saat kulakan' : 'DP Kulakan', req.user.id]
+        );
+      }
+    } catch (pErr) {
+      console.warn('[RESTOCK] Warning recording purchase entry:', pErr.message);
+    }
+
     await logAudit(req.user.id, 'PRODUCT_RESTOCK', {
       product_id,
       product_name: product.name,
@@ -251,6 +383,7 @@ router.post('/restock', authenticateToken, async (req, res) => {
       previous_stock: product.stock_qty,
       new_stock: newStock,
       cost_price: finalCostPrice,
+      supplier_id: req.body.supplier_id || null,
       notes
     });
 
@@ -263,6 +396,64 @@ router.post('/restock', authenticateToken, async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/products/opname (Audit Fisik & Penyesuaian Stok Opname)
+router.post('/opname', authenticateToken, async (req, res) => {
+  try {
+    const { product_id, physical_qty, shift_id, notes } = req.body;
+
+    if (!product_id || physical_qty === undefined || physical_qty === null || isNaN(Number(physical_qty))) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID komoditas dan hasil hitung stok fisik (kg) wajib diisi'
+      });
+    }
+
+    const product = await dbQuery.get('SELECT * FROM products WHERE id = ?', [product_id]);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Komoditas produk tidak ditemukan' });
+    }
+
+    const targetPhysical = Math.max(0, parseFloat(physical_qty));
+    const previousStock = parseFloat(product.stock_qty || 0);
+    const diff = targetPhysical - previousStock; // positif = kelebihan, negatif = susut/hilang
+
+    // Terapkan stok fisik nyata ke database
+    await dbQuery.run('UPDATE products SET stock_qty = ? WHERE id = ?', [targetPhysical, product_id]);
+
+    // Format catatan penyesuaian opname yang jelas
+    const diffText = diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2);
+    const adjNote = `[STOK OPNAME FISIK] Sistem: ${previousStock.toFixed(2)} kg ➔ Fisik: ${targetPhysical.toFixed(2)} kg (Selisih: ${diffText} kg). ${notes ? 'Catatan: ' + notes : ''}`;
+
+    await dbQuery.run(
+      `INSERT INTO stock_adjustments (product_id, shift_id, user_id, type, qty_kg, notes, photo_url, created_at)
+       VALUES (?, ?, ?, 'opname', ?, ?, '', datetime('now', 'localtime'))`,
+      [product_id, shift_id || null, req.user.id, Math.abs(diff), adjNote]
+    );
+
+    await logAudit(req.user.id, 'STOCK_OPNAME_APPLIED', {
+      product_id,
+      product_name: product.name,
+      previous_stock: previousStock,
+      physical_stock: targetPhysical,
+      difference: diff,
+      notes: notes || ''
+    });
+
+    return res.json({
+      success: true,
+      message: `Stok opname ${product.name} berhasil disimpan! Stok sistem disesuaikan menjadi ${targetPhysical} kg (Selisih: ${diffText} kg)`,
+      product_id,
+      product_name: product.name,
+      previous_stock: previousStock,
+      new_stock: targetPhysical,
+      difference: diff
+    });
+  } catch (err) {
+    console.error('Error in /api/products/opname:', err);
+    return res.status(500).json({ success: false, message: 'Gagal memproses stok opname: ' + err.message });
   }
 });
 

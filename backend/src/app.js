@@ -10,6 +10,10 @@ const reportsRoutes = require('./routes/reports');
 const usersRoutes = require('./routes/users');
 const debtsRoutes = require('./routes/debts');
 const settingsRoutes = require('./routes/settings');
+const syncRoutes = require('./routes/sync');
+const suppliersRoutes = require('./routes/suppliers');
+const expensesRoutes = require('./routes/expenses');
+const subscriptionRoutes = require('./routes/subscription');
 
 const app = express();
 
@@ -37,6 +41,10 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/debts', debtsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/sync', syncRoutes);
+app.use('/api/suppliers', suppliersRoutes);
+app.use('/api/expenses', expensesRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 // 404 Handler
 app.use((req, res) => {
@@ -46,7 +54,12 @@ app.use((req, res) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled API Error:', err);
-  res.status(500).json({ success: false, message: 'Internal Server Error', error: err.message });
+  const isProd = process.env.NODE_ENV === 'production';
+  res.status(500).json({
+    success: false,
+    message: isProd ? 'Terjadi kesalahan sistem internal pada server.' : 'Internal Server Error',
+    error: isProd ? undefined : err.message
+  });
 });
 
 module.exports = app;

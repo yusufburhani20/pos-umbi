@@ -1,5 +1,7 @@
 // API Client for Toko Umbi POS
-const BASE_URL = 'http://localhost:4000/api';
+const isDev = typeof window !== 'undefined' && window.location && (window.location.port === '3000' || window.location.port === '5173');
+const hostname = typeof window !== 'undefined' && window.location ? (window.location.hostname || 'localhost') : 'localhost';
+const BASE_URL = isDev ? `http://${hostname}:4000/api` : '/api';
 
 class ApiClient {
   constructor() {
@@ -45,7 +47,24 @@ class ApiClient {
     }
   }
 
-  
+  // Sync Endpoints
+  getSyncStatus(deviceId = null) {
+    const q = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : '';
+    return this.request(`/sync/status${q}`);
+  }
+
+  pullSyncData(deviceId = null) {
+    const q = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : '';
+    return this.request(`/sync/pull${q}`);
+  }
+
+  pushSyncData(payload) {
+    return this.request('/sync/push', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
   // Owner specific methods
   getDashboardReport() {
     return this.request('/reports/dashboard');
@@ -68,15 +87,90 @@ class ApiClient {
   }
 
   
-  restockProduct(productId, qtyKg, newCostPrice, notes) {
+  restockProduct(productId, qtyKg, newCostPrice, notes, supplierId = null, paymentStatus = 'lunas', dpAmount = 0, dueDate = null) {
     return this.request('/products/restock', {
       method: 'POST',
       body: JSON.stringify({
         product_id: productId,
         qty_kg: qtyKg,
         new_cost_price: newCostPrice,
-        notes
+        notes,
+        supplier_id: supplierId,
+        payment_status: paymentStatus,
+        dp_amount: dpAmount,
+        due_date: dueDate
       })
+    });
+  }
+
+  // Suppliers & Purchases API
+  getSuppliers(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.request(`/suppliers${qs ? '?' + qs : ''}`);
+  }
+
+  getSupplierDetail(id) {
+    return this.request(`/suppliers/${id}`);
+  }
+
+  createSupplier(payload) {
+    return this.request('/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  updateSupplier(id, payload) {
+    return this.request(`/suppliers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  deleteSupplier(id) {
+    return this.request(`/suppliers/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
+  getPurchases(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.request(`/suppliers/purchases/all${qs ? '?' + qs : ''}`);
+  }
+
+  createPurchase(payload) {
+    return this.request('/suppliers/purchases', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  paySupplierDebt(purchaseId, payload) {
+    return this.request(`/suppliers/purchases/${purchaseId}/pay`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  getExpenses(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.request(`/expenses${qs ? '?' + qs : ''}`);
+  }
+
+  getExpenseCategories() {
+    return this.request('/expenses/categories');
+  }
+
+  createExpense(payload) {
+    return this.request('/expenses', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  deleteExpense(id) {
+    return this.request(`/expenses/${id}`, {
+      method: 'DELETE'
     });
   }
 
@@ -162,6 +256,10 @@ class ApiClient {
     return this.request('/products/low-stock');
   }
 
+  getProductRestockHistory(productId) {
+    return this.request(`/products/${productId}/restock-history`);
+  }
+
   recordWaste(productId, shiftId, type, qtyKg, notes) {
     return this.request('/products/adjust-stock', {
       method: 'POST',
@@ -222,6 +320,13 @@ class ApiClient {
     return this.request(`/debts/${debtId}`);
   }
 
+  updateDebt(debtId, payload) {
+    return this.request(`/debts/${debtId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+
   payDebt(debtId, payload) {
     return this.request(`/debts/${debtId}/pay`, {
       method: 'POST',
@@ -246,6 +351,36 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ old_pin: oldPin, new_pin: newPin })
     });
+  }
+
+  // Stock Opname Fisik
+  applyStockOpname(productId, physicalQty, shiftId = null, notes = '') {
+    return this.request('/products/opname', {
+      method: 'POST',
+      body: JSON.stringify({
+        product_id: productId,
+        physical_qty: physicalQty,
+        shift_id: shiftId,
+        notes
+      })
+    });
+  }
+
+  // Update Identitas Profil Kasir / Admin Aktif & Ganti PIN
+  updateProfile(name, oldPin = null, newPin = null) {
+    return this.request('/settings/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        name,
+        old_pin: oldPin,
+        new_pin: newPin
+      })
+    });
+  }
+
+  // Subscription / License
+  getSubscriptionStatus() {
+    return this.request('/subscription/status');
   }
 }
 

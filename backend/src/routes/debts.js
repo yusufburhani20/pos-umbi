@@ -266,4 +266,116 @@ router.post('/:id/pay', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/debts/:id
+// Update debt details (due_date, remaining_amount, notes, customer_name, customer_phone)
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { customer_name, customer_phone, due_date, remaining_amount, notes } = req.body;
+
+    const debt = await dbQuery.get(
+      `SELECT d.*, c.name as customer_name, c.phone as customer_phone, o.order_no
+       FROM customer_debts d
+       JOIN customers c ON d.customer_id = c.id
+       JOIN orders o ON d.order_id = o.id
+       WHERE d.id = ?`,
+      [id]
+    );
+
+    if (!debt) {
+      return res.status(404).json({ success: false, message: 'Data piutang tidak ditemukan' });
+    }
+
+    // 1. Update customer profile if name or phone provided
+    if (customer_name || customer_phone !== undefined) {
+      await dbQuery.run(
+        `UPDATE customers
+         SET name = COALESCE(?, name),
+             phone = COALESCE(?, phone)
+         WHERE id = ?`,
+        [customer_name ? customer_name.trim() : null, customer_phone !== undefined ? customer_phone.trim() : null, debt.customer_id]
+      );
+      if (customer_name) {
+        await dbQuery.run(
+          'UPDATE orders SET customer_name = ? WHERE id = ?',
+          [customer_name.trim(), debt.order_id]
+        );
+      }
+    }
+
+    // 2. Update debt fields
+    let newRemaining = debt.remaining_amount;
+    let newStatus = debt.status;
+    if (remaining_amount !== undefined && remaining_amount !== null && !isNaN(Number(remaining_amount))) {
+      const parsedAmount = Math.max(0, Number(remaining_amount));
+      if (parsedAmount !== Number(debt.remaining_amount) && req.user.role !== 'owner') {
+        return res.status(403).json({
+          success: false,
+          message: 'Akses ditolak: Hanya Owner yang berwenang mengubah sisa nominal piutang secara manual. Untuk pelunasan kasir, gunakan menu Bayar Cicilan.'
+        });
+      }
+      newRemaining = parsedAmount;
+      if (newRemaining <= 0) {
+        newStatus = 'paid';
+      } else if (debt.paid_amount > 0) {
+        newStatus = 'partial';
+      } else {
+        newStatus = 'unpaid';
+      }
+    }
+
+    const finalDueDate = due_date || debt.due_date;
+    const finalNotes = notes !== undefined ? notes : debt.notes;
+
+    await dbQuery.run(
+      `UPDATE customer_debts
+       SET due_date = ?,
+           remaining_amount = ?,
+           status = ?,
+           notes = ?,
+           updated_at = datetime('now', 'localtime')
+       WHERE id = ?`,
+      [finalDueDate, newRemaining, newStatus, finalNotes, id]
+    );
+
+    await logAudit(req.user.id, 'DEBT_UPDATED', {
+      debt_id: id,
+      order_no: debt.order_no,
+      old: {
+        customer_name: debt.customer_name,
+        customer_phone: debt.customer_phone,
+        due_date: debt.due_date,
+        remaining_amount: debt.remaining_amount,
+        notes: debt.notes
+      },
+      new: {
+        customer_name: customer_name || debt.customer_name,
+        customer_phone: customer_phone !== undefined ? customer_phone : debt.customer_phone,
+        due_date: finalDueDate,
+        remaining_amount: newRemaining,
+        notes: finalNotes
+      }
+    });
+
+    const updatedDebt = await dbQuery.get(
+      `SELECT d.*, c.name as customer_name, c.phone as customer_phone, o.order_no
+       FROM customer_debts d
+       JOIN customers c ON d.customer_id = c.id
+       JOIN orders o ON d.order_id = o.id
+       WHERE d.id = ?`,
+      [id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Data piutang dan kontak pembeli berhasil diperbarui',
+      debt: updatedDebt
+    });
+  } catch (err) {
+    console.error('Error updating debt:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
+

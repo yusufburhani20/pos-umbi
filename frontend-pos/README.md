@@ -56,8 +56,11 @@ cd F:\POS\frontend-pos
 npm run dev
 ```
 
-Buka di browser atau tablet: **`http://localhost:3000`**
+Buka di browser atau tablet:
+- **Kasir POS (Online)**: **`https://kassa.konfigin.my.id/`**
+- **Owner Dashboard (Online)**: **`https://kassa.konfigin.my.id/owner.html`**
 
-### Kredensial Pengujian:
-- **Kasir:** PIN `112233` (Kasir Pagi - Budi)
+### Kredensial Pengguna:
+- **Kasir:** PIN `654321` (Kasir Pagi - Budi)
 - **Owner:** PIN `123456` (Pak Haji - Owner)
+

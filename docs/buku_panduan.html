@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Buku Panduan Penggunaan & SOP Operasional - PD. HASIL BUMI RAYA 1</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 11mm 13mm 13mm 13mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.42;
+      font-size: 9.3pt;
+      background: #ffffff;
+    }
+
+    /* Print Break Utilities */
+    .page-break {
+      page-break-before: always;
+    }
+    .avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Header & Footer bar on printed pages */
+    .page-header-bar {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+      font-size: 7.8pt;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .page-footer-bar {
+      margin-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.8pt;
+      color: #94a3b8;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      height: 94vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 30px 22px 20px 22px;
+      border: 2px solid #cbd5e1;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%);
+      text-align: center;
+    }
+
+    .cover-top {
+      margin-top: 10px;
+    }
+    .cover-badge {
+      display: inline-block;
+      background: #1e3a8a;
+      color: #ffffff;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+    .cover-logo {
+      font-size: 50pt;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .cover-title {
+      font-size: 23pt;
+      font-weight: 900;
+      color: #0f172a;
+      line-height: 1.2;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .cover-subtitle {
+      font-size: 12.5pt;
+      color: #2563eb;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+    .cover-desc {
+      font-size: 10pt;
+      color: #475569;
+      max-width: 530px;
+      margin: 0 auto;
+      line-height: 1.55;
+    }
+
+    .cover-meta {
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      max-width: 480px;
+      margin: 0 auto;
+      text-align: left;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .cover-meta-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3.5px 0;
+      border-bottom: 1px dashed #e2e8f0;
+      font-size: 9pt;
+    }
+    .cover-meta-row:last-child {
+      border-bottom: none;
+    }
+    .cover-meta-label {
+      color: #64748b;
+      font-weight: 500;
+    }
+    .cover-meta-val {
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    .cover-footer {
+      font-size: 8pt;
+      color: #64748b;
+    }
+
+    /* Headings */
+    h1 {
+      font-size: 15pt;
+      color: #0f172a;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 4px;
+      margin-top: 10px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h2 {
+      font-size: 11pt;
+      color: #1e3a8a;
+      margin-top: 9px;
+      margin-bottom: 5px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    h3 {
+      font-size: 9.8pt;
+      color: #0f172a;
+      margin-top: 6px;
+      margin-bottom: 3px;
+    }
+    p {
+      margin-bottom: 6px;
+      color: #334155;
+    }
+
+    /* Callout Boxes */
+    .callout {
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin: 7px 0;
+      font-size: 8.8pt;
+      line-height: 1.42;
+    }
+    .callout-info {
+      background: #eff6ff;
+      border-left: 3.5px solid #3b82f6;
+      color: #1e40af;
+    }
+    .callout-warning {
+      background: #fffbeb;
+      border-left: 3.5px solid #f59e0b;
+      color: #92400e;
+    }
+    .callout-success {
+      background: #f0fdf4;
+      border-left: 3.5px solid #10b981;
+      color: #065f46;
+    }
+    .callout-danger {
+      background: #fef2f2;
+      border-left: 3.5px solid #ef4444;
+      color: #991b1b;
+    }
+    .callout-title {
+      font-weight: 700;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 6px 0;
+      font-size: 8.6pt;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 5px 7px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+    }
+    tr:nth-child(even) td {
+      background-color: #f8fafc;
+    }
+
+    /* Step Lists */
+    .step-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 7px 10px;
+      margin-bottom: 7px;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+    .step-num {
+      background: #2563eb;
+      color: #ffffff;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 7.5pt;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .step-title {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 9.6pt;
+    }
+
+    /* Study Cases Box */
+    .case-box {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid #2563eb;
+      border-radius: 6px;
+      padding: 7px 9px;
+      margin-bottom: 8px;
+    }
+    .case-badge {
+      display: inline-block;
+      background: #1e3a8a;
+      color: #ffffff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .case-title {
+      font-size: 9.6pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .case-story {
+      font-style: italic;
+      color: #334155;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 5px;
+      padding: 5px 8px;
+      margin-bottom: 5px;
+      font-size: 8.5pt;
+      line-height: 1.38;
+    }
+    .case-actions {
+      margin-left: 14px;
+      margin-bottom: 4px;
+      font-size: 8.5pt;
+    }
+    .case-actions li {
+      margin-bottom: 2px;
+    }
+    .case-explanation {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 5px;
+      padding: 5px 8px;
+      margin-top: 4px;
+      font-size: 8.3pt;
+      color: #1e40af;
+      line-height: 1.35;
+    }
+
+    /* Key Badges */
+    .badge {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 600;
+    }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; }
+    .badge-rose { background: #ffe4e6; color: #9f1239; }
+
+    /* Code & Keyboard */
+    kbd {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      box-shadow: 0 1px 0 #94a3b8;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 8pt;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    code {
+      font-family: monospace;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 8.2pt;
+      color: #0f172a;
+    }
+
+    /* Daftar Isi */
+    .toc-list {
+      list-style: none;
+      margin: 8px 0;
+    }
+    .toc-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px dotted #cbd5e1;
+      font-size: 9pt;
+    }
+    .toc-title {
+      font-weight: 600;
+      color: #1e3a8a;
+    }
+    .toc-page {
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    ul, ol {
+      margin-left: 16px;
+      margin-bottom: 5px;
+    }
+    li {
+      margin-bottom: 2.5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== HALAMAN 1: COVER ==================== -->
+  <div class="cover-page">
+    <div class="cover-top">
+      <span class="cover-badge">STANDAR OPERASIONAL PROSEDUR (SOP) & PANDUAN RESMI</span>
+      <div class="cover-logo">🥔</div>
+      <h1 class="cover-title" style="border-bottom: none; display: block; margin: 0 0 6px 0;">BUKU PANDUAN PENGGUNAAN SISTEM POS</h1>
+      <div class="cover-subtitle">Kasir Pintar & Executive Command Center PD. HASIL BUMI RAYA 1</div>
+      <p class="cover-desc">
+        Panduan operasional lengkap dari instalasi tablet, konfigurasi printer thermal Bluetooth & laci kasir, operasional transaksi harian (eceran, karungan, kasbon, kulakan, biaya), hingga 8 skenario studi kasus pasar nyata dan rekonsiliasi tutup shift anti-kecolongan.
+      </p>
+    </div>
+
+    <div class="cover-meta">
+      <div class="cover-meta-row">
+        <span class="cover-meta-label">Nama Usaha Kios</span>
+        <span class="cover-meta-val">PD. HASIL BUMI RAYA 1</span>
+      </div>
+      <div class="cover-meta-row">
+        <span class="cover-meta-label">Alamat Server Produksi (Online)</span>
+        <span class="cover-meta-val">https://kassa.konfigin.my.id/</span>
+      </div>
+      <div class="cover-meta-row">
+        <span class="cover-meta-label">Versi Sistem POS</span>
+        <span class="cover-meta-val">v2.1.0 (Edisi Produksi Online 2026)</span>
+      </div>
+      <div class="cover-meta-row">
+        <span class="cover-meta-label">Tanggal Pembaruan Dokumen</span>
+        <span class="cover-meta-val">19 Oktober 2026</span>
+      </div>
+      <div class="cover-meta-row">
+        <span class="cover-meta-label">Perangkat yang Didukung</span>
+        <span class="cover-meta-val">Tablet Android (PWA), iPad (PWA), PC & HP</span>
+      </div>
+      <div class="cover-meta-row">
+        <span class="cover-meta-label">Integrasi Hardware Kasir</span>
+        <span class="cover-meta-val">Printer Thermal Bluetooth + Cash Drawer RJ-11</span>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <strong>PD. HASIL BUMI RAYA 1</strong> &bull; Pasar Induk Modern Cikopo, Kec. Campaka, Kab. Purwakarta, Jawa Barat 41183 &bull; Dokumen Rahasia Internal Toko
+    </div>
+  </div>
+
+  <!-- ==================== HALAMAN 2: DAFTAR ISI & KREDENSIAL ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>Daftar Isi & Kredensial Akses</span>
+  </div>
+
+  <h1>📑 DAFTAR ISI PANDUAN LENGKAP</h1>
+  <p>Buku panduan ini disusun secara sistematis agar kasir kios maupun pemilik toko dapat mengoperasikan sistem dengan lancar dan aman:</p>
+
+  <ul class="toc-list">
+    <li class="toc-item">
+      <span class="toc-title">Kredensial Akses Cepat & Alamat Sistem Online</span>
+      <span class="toc-page">Hal 2</span>
+    </li>
+    <li class="toc-item">
+      <span class="toc-title">BAB 1: Panduan Instalasi Tablet (Android & iPad) & Hardware Kasir</span>
+      <span class="toc-page">Hal 3</span>
+    </li>
+    <li class="toc-item">
+      <span class="toc-title">BAB 2: Panduan Operasional Kasir Kios (Buka Shift s/d Tutup Kasir)</span>
+      <span class="toc-page">Hal 4 - 6</span>
+    </li>
+    <li class="toc-item">
+      <span class="toc-title">BAB 3: Panduan Operasional Pemilik Toko (Executive Dashboard Owner)</span>
+      <span class="toc-page">Hal 7 - 8</span>
+    </li>
+    <li class="toc-item">
+      <span class="toc-title">BAB 4: Standar Operasional Prosedur (SOP) Harian Toko Pasar</span>
+      <span class="toc-page">Hal 9</span>
+    </li>
+    <li class="toc-item">
+      <span class="toc-title">BAB 5: Penanganan Kendala Teknis (Troubleshooting)</span>
+      <span class="toc-page">Hal 10</span>
+    </li>
+    <li class="toc-item">
+      <span class="toc-title">BAB 6: Skenario Operasional Lengkap & 8 Studi Kasus Nyata di Pasar</span>
+      <span class="toc-page">Hal 11 - 13</span>
+    </li>
+  </ul>
+
+  <div class="avoid-break" style="margin-top: 15px;">
+    <h2>🔐 Kredensial Akses Cepat Bawaan Sistem (Data User)</h2>
+    <p>Gunakan kredensial resmi di bawah ini untuk mengakses sistem di tablet kasir atau smartphone pemilik:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 17%;">Peran (Role)</th>
+          <th style="width: 20%;">Nama Pengguna</th>
+          <th style="width: 14%;">Username</th>
+          <th style="width: 13%;">PIN Akses</th>
+          <th style="width: 36%;">Alamat URL & Wewenang Sistem</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-green">👤 Kasir Kios</span></td>
+          <td><strong>Budi (Kasir Pagi)</strong></td>
+          <td><code>kasir</code></td>
+          <td><kbd style="font-size: 10pt; color: #166534; background: #dcfce7;">654321</kbd></td>
+          <td>
+            <strong>URL:</strong> <code>https://kassa.konfigin.my.id/</code><br>
+            Wewenang: Buka/Tutup Shift, Penimbangan Kiloan, Kasbon Tempo, Catat Biaya Laci, Catat Kulakan, Buka Laci Kasir.
+          </td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">👑 Pemilik (Owner)</span></td>
+          <td><strong>Pak Haji (Owner)</strong></td>
+          <td><code>owner</code></td>
+          <td><kbd style="font-size: 10pt; color: #1e40af; background: #dbeafe;">123456</kbd></td>
+          <td>
+            <strong>URL:</strong> <code>https://kassa.konfigin.my.id/owner.html</code><br>
+            Wewenang: Executive Dashboard, Margin Laba Kotor/Bersih, Radar Anomali Kasir, Otorisasi Void/Batal Nota, Ganti Harga, Kunci/Buka Toko.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warning">
+      <div class="callout-title">🛡️ FITUR KEAMANAN LOGIN (ANTI BRUTE-FORCE LOCKOUT):</div>
+      Sistem membatasi percobaan login maksimal <strong>5 kali berturut-turut</strong>. Jika PIN salah dimasukkan lebih dari 5 kali, sistem otomatis mengunci akses selama <strong>5 menit (300 detik)</strong> untuk melindungi kios dari upaya peretasan atau orang tak berwenang yang mencoba menebak PIN kasir.
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-title">💡 AKSES DARI LAYAR KEYPAD KASIR:</div>
+      Pada halaman utama kasir (<code>https://kassa.konfigin.my.id/</code>), kasir cukup mengetikkan 6 digit angka PIN <kbd>654321</kbd> pada layar keypad tanpa perlu mengetikkan username, lalu sistem akan langsung memverifikasi dan membuka sesi kasir Budi.
+    </div>
+  </div>
+
+  <!-- ==================== HALAMAN 3: BAB 1 ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 1: Instalasi Tablet & Hardware</span>
+  </div>
+
+  <h1>BAB 1: PANDUAN INSTALASI TABLET & HARDWARE KASIR</h1>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;" class="avoid-break">
+    <div class="step-box" style="margin-bottom: 0;">
+      <strong style="color: #1e3a8a; font-size: 9.3pt;">1.1 Install di Tablet Android (Chrome)</strong>
+      <ol style="margin-top: 3px; margin-left: 14px; font-size: 8.5pt;">
+        <li>Buka Chrome, ketik <code>https://kassa.konfigin.my.id/</code></li>
+        <li>Klik menu <strong>titik tiga (⋮)</strong> di kanan atas.</li>
+        <li>Pilih <strong>"Install aplikasi"</strong> (atau "Tambahkan ke Layar Utama") &rarr; klik Install.</li>
+        <li>Aplikasi akan berjalan <em>fullscreen standalone</em> tanpa bilah browser.</li>
+      </ol>
+    </div>
+    <div class="step-box" style="margin-bottom: 0;">
+      <strong style="color: #1e3a8a; font-size: 9.3pt;">1.2 Install di iPad (Apple Safari)</strong>
+      <ol style="margin-top: 3px; margin-left: 14px; font-size: 8.5pt;">
+        <li>Buka Safari, akses <code>https://kassa.konfigin.my.id/</code></li>
+        <li>Ketuk tombol <strong>Share</strong> (ikon kotak tanda panah ke atas).</li>
+        <li>Pilih <strong>"Tambah ke Layar Utama" (Add to Home Screen)</strong>.</li>
+        <li>Ketik nama aplikasi lalu ketuk <strong>"Tambah" (Add)</strong>.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="callout callout-info" style="margin: 6px 0; padding: 6px 10px;">
+    <div class="callout-title">⛶ TOMBOL CEPAT LAYAR PENUH (ANTI-TERPOTONG DI CHROME):</div>
+    Jika kasir mengakses langsung via browser Chrome tablet, cukup ketuk tombol <strong>"⛶ Layar Penuh"</strong> di bar navigasi atas. Browser Chrome akan seketika menyembunyikan bilah URL dan tab atas, sehingga area kasir tampil 100% penuh dan tombol transaksi di bagian bawah tidak akan terpotong.
+  </div>
+
+  <div class="callout callout-success" style="margin: 5px 0; padding: 5px 10px;">
+    <div class="callout-title">🔒 TIPS MODE KIOSK (KUNCI TABLET KASIR):</div>
+    Aktifkan fitur Android: <strong>Pengaturan &rarr; Keamanan &rarr; Sematkan Aplikasi (App Pinning)</strong>. Kasir tidak bisa keluar dari aplikasi untuk bermain game, YouTube, atau medsos tanpa PIN pemilik.
+  </div>
+
+  <h2>1.3 Pemasangan Kabel Fisik & Sambungan Hardware (Wiring)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 26%;">Perangkat Kasir</th>
+        <th style="width: 36%;">Sambungan Kabel Fisik</th>
+        <th>Catatan Penting Operasional</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Printer Thermal (58/80mm)</strong></td>
+        <td>Colokkan adaptor daya ke stopkontak listrik toko. Nyalakan saklar power di printer.</td>
+        <td>Pasang kertas thermal menghadap ke atas. Lampu status menyala hijau/biru standby.</td>
+      </tr>
+      <tr>
+        <td><strong>Laci Kasir (Cash Drawer)</strong></td>
+        <td>Colokkan kabel RJ-11 dari laci ke port <strong>DK (Drawer Kick)</strong> di <strong>belakang printer thermal</strong>.</td>
+        <td><strong>PENTING:</strong> Laci dicolok ke printer, BUKAN ke tablet! Pastikan kunci manual laci dalam posisi <strong>tegak (unlocked)</strong>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>1.4 Pengaturan Printer & Laci Kasir di Aplikasi POS Tablet</h2>
+  <div class="step-box avoid-break" style="padding: 6px 10px;">
+    <ol style="margin-left: 14px; font-size: 8.5pt;">
+      <li>Pastikan Bluetooth tablet aktif dan printer thermal sudah menyala &rarr; Ketuk pil status di bar atas: <code>🖨️ Printer: Putus</code>.</li>
+      <li>Pada jendela hardware, klik tombol <strong>"🔵 Hubungkan Printer"</strong> &rarr; pilih nama printer thermal Anda &rarr; klik <strong>"Pair"</strong>.</li>
+      <li>Pilih <strong>Ukuran Kertas:</strong> <code>58 mm</code> atau <code>80 mm</code> &rarr; Pastikan opsi <strong>"Buka Laci Otomatis saat Bayar Tunai"</strong> dalam posisi <strong>ON (Aktif)</strong>.</li>
+      <li>Uji coba laci dengan klik <strong>💰 Test Buka Laci Kasir</strong> dan uji coba cetak dengan klik <strong>🖨️ Cetak Struk Uji Coba</strong> &rarr; Klik <strong>💾 Simpan Pengaturan</strong>.</li>
+    </ol>
+  </div>
+
+  <!-- ==================== HALAMAN 4: BAB 2 (BAGIAN 1) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 2: Operasional Kasir (Bagian 1)</span>
+  </div>
+
+  <h1>BAB 2: PANDUAN OPERASIONAL KASIR KIOS</h1>
+  <p>Panduan langkah demi langkah bagi kasir dari awal buka toko hingga melayani transaksi harian:</p>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Buka Shift Kasir & Input Modal Awal (Starting Cash)</div>
+    </div>
+    <p>Setiap pagi sebelum melayani pembeli pertama, kasir wajib membuka shift kasir:</p>
+    <ol>
+      <li>Buka aplikasi kasir di tablet: <code>https://kassa.konfigin.my.id/</code></li>
+      <li>Ketik PIN Kasir <kbd>654321</kbd> pada keypad lalu tekan tombol hijau <strong>Masuk</strong>.</li>
+      <li>Jika belum ada shift aktif, jendela dialog <strong>Buka Shift Kasir</strong> akan muncul otomatis.</li>
+      <li>Hitung uang modal receh/pecahan uang kembalian yang diserahkan pemilik ke laci kasir (contoh: <strong>Rp 200.000</strong>).</li>
+      <li>Ketikkan nominal modal awal tersebut, lalu klik tombol <strong>Buka Shift Kasir</strong>.</li>
+      <li>Indikator status di bar atas akan menyala hijau: <code>🟢 Shift Aktif: Budi</code>. Kasir siap bertransaksi!</li>
+    </ol>
+  </div>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Penjualan Eceran Kiloan (Pembeli Umum Walk-In)</div>
+    </div>
+    <p>Tata cara melayani pembeli eceran kiloan umum:</p>
+    <ol>
+      <li>Klik komoditas yang dipilih pembeli pada katalog (contoh: <strong>🍠 Ubi Cilembu Madu Asli</strong>).</li>
+      <li>Pop-up timbangan akan muncul. Masukkan bobot kiloan dari timbangan digital (contoh: ketik <code>3.25</code> untuk 3.25 kg).</li>
+      <li>Pilih opsi harga <strong>Eceran</strong> (sistem otomatis menghitung Rp 14.000/kg &rarr; Subtotal Rp 45.500).</li>
+      <li>Klik tombol <strong>+ Masukkan ke Keranjang</strong>.</li>
+      <li>Jika ada barang tambahan (contoh: 2 kg Singkong Mentega), ulangi langkah 1-4.</li>
+      <li>Tekan tombol hijau besar <strong>BAYAR SEKARANG (Enter / F8)</strong> di panel kanan keranjang.</li>
+      <li>Pada dialog pembayaran, pilih metode <strong>💵 Tunai (Cash)</strong>.</li>
+      <li>Klik tombol pecahan cepat (contoh: <kbd>Rp 50.000</kbd>). Sistem langsung menampilkan nominal kembalian (Rp 4.500).</li>
+      <li>Klik <strong>Selesaikan Transaksi & Cetak Struk</strong>. Laci uang kasir akan terbuka otomatis dan printer mencetak nota belanja. Berikan struk dan uang kembalian ke pembeli.</li>
+    </ol>
+  </div>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Penjualan Partai / Karungan (Reseller Warung Langganan)</div>
+    </div>
+    <p>Untuk pembelian partai besar (karungan $\ge 10$–15 kg) dengan harga grosir khusus:</p>
+    <ol>
+      <li>Klik komoditas pada katalog (contoh: <strong>🍠 Ubi Cilembu Madu Asli</strong>).</li>
+      <li>Ketik bobot timbangan karung (contoh: <code>50</code> kg).</li>
+      <li>Klik pilihan tier harga <strong>Karungan / Reseller</strong> (harga otomatis turun menjadi Rp 11.500/kg).</li>
+      <li>Klik <strong>+ Masukkan ke Keranjang</strong>. Pada keranjang akan muncul badge ungu <code>KARUNGAN</code>.</li>
+      <li>Di kolom nama pembeli, masukkan nama warung langganan (contoh: <code>Warung Bu Siti</code>).</li>
+      <li>Tekan <strong>Bayar Sekarang</strong> dan pilih metode pembayaran yang diinginkan (Tunai, QRIS, atau Transfer).</li>
+    </ol>
+  </div>
+
+  <!-- ==================== HALAMAN 5: BAB 2 (BAGIAN 2) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 2: Operasional Kasir (Bagian 2)</span>
+  </div>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title">Pembayaran Non-Tunai (QRIS & Transfer Bank)</div>
+    </div>
+    <p>Bila pembeli membayar tanpa uang fisik kas:</p>
+    <ol>
+      <li>Saat berada di dialog pembayaran, pilih tab <strong>📱 QRIS</strong> atau <strong>🏦 Transfer Bank</strong>.</li>
+      <li>Tunjukkan barcode QRIS kios atau berikan nomor rekening bank toko kepada pembeli.</li>
+      <li>Pastikan dana telah masuk ke rekening toko (cek mutasi/notifikasi SMS/WhatsApp m-Banking toko).</li>
+      <li>Klik <strong>Konfirmasi Pembayaran QRIS/Transfer Lunas</strong>. Struk akan tercetak dengan keterangan Non-Tunai.</li>
+      <li><span class="badge badge-amber">Perhatian Kasir:</span> Pembayaran non-tunai tidak menambah uang fisik di laci kasir, melainkan langsung terekam pada mutasi bank di dashboard pemilik. Laci kasir tidak akan terbuka.</li>
+    </ol>
+  </div>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div class="step-title">Transaksi Kasbon / Tempo Pelanggan Tetap (Hutang Pembeli)</div>
+    </div>
+    <p>Kios pasar sering memberikan fasilitas kasbon tempo 3-7 hari untuk langganan terpercaya:</p>
+    <ol>
+      <li>Masukkan barang belanjaan ke keranjang seperti biasa.</li>
+      <li>Tekan <strong>Bayar Sekarang</strong>, lalu pilih metode pembayaran <strong>⏳ Tempo / Kasbon</strong>.</li>
+      <li>Isi <strong>Nama Pembeli</strong> (wajib) dan <strong>Nomor HP WhatsApp</strong> (wajib).</li>
+      <li>Pilih <strong>Tanggal Jatuh Tempo</strong> (bawaan sistem: 7 hari ke depan).</li>
+      <li>Jika pembeli membayar Uang Muka (DP), masukkan nominalnya di kolom <strong>Uang Muka (DP) Kasir</strong> (contoh: total belanja Rp 350.000, bayar DP tunai Rp 100.000).</li>
+      <li>Klik <strong>Simpan Transaksi Kasbon</strong>.</li>
+      <li>Uang DP tunai Rp 100.000 otomatis masuk ke kas laci aktif kasir, dan sisa hutang Rp 250.000 tercatat di Buku Piutang Pelanggan di panel Owner.</li>
+    </ol>
+  </div>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <div class="step-title">Penerimaan Cicilan / Pelunasan Piutang di Kasir</div>
+    </div>
+    <p>Ketika pelanggan datang untuk mencicil atau melunasi kasbon lamanya:</p>
+    <ol>
+      <li>Di bar atas kasir, klik menu <strong>Kelola Toko &rarr; Buku Kasbon Pelanggan</strong>.</li>
+      <li>Cari nama pelanggan (contoh: <code>Mang Ujang</code>).</li>
+      <li>Klik tombol hijau <strong>💵 Bayar Cicilan</strong> di samping nama pelanggan.</li>
+      <li>Ketikkan nominal uang yang disetorkan pembeli (contoh: <code>Rp 150.000</code>).</li>
+      <li>Pilih metode pembayaran (Tunai atau Transfer) dan tambahkan catatan singkat.</li>
+      <li>Klik <strong>Simpan Pembayaran</strong>. Struk tanda terima cicilan akan tercetak untuk pelanggan.</li>
+      <li>Uang tunai cicilan otomatis menambah saldo uang fisik di laci kasir saat itu juga.</li>
+    </ol>
+  </div>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">7</div>
+      <div class="step-title">Tombol Cepat Buka Laci Kasir Manual (Emergency Drawer Kick)</div>
+    </div>
+    <p>Bila kasir perlu membuka laci uang tanpa transaksi (misal menukar uang receh atau memasukkan uang modal):</p>
+    <ol>
+      <li>Cukup klik tombol kuning <strong>💰 Buka Laci</strong> pada bar atas kasir.</li>
+      <li>Sistem mengirimkan sinyal pulsa RJ-11 ke printer thermal sehingga laci langsung terbuka tanpa perlu mencetak transaksi palsu.</li>
+    </ol>
+  </div>
+
+  <!-- ==================== HALAMAN 6: BAB 2 (BAGIAN 3) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 2: Operasional Kasir (Bagian 3)</span>
+  </div>
+
+  <div class="step-box avoid-break">
+    <div class="step-header">
+      <div class="step-num">8</div>
+      <div class="step-title">Tutup Shift Kasir (Blind Cash Drop Reconciliation)</div>
+    </div>
+    <p>Di akhir jam kerja kasir (sore/malam), kasir wajib melakukan penutupan shift kasir:</p>
+    
+    <div class="callout callout-warning">
+      <div class="callout-title">⚠️ SISTEM REKONSILIASI BLIND DROP (ANTI-KECORAN):</div>
+      Layar kasir <strong>SENGAJA TIDAK MEMPERLIHATKAN</strong> berapa jumlah uang yang seharusnya ada di laci. Tujuannya adalah agar kasir menghitung uang fisik riil apa adanya secara jujur tanpa bisa merekayasa atau mencocok-cocokkan angka.
+    </div>
+
+    <ol>
+      <li>Klik tombol profil kasir di pojok kanan atas, lalu pilih <strong>Tutup Shift Kasir</strong>.</li>
+      <li>Buka laci uang kasir. Pisahkan uang kertas dan koin berdasarkan pecahannya.</li>
+      <li>Hitung seluruh uang fisik yang ada di dalam laci secara teliti dan jujur.</li>
+      <li>Ketikkan jumlah total fisik uang yang dihitung kasir ke kolom <strong>Total Fisik Uang Kas</strong>.</li>
+      <li>Kasir dapat menggunakan kalkulator pecahan uang (lembar 100rb, 50rb, 20rb, dll.) yang disediakan pada dialog untuk mempermudah penghitungan.</li>
+      <li>Tuliskan catatan penutupan shift jika ada hal khusus, lalu klik <strong>Tutup Shift Sekarang</strong>.</li>
+      <li>Sistem akan mencocokkan fisik kasir dengan perhitungan sistem di latar belakang dan mencetak struk rekap penutupan shift. Selisih (minus/lebih) akan tercatat permanen di dashboard owner.</li>
+    </ol>
+  </div>
+
+  <div class="avoid-break" style="margin-top: 12px;">
+    <h2>Formula Perhitungan Rekonsiliasi Kasir</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 32%;">Komponen Arus Kas</th>
+          <th style="width: 20%;">Pengaruh ke Laci</th>
+          <th>Keterangan Operasional</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Modal Awal Laci (Starting Cash)</strong></td>
+          <td><span class="badge badge-green">+ Bertambah</span></td>
+          <td>Uang receh yang diserahkan pemilik di awal shift pagi</td>
+        </tr>
+        <tr>
+          <td><strong>Penjualan Tunai Kasir</strong></td>
+          <td><span class="badge badge-green">+ Bertambah</span></td>
+          <td>Penerimaan uang fisik dari pembeli eceran & karungan</td>
+        </tr>
+        <tr>
+          <td><strong>DP / Cicilan Kasbon Tunai</strong></td>
+          <td><span class="badge badge-green">+ Bertambah</span></td>
+          <td>Setoran uang kas dari pelanggan yang membayar hutang tempo</td>
+        </tr>
+        <tr>
+          <td><strong>Kas Masuk / Suntikan Modal</strong></td>
+          <td><span class="badge badge-green">+ Bertambah</span></td>
+          <td>Uang tunai darurat yang disuntikkan pemilik ke laci saat kasir butuh kembalian</td>
+        </tr>
+        <tr>
+          <td><strong>Biaya Operasional Toko (Tunai)</strong></td>
+          <td><span class="badge badge-rose">- Berkurang</span></td>
+          <td>Uang keluar dari laci untuk makan kuli, retribusi, bensin, dll.</td>
+        </tr>
+        <tr>
+          <td><strong>Kulakan Tunai dari Laci</strong></td>
+          <td><span class="badge badge-rose">- Berkurang</span></td>
+          <td>Uang yang diserahkan tunai ke petani saat barang masuk</td>
+        </tr>
+        <tr>
+          <td><strong>TOTAL KAS EKSPEKTASI SISTEM</strong></td>
+          <td><strong>= TARGET FISIK</strong></td>
+          <td><strong>Jumlah uang fisik riil yang WAJIB ada di laci saat dihitung</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== HALAMAN 7: BAB 3 (BAGIAN 1) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 3: Operasional Pemilik Toko (Bagian 1)</span>
+  </div>
+
+  <h1>BAB 3: PANDUAN OPERASIONAL PEMILIK (OWNER)</h1>
+  <p>Panduan bagi pemilik toko (Owner) untuk memantau performa bisnis, mengendalikan uang laci, dan mencegah kecurangan:</p>
+
+  <h2>3.1 Memantau Kas Laci Live & Likuiditas Finansial</h2>
+  <p>Buka dashboard owner di smartphone atau laptop: <code>https://kassa.konfigin.my.id/owner.html</code> (Login PIN: <kbd>123456</kbd>).</p>
+  <p>Pada kartu KPI paling atas, pemilik dapat melihat indikator kunci dalam hitungan detik:</p>
+  <ul>
+    <li><strong>💵 Uang Kas Laci Saat Ini:</strong> Jumlah uang tunai fisik riil yang WAJIB ada di laci kasir detik ini juga. Angka ini dihitung secara live oleh sistem. Pemilik dapat melakukan inspeksi mendadak (*sidak*) ke laci kasir kapan saja dan mencocokkan dengan angka ini.</li>
+    <li><strong>📈 Total Omset Hari Ini:</strong> Akumulasi seluruh penjualan toko (Tunai + QRIS + Transfer + Kasbon).</li>
+    <li><strong>📱 Rekening Bank (Non-Tunai):</strong> Uang yang masuk via QRIS dan Transfer Bank toko.</li>
+    <li><strong>📑 Buku Piutang Kasbon:</strong> Total uang toko yang masih dipinjam pembeli tempo.</li>
+    <li><strong>🚛 Buku Hutang Kulakan:</strong> Total sisa tagihan toko ke supplier/petani yang belum lunas.</li>
+  </ul>
+
+  <h2>3.2 Radar Anti-Kecolongan & Anomali Arbitrase Kasir</h2>
+  <p>Kecurangan paling sering di kios pasar adalah: <em>kasir menjual komoditas dengan harga eceran mahal ke pembeli umum, tetapi di sistem dicatat sebagai harga karungan murah, lalu selisih uangnya dikantongi</em>.</p>
+  <div class="callout callout-danger">
+    <div class="callout-title">🛡️ CARA SISTEM MENDETEKSI KECURANGAN:</div>
+    Sistem menganalisis perbandingan volume komoditas (Kg Eceran vs Kg Karungan). Jika volume karungan melonjak di atas 75% secara tidak lazim pada pembeli umum, dashboard owner otomatis menyalakan badge merah <strong>⚠️ ANOMALI HARGA TERDETEKSI</strong>. Pemilik toko dapat langsung memeriksa kamera CCTV atau mengaudit nota kasir terkait.
+  </div>
+
+  <h2>3.3 Pencatatan Kulakan Pemasok & Hutang Toko</h2>
+  <p>Setiap kali ada truk/pickup dari petani atau bandar pasar menurunkan barang dagangan:</p>
+  <ol>
+    <li>Di Dashboard Owner atau Layar Kasir, klik tombol <strong>🚛 Kulakan & Hutang</strong>.</li>
+    <li>Klik tombol <strong>+ Catat Kulakan Masuk</strong>.</li>
+    <li>Pilih Pemasok (contoh: <code>Juragan Dedi (Petani Cilembu)</code>) dan Komoditas yang masuk.</li>
+    <li>Ketikkan bobot timbangan masuk (contoh: <code>150</code> kg) dan Harga Modal per kg (contoh: <code>Rp 6.200</code>).</li>
+    <li>Pilih status pembayaran: <strong>Lunas</strong> atau <strong>Tempo / Hutang</strong> (bisa isi nominal DP jika ada).</li>
+    <li>Pilih Sumber Dana: <strong>Kas Laci</strong> (uang diambil dari laci) atau <strong>Transfer Bank</strong> (ditransfer via m-Banking).</li>
+    <li>Klik <strong>Simpan Penerimaan Kulakan</strong>.</li>
+    <li>Stok komoditas di katalog otomatis bertambah +150 kg dan HPP modal barang terupdate otomatis.</li>
+  </ol>
+
+  <!-- ==================== HALAMAN 8: BAB 3 (BAGIAN 2) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 3: Operasional Pemilik Toko (Bagian 2)</span>
+  </div>
+
+  <h2>3.4 Biaya Operasional Toko & Proteksi Saldo Laci Minus</h2>
+  <p>Pengeluaran kios pasar (makan siang kuli, retribusi kebersihan pasar, listrik, bensin pickup) dapat dicatat dengan mudah:</p>
+  <ol>
+    <li>Klik menu <strong>💸 Biaya & Kas</strong> pada bar atas &rarr; Klik <strong>+ Catat Pengeluaran</strong>.</li>
+    <li>Pilih Kategori Biaya (contoh: <code>Kuli Panggul & Bongkar Muat</code>).</li>
+    <li>Ketikkan nominal rupiah (contoh: <code>Rp 35.000</code>) dan pilih Sumber Dana: <strong>Kas Laci</strong> atau <strong>Transfer Bank</strong>.</li>
+    <li>Tuliskan catatan keterangan, lalu klik <strong>Simpan Pengeluaran</strong>.</li>
+  </ol>
+
+  <div class="callout callout-success">
+    <div class="callout-title">🛡️ PROTEKSI ANTI SALDO LACI TEKOR / MINUS:</div>
+    Jika kasir hendak mengeluarkan biaya tunai Rp 100.000 tetapi uang fisik di laci saat itu hanya ada Rp 40.000, <strong>sistem akan secara otomatis menolak transaksi tersebut</strong>. Kasir tidak bisa mencatat pengeluaran yang membuat laci minus. Kasir harus menambah kas modal terlebih dahulu via menu <strong>+ Tambah Modal / Kas Masuk</strong>.
+  </div>
+
+  <h2>3.5 Pencatatan Susut & Busuk Komoditas (Sortasi)</h2>
+  <p>Komoditas umbi dan sayuran memiliki risiko alami susut bobot atau busuk saat penyimpanan di kios:</p>
+  <ol>
+    <li>Klik menu <strong>Kelola Toko &rarr; Catat Susut & Busuk</strong>.</li>
+    <li>Pilih komoditas yang rusak (contoh: <code>Ubi Cilembu Madu Asli</code>) dan masukkan bobotnya (contoh: <code>1.5</code> kg).</li>
+    <li>Ketikkan catatan penyebab (contoh: <em>Sortiran pagi, busuk lembek terkena air hujan</em>).</li>
+    <li>Klik <strong>Simpan Catatan Susut</strong>. Stok berkurang 1.5 kg, dan kerugian modal langsung terekam di laporan rugi-laba.</li>
+  </ol>
+
+  <h2>3.6 Otorisasi Pembatalan Nota (Void Anti-Fraud)</h2>
+  <p>Jika pembeli membatalkan belanjaan setelah nota tercetak, kasir <strong>TIDAK DAPAT MEMBATALKAN NOTA SENDIRI</strong>:</p>
+  <ul>
+    <li>Kasir wajib memanggil Pemilik Toko (Supervisor/Owner).</li>
+    <li>Pemilik toko memasukkan PIN Keamanan Owner (<kbd>123456</kbd>) dan mengetikkan alasan pembatalan nota.</li>
+    <li>Sistem akan mengembalikan stok komoditas ke gudang, menghapus tagihan kasbon jika tempo, dan mencatat nama owner yang menyetujui pembatalan ke dalam buku audit sistem (*Audit Trail*).</li>
+  </ul>
+
+  <h2>3.7 Laporan Penjualan & Analisis Laba Bersih</h2>
+  <p>Di Dashboard Owner, buka tab <strong>Laporan Penjualan</strong> untuk melihat:</p>
+  <ul>
+    <li>Filter periode tanggal fleksibel (Hari Ini, 7 Hari Terakhir, Bulan Ini, atau Rentang Tanggal Khusus).</li>
+    <li><strong>Laba Kotor:</strong> Total Omset $-$ HPP Modal Barang Terjual.</li>
+    <li><strong>Laba Bersih Riil:</strong> Laba Kotor $-$ Total Seluruh Biaya Operasional Toko.</li>
+    <li>Daftar Komoditas Terlaris beserta kontribusi laba masing-masing komoditas.</li>
+    <li>Tombol <strong>📥 Ekspor CSV (Excel)</strong> dan <strong>🖨️ Cetak Laporan PDF</strong> untuk pembukuan akuntansi toko.</li>
+  </ul>
+
+  <!-- ==================== HALAMAN 9: BAB 4 ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 4: SOP Harian Toko Pasar</span>
+  </div>
+
+  <h1>BAB 4: STANDAR OPERASIONAL PROSEDUR (SOP) HARIAN KIOS</h1>
+  <p>Jadwal alur kerja harian untuk memastikan operasional tertib dan tidak ada selisih kas:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 17%;">Waktu</th>
+        <th style="width: 23%;">Pelaksana</th>
+        <th>Aktivitas Operasional yang Wajib Dilakukan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>05:00 - 05:30</strong><br><span class="badge badge-blue">Pagi Hari</span></td>
+        <td>Kasir Pagi & Owner</td>
+        <td>
+          1. Owner menyerahkan modal receh kasir (Rp 200.000).<br>
+          2. Kasir login ke sistem POS menggunakan PIN <kbd>654321</kbd> dan menginput <strong>Buka Shift Kasir</strong>.<br>
+          3. Cek koneksi printer Bluetooth dan lakukan test pemicu laci kasir.<br>
+          4. Kalibrasi timbangan digital kios ke angka 0.00 kg.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>05:30 - 11:30</strong><br><span class="badge badge-green">Puncak Pasar</span></td>
+        <td>Kasir</td>
+        <td>
+          1. Melayani pembeli eceran dan reseller grosir karungan.<br>
+          2. Setiap ada pembeli langganan kasbon, catat nama, nomor WhatsApp, serta DP tunai.<br>
+          3. Jika ada pengeluaran beli es/makan kuli panggul, langsung catat di menu <em>Biaya Operasional</em> saat uang diambil dari laci.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>12:00 - 13:30</strong><br><span class="badge badge-amber">Siang Hari</span></td>
+        <td>Kasir & Owner</td>
+        <td>
+          1. Penerimaan truk kulakan masuk dari petani: timbang ulang dan catat di menu <em>Penerimaan Kulakan</em>.<br>
+          2. Sortasi komoditas lembab: timbang dan catat di menu <em>Susut & Busuk</em>.<br>
+          3. Owner memeriksa indikator <em>Uang Kas Laci</em> di HP untuk verifikasi uang fisik.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>16:30 - 17:30</strong><br><span class="badge badge-purple">Tutup Kios</span></td>
+        <td>Kasir & Owner</td>
+        <td>
+          1. Kasir membuka menu <strong>Tutup Shift Kasir</strong>.<br>
+          2. Kasir menghitung fisik uang kertas dan koin di laci secara mandiri (*Blind Drop*).<br>
+          3. Kasir menginput hasil hitungan fisik dan menekan tombol simpan.<br>
+          4. Owner memeriksa hasil rekonsiliasi selisih kas di dashboard.<br>
+          5. Matikan daya tablet kasir dan printer Bluetooth.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== HALAMAN 10: BAB 5 ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 5: Troubleshooting</span>
+  </div>
+
+  <h1>BAB 5: PENANGANAN KENDALA TEKNIS (TROUBLESHOOTING)</h1>
+
+  <div class="avoid-break">
+    <h3>1. Jaringan Internet Kios Mati / Tidak Ada Sinyal</h3>
+    <p><strong>Gejala:</strong> Indikator di header kasir berubah menjadi kuning <code>🟡 Offline (X Nota Tersimpan)</code>.</p>
+    <p><strong>Solusi:</strong> <em>Tetap layani pembeli seperti biasa!</em> Aplikasi POS Toko Umbi dirancang offline-first. Nota tetap tersimpan di memori tablet dan printer Bluetooth tetap bisa mencetak struk. Begitu sinyal kembali, sistem otomatis menyinkronkan data atau klik tombol <strong>🔄 Sinkronkan Sekarang</strong>.</p>
+  </div>
+
+  <div class="avoid-break" style="margin-top: 10px;">
+    <h3>2. Printer Bluetooth Tidak Mau Mencetak Struk</h3>
+    <p><strong>Gejala:</strong> Indikator printer di header menunjukkan <code>🔴 Putus</code> atau kertas tidak keluar.</p>
+    <p><strong>Solusi:</strong></p>
+    <ol>
+      <li>Pastikan Bluetooth dan izin <strong>Lokasi (GPS)</strong> di tablet Android dalam kondisi aktif (ON).</li>
+      <li>Periksa lampu indikator printer (pastikan kertas thermal tidak habis dan terpasang menghadap ke atas).</li>
+      <li>Klik tombol <code>🖨️ Printer: Putus</code> di header kasir &rarr; klik <strong>Hubungkan Printer</strong> &rarr; pilih nama printer thermal Anda.</li>
+      <li>Jika masih kendala, pilih mode <strong>Aplikasi RawBT</strong> atau <strong>System Print</strong> sebagai cadangan darurat.</li>
+    </ol>
+  </div>
+
+  <div class="avoid-break" style="margin-top: 10px;">
+    <h3>3. Laci Kasir (Cash Drawer) Tidak Terbuka Otomatis</h3>
+    <p><strong>Gejala:</strong> Transaksi tunai selesai tetapi laci uang tidak menendang keluar.</p>
+    <p><strong>Solusi:</strong></p>
+    <ol>
+      <li>Periksa kabel RJ-11 dari laci uang (pastikan tercolok kencang ke port 'DK / Drawer' di belakang printer thermal).</li>
+      <li>Pastikan anak kunci manual laci kasir berada pada posisi <strong>vertikal (terbuka otomatis)</strong>, bukan terkunci horizontal.</li>
+      <li>Uji coba dengan menekan tombol <strong>💰 Buka Laci</strong> di bar atas kasir.</li>
+    </ol>
+  </div>
+
+  <div class="avoid-break" style="margin-top: 10px;">
+    <h3>4. Kasir Salah Memasukkan PIN Berulang Kali (Terkunci)</h3>
+    <p><strong>Gejala:</strong> Muncul pesan peringatan <code>Terlalu banyak percobaan PIN salah. Silakan coba lagi dalam 300 detik</code>.</p>
+    <p><strong>Solusi:</strong> Ini adalah fitur keamanan <em>Anti-Brute Force</em> untuk mencegah orang asing menebak PIN kasir. Tunggu 5 menit hingga kunci keamanan terbuka otomatis, atau minta Pemilik Toko login sebagai Owner (PIN: <kbd>123456</kbd>) dan mereset PIN kasir melalui menu <strong>Kelola Pengguna Kasir</strong>.</p>
+  </div>
+
+  <!-- ==================== HALAMAN 11: BAB 6 (BAGIAN 1) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 6: Skenario & Studi Kasus Pasar (1 - 4)</span>
+  </div>
+
+  <h1>BAB 6: SKENARIO OPERASIONAL & STUDI KASUS PASAR</h1>
+  <p>Berikut adalah 8 skenario studi kasus nyata yang dirancang lengkap dengan alur cerita pasar, tindakan yang harus dilakukan di aplikasi, dan penjelasan dampak sistemnya:</p>
+
+  <!-- Kasus 1 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 1</span>
+    <div class="case-title">Buka Shift Pagi & Penerimaan Modal Awal Kasir</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Pukul 05.00 WIB kios mulai beroperasi. Pak Haji (Owner) menyerahkan uang tunai pecahan kecil sebesar Rp 200.000 kepada Budi (Kasir) sebagai uang modal kembalian di laci.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir:</strong> Buka <code>https://kassa.konfigin.my.id/</code> &rarr; Masukkan PIN Kasir <kbd>654321</kbd> &rarr; Pada dialog Buka Shift, ketik nominal modal: <code>200000</code> &rarr; Klik <strong>"Buka Shift Kasir"</strong>.</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Modal awal wajib diinput agar kasir dapat memberikan uang kembalian pada pembeli pagi. Sistem mencatat modal Rp 200.000 sebagai saldo awal laci aktif. Uang ini bukan omset keuntungan, melainkan titipan modal yang wajib dikembalikan saat tutup shift sore hari.
+    </div>
+  </div>
+
+  <!-- Kasus 2 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 2</span>
+    <div class="case-title">Transaksi Eceran Kiloan Tunai & Laci Terbuka Otomatis</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Ibu Ani datang membeli 3.25 kg Ubi Cilembu Madu (harga eceran Rp 14.000/kg, total Rp 45.500). Ibu Ani menyerahkan uang lembaran Rp 50.000 tunai.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir:</strong> Klik kartu "Ubi Cilembu Madu" &rarr; Masukkan bobot <code>3.25</code> kg &rarr; Pilih harga <strong>Eceran</strong> &rarr; Klik "+ Masukkan ke Keranjang" &rarr; Klik "Bayar Sekarang" &rarr; Pilih "Tunai" &rarr; Klik pecahan <kbd>Rp 50.000</kbd> &rarr; Klik <strong>"Selesaikan Transaksi & Cetak Struk"</strong>.</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Sistem menghitung uang kembalian Rp 4.500 secara presisi. Begitu tombol cetak ditekan, tablet mengirim pulsa elektrik ke printer thermal sehingga laci uang kasir otomatis menendang terbuka (*Auto Drawer Kick*) dan struk belanja tercetak. Saldo fisik laci kasir bertambah Rp 45.500.
+    </div>
+  </div>
+
+  <!-- Kasus 3 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 3</span>
+    <div class="case-title">Transaksi Grosir Karungan Warung Reseller & Pembayaran QRIS</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Warung Bu Siti berbelanja 1 karung Ubi Cilembu (50 kg). Berhak mendapat harga reseller/grosir (Rp 11.500/kg = Total Rp 575.000) dan membayar menggunakan QRIS.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir:</strong> Klik "Ubi Cilembu Madu" &rarr; Ketik bobot <code>50</code> kg &rarr; Pilih tier <strong>Karungan / Reseller</strong> &rarr; Masukkan nama pembeli "Warung Bu Siti" &rarr; Klik "Bayar Sekarang" &rarr; Pilih tab <strong>📱 QRIS</strong> &rarr; Tunjukkan barcode QRIS &rarr; Klik "Konfirmasi Pembayaran QRIS Lunas".</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Pembeli hemat Rp 125.000 dibandingkan harga eceran. Dana Rp 575.000 langsung masuk ke rekening bank toko dan tercatat di mutasi bank Dashboard Owner. Uang fisik di laci kasir Budi TIDAK bertambah sehingga tidak mengacaukan perhitungan uang tunai laci saat tutup shift.
+    </div>
+  </div>
+
+  <!-- Kasus 4 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 4</span>
+    <div class="case-title">Penjualan Tempo / Kasbon Pelanggan Tetap dengan Uang Muka (DP)</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Mang Ujang (pedagang gorengan langganan) membeli 30 kg Singkong Mentega & 10 kg Ubi Merah total Rp 350.000. Beliau meminta tempo 7 hari dan membayar DP tunai Rp 100.000.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir:</strong> Masukkan item belanjaan ke keranjang &rarr; Klik "Bayar Sekarang" &rarr; Pilih tab <strong>⏳ Tempo / Kasbon</strong> &rarr; Masukkan Nama: "Mang Ujang", No HP: "081234567890", Jatuh Tempo: 7 hari &rarr; Masukkan DP Tunai: <code>100000</code> &rarr; Klik <strong>"Simpan Transaksi Kasbon"</strong>.</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Uang DP tunai Rp 100.000 otomatis menambah uang fisik di laci kasir aktif. Sisa tagihan piutang Rp 250.000 langsung masuk ke Buku Piutang Pelanggan di dashboard owner lengkap dengan tanggal jatuh tempo sehingga pemilik dapat menagihnya tepat waktu.
+    </div>
+  </div>
+
+  <!-- ==================== HALAMAN 12: BAB 6 (BAGIAN 2) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 6: Skenario & Studi Kasus Pasar (5 - 8)</span>
+  </div>
+
+  <!-- Kasus 5 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 5</span>
+    <div class="case-title">Pengeluaran Biaya Operasional Toko & Uji Proteksi Saldo Laci Minus</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Siang hari, kuli panggul meminta upah bongkar muat karung sebesar Rp 35.000 tunai dari laci kasir.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir:</strong> Buka menu "💸 Biaya & Kas" di bar atas &rarr; Klik "+ Catat Pengeluaran" &rarr; Pilih Kategori: "Kuli Panggul & Bongkar Muat" &rarr; Ketik Nominal: <code>35000</code> &rarr; Pilih Sumber: <strong>Kas Laci</strong> &rarr; Tulis catatan: "Bongkar muat pickup pagi" &rarr; Klik <strong>"Simpan Pengeluaran"</strong>.</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Uang fisik di laci kasir berkurang Rp 35.000 dan tercatat resmi sebagai biaya operasional shift aktif. <br>
+      <em>Uji Coba Proteksi Saldo Minus:</em> Jika kasir iseng menginput biaya Rp 5.000.000 dari laci yang hanya berisi Rp 300.000, sistem akan <strong>menolak keras transaksi tersebut</strong> demi melindungi kasir dari tuduhan uang laci tekor.
+    </div>
+  </div>
+
+  <!-- Kasus 6 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 6</span>
+    <div class="case-title">Penerimaan Truk Kulakan Masuk dari Petani / Pemasok</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Truk Juragan Dedi (petani ubi) tiba menurunkan 150 kg Ubi Cilembu baru dengan harga kulakan Rp 6.200/kg (Total Rp 930.000). Dibayar via Transfer Bank oleh Owner.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir/Owner:</strong> Klik menu "🚛 Kulakan & Hutang" &rarr; Klik "+ Catat Kulakan Masuk" &rarr; Pilih Pemasok: "Juragan Dedi" &rarr; Pilih Komoditas: "Ubi Cilembu Madu Asli" &rarr; Isi Bobot: <code>150</code> kg & Harga: <code>6200</code> &rarr; Pilih Pembayaran: "Lunas" via <strong>Transfer Bank</strong> &rarr; Klik <strong>"Simpan Penerimaan Kulakan"</strong>.</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Stok komoditas di katalog otomatis bertambah +150 kg dan HPP modal barang terbarui otomatis. Kas laci tunai tidak terpotong karena dibayar melalui rekening bank, menjaga rekonsiliasi kasir tetap aman.
+    </div>
+  </div>
+
+  <!-- Kasus 7 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 7</span>
+    <div class="case-title">Pencatatan Susut Timbangan & Komoditas Busuk (Sortasi)</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Saat sortir karung siang hari, ditemukan 2.0 kg Ubi Cilembu yang busuk lembek terkena tetesan air hujan sehingga tidak layak jual.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir:</strong> Klik menu "Kelola Toko" &rarr; Pilih "Catat Susut & Busuk" &rarr; Pilih Komoditas: "Ubi Cilembu Madu Asli" &rarr; Masukkan Bobot: <code>2.0</code> kg &rarr; Keterangan: "Sortasi siang, busuk lembek air" &rarr; Klik <strong>"Simpan Catatan Susut"</strong>.</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Stok barang di sistem berkurang 2.0 kg secara transparan sehingga angka di tablet selalu sama persis dengan timbangan fisik di los toko. Nilai modal barang busuk dicatat otomatis sebagai kerugian susut di laporan laba rugi.
+    </div>
+  </div>
+
+  <!-- Kasus 8 -->
+  <div class="case-box avoid-break">
+    <span class="case-badge">Studi Kasus 8</span>
+    <div class="case-title">Tutup Kios Sore Hari & Rekonsiliasi Buta (Blind Cash Drop)</div>
+    <div class="case-story">
+      <strong>Cerita Kasus:</strong> Pukul 17.00 WIB kios tutup. Budi (kasir) harus menghitung uang tunai di laci dan menyerahkannya kepada Pak Haji.
+    </div>
+    <ul class="case-actions">
+      <li><strong>Tindakan Kasir:</strong> Klik profil kasir &rarr; Pilih "Tutup Shift Kasir" &rarr; Hitung seluruh uang kertas dan koin di laci secara jujur (Modal 200rb + Eceran 45.5rb + DP Mang Ujang 100rb - Biaya Kuli 35rb = <strong>Rp 310.500</strong>) &rarr; Ketik <code>310500</code> di kolom fisik kasir &rarr; Klik <strong>"Tutup Shift Sekarang"</strong>.</li>
+    </ul>
+    <div class="case-explanation">
+      <strong>🔍 Penjelasan & Logika Sistem:</strong> Layar kasir tidak membocorkan angka target sistem (*Blind Drop*). Begitu disimpan, struk rekap penutupan shift tercetak. Di dashboard owner, sistem membandingkan fisik vs ekspektasi: jika selisih <strong>Rp 0 (Pas)</strong>, kasir terbukti jujur dan disiplin 100%!
+    </div>
+  </div>
+
+  <!-- ==================== HALAMAN 13: BAB 6 (BAGIAN 3) ==================== -->
+  <div class="page-break"></div>
+  <div class="page-header-bar">
+    <span>PD. HASIL BUMI RAYA 1 &bull; Buku Panduan POS</span>
+    <span>BAB 6: Lembar Checklist Praktik Mandiri</span>
+  </div>
+
+  <h2>Checklist Latihan Praktik Simulasi Mandiri (10 Langkah)</h2>
+  <p>Gunakan lembar checklist ini untuk memastikan kasir dan pemilik telah menguasai operasional di alamat <code>https://kassa.konfigin.my.id/</code>:</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 6%;">No</th>
+        <th style="width: 25%;">Skenario Praktik</th>
+        <th style="width: 53%;">Tindakan yang Harus Dilakukan di Layar</th>
+        <th style="width: 16%;">Hasil Uji</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Login Kasir Kios</td>
+        <td>Buka <code>https://kassa.konfigin.my.id/</code>, ketik PIN <kbd>654321</kbd> pada keypad</td>
+        <td>[ &nbsp; ] Berhasil</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Buka Shift Kasir</td>
+        <td>Input modal awal receh laci Rp 200.000, lalu klik Buka Shift Kasir</td>
+        <td>[ &nbsp; ] Berhasil</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Uji Koneksi Printer</td>
+        <td>Buka menu hardware, hubungkan Bluetooth, klik Test Kick Laci & Test Print</td>
+        <td>[ &nbsp; ] Terbuka & Cetak</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Jual Eceran Tunai</td>
+        <td>Pilih Ubi Cilembu 3.25 kg, bayar uang pas tunai Rp 45.500 &rarr; Laci terbuka otomatis</td>
+        <td>[ &nbsp; ] Berhasil</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>Jual Karungan QRIS</td>
+        <td>Pilih Ubi Cilembu 50 kg, tier Karungan, bayar QRIS Rp 575.000 &rarr; Cetak nota</td>
+        <td>[ &nbsp; ] Berhasil</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Kasbon Tempo & DP</td>
+        <td>Pilih Kacang Kupas 10 kg, metode Tempo, isi nama, DP tunai Rp 100.000</td>
+        <td>[ &nbsp; ] Berhasil</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>Catat Biaya Laci</td>
+        <td>Buka Biaya & Kas &rarr; Catat Makan Kuli Rp 35.000 tunai dari kas laci</td>
+        <td>[ &nbsp; ] Berhasil</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>Tes Proteksi Minus</td>
+        <td>Coba catat biaya Rp 5.000.000 tunai laci &rarr; Pastikan sistem menolak transaksi!</td>
+        <td>[ &nbsp; ] Ditolak Aman</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>Pantau di HP Owner</td>
+        <td>Buka <code>https://kassa.konfigin.my.id/owner.html</code>, PIN <kbd>123456</kbd>, cek Kas Laci</td>
+        <td>[ &nbsp; ] Sesuai Real</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>Tutup Shift Blind Drop</td>
+        <td>Buka menu Tutup Shift, hitung fisik uang di laci (Rp 310.500), simpan tutup shift</td>
+        <td>[ &nbsp; ] Selisih Rp 0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-info" style="margin-top: 15px;">
+    <div class="callout-title">🚀 UJI COBA SIMULASI 1 HARI OTOMATIS:</div>
+    Sistem juga dilengkapi skrip robot simulasi 1 hari operasional penuh. Di terminal server, Anda dapat menjalankan perintah:<br>
+    <code style="font-weight: 700; color: #0f172a; font-size: 9.5pt;">node backend/simulate_day.js</code><br>
+    Skrip akan menjalankan 12 alur transaksi sekaligus dalam 3 detik, lalu seluruh hasilnya dapat dilihat langsung di browser tablet Anda!
+  </div>
+
+  <div style="margin-top: 25px; text-align: center; border-top: 1.5px solid #cbd5e1; padding-top: 14px;" class="avoid-break">
+    <p style="font-weight: 800; color: #0f172a; font-size: 11pt;">SELAMAT MENJALANKAN OPERASIONAL PD. HASIL BUMI RAYA 1!</p>
+    <p style="color: #64748b; font-size: 8.5pt; margin-top: 3px;">
+      Sistem POS Offline-First ini telah terpasang online, teruji penuh, dan siap mendukung kemajuan, efisiensi waktu, serta keamanan finansial kios usaha Anda.
+    </p>
+  </div>
+
+</body>
+</html>

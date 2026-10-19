@@ -36,11 +36,39 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // 2. Check customer profile (if selected)
+    // 2. Check or create customer profile (Kasbon bisa pembeli siapa saja)
     let customer = null;
+    const customerName = (req.body.customer_name || '').trim();
+    const customerPhone = (req.body.customer_phone || '').trim();
+
     if (customer_id) {
       customer = await dbQuery.get('SELECT * FROM customers WHERE id = ?', [customer_id]);
     }
+
+    if (!customer && customerName) {
+      if (customerPhone) {
+        customer = await dbQuery.get('SELECT * FROM customers WHERE phone = ? OR LOWER(name) = LOWER(?)', [customerPhone, customerName]);
+      } else {
+        customer = await dbQuery.get('SELECT * FROM customers WHERE LOWER(name) = LOWER(?)', [customerName]);
+      }
+
+      if (!customer) {
+        const newCustRes = await dbQuery.run(
+          'INSERT INTO customers (name, phone, tier, created_at) VALUES (?, ?, "retail", datetime("now", "localtime"))',
+          [customerName, customerPhone || null]
+        );
+        customer = {
+          id: newCustRes.lastID,
+          name: customerName,
+          phone: customerPhone || null,
+          tier: 'retail'
+        };
+      } else if (customerPhone && !customer.phone) {
+        await dbQuery.run('UPDATE customers SET phone = ? WHERE id = ?', [customerPhone, customer.id]);
+        customer.phone = customerPhone;
+      }
+    }
+
     const isCustomerReseller = customer && customer.tier === 'reseller';
 
     // 3. Process each line item with Anti-Fraud Pricing Engine
@@ -65,14 +93,15 @@ router.post('/', authenticateToken, async (req, res) => {
       }
 
       // DETERMINATION OF PRICE TIER:
-      // Reseller price applies IF:
-      // A) The customer is a verified registered reseller, OR
-      // B) The item quantity meets or exceeds the wholesale minimum threshold
-      const meetsWholesaleQty = qty >= Number(product.wholesale_min_qty);
-      const isEligibleForReseller = isCustomerReseller || meetsWholesaleQty;
+      // Price is explicitly chosen by cashier (Eceran vs Karungan) or custom price nego
+      const isKarung = item.price_tier === 'karungan' || item.price_tier === 'reseller';
+      const priceTier = isKarung ? 'reseller' : 'retail';
+      let unitPrice = isKarung ? Number(product.reseller_price) : Number(product.retail_price);
 
-      const priceTier = isEligibleForReseller ? 'reseller' : 'retail';
-      const unitPrice = isEligibleForReseller ? Number(product.reseller_price) : Number(product.retail_price);
+      // Support cashier custom unit price adjustment (nego pasar / penyesuaian kasir)
+      if (item.unit_price && Number(item.unit_price) > 0) {
+        unitPrice = Number(item.unit_price);
+      }
       
       // Calculate raw subtotal from weight and unit price
       const rawSubtotal = qty * unitPrice;
@@ -114,7 +143,7 @@ router.post('/', authenticateToken, async (req, res) => {
       if (!customer) {
         return res.status(400).json({
           success: false,
-          message: 'Transaksi Kasbon / Tempo WAJIB memilih pelanggan terdaftar terlebih dahulu.'
+          message: 'Transaksi Kasbon / Tempo wajib mencantumkan nama dan nomor HP pembeli.'
         });
       }
       changeDue = 0;
@@ -189,7 +218,7 @@ router.post('/', authenticateToken, async (req, res) => {
             remaining,
             finalDueDate,
             debtStatus,
-            `Kasbon nota ${orderNo}`
+            `Kasbon nota ${orderNo} - ${customer.name} (HP: ${customer.phone || '-'})`
           ]
         );
 

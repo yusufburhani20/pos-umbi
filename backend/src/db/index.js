@@ -228,45 +228,135 @@ async function initDatabase() {
     );
   `);
 
+  // 10. Suppliers table (Manajemen Pemasok / Juragan Petani)
+  await dbQuery.exec(`
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      phone TEXT,
+      address TEXT,
+      supplied_commodities TEXT,
+      bank_info TEXT,
+      notes TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    );
+  `);
+
+  // 11. Purchases table (Riwayat Kulakan / Barang Masuk dari Supplier)
+  await dbQuery.exec(`
+    CREATE TABLE IF NOT EXISTS purchases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchase_no TEXT UNIQUE NOT NULL,
+      supplier_id INTEGER,
+      product_id INTEGER NOT NULL,
+      qty_kg REAL NOT NULL,
+      cost_price REAL NOT NULL,
+      total_cost REAL NOT NULL,
+      payment_status TEXT DEFAULT 'lunas' CHECK(payment_status IN ('lunas', 'tempo', 'partial')),
+      paid_amount REAL DEFAULT 0.0,
+      remaining_amount REAL NOT NULL DEFAULT 0.0,
+      due_date DATE,
+      notes TEXT,
+      recorded_by INTEGER,
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
+      FOREIGN KEY(product_id) REFERENCES products(id),
+      FOREIGN KEY(recorded_by) REFERENCES users(id)
+    );
+  `);
+
+  // 12. Supplier Payments table (Cicilan / Pelunasan Hutang Kulakan)
+  await dbQuery.exec(`
+    CREATE TABLE IF NOT EXISTS supplier_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchase_id INTEGER NOT NULL,
+      supplier_id INTEGER NOT NULL,
+      amount_paid REAL NOT NULL,
+      payment_method TEXT NOT NULL CHECK(payment_method IN ('cash', 'transfer')),
+      payment_date DATETIME DEFAULT (datetime('now', 'localtime')),
+      notes TEXT,
+      recorded_by INTEGER,
+      FOREIGN KEY(purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+      FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
+      FOREIGN KEY(recorded_by) REFERENCES users(id)
+    );
+  `);
+
+  // 13. Store Expenses & Cash Flow (Biaya Operasional Toko & Kas Kecil)
+  await dbQuery.exec(`
+    CREATE TABLE IF NOT EXISTS store_expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      expense_no TEXT UNIQUE NOT NULL,
+      shift_id INTEGER,
+      user_id INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      category_name TEXT NOT NULL,
+      type TEXT DEFAULT 'expense' CHECK(type IN ('expense', 'income')),
+      amount REAL NOT NULL,
+      source TEXT DEFAULT 'cash' CHECK(source IN ('cash', 'transfer')),
+      notes TEXT,
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY(shift_id) REFERENCES shifts(id),
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+  `);
+
   // Seed default data if empty
   await seedInitialData();
   await seedStoreSettings();
+  await seedInitialSuppliers();
+  await seedInitialExpenses();
 }
 
 async function seedInitialData() {
   const userCount = await dbQuery.get('SELECT COUNT(*) as count FROM users');
   if (userCount.count === 0) {
     console.log('[DB] Seeding default users (Owner & Kasir)...');
-    // Default Owner (PIN: 123456) and Kasir (PIN: 112233)
+    // Default Owner (PIN: 123456) and Kasir (PIN: 654321)
     const ownerPinHash = await bcrypt.hash('123456', 8);
-    const cashierPinHash = await bcrypt.hash('112233', 8);
+    const cashierPinHash = await bcrypt.hash('654321', 8);
 
     await dbQuery.run(
       'INSERT INTO users (name, username, role, pin_code) VALUES (?, ?, ?, ?)',
-      ['Pak Haji (Owner)', 'owner', 'owner', ownerPinHash]
-    );
-    await dbQuery.run(
-      'INSERT INTO users (name, username, role, pin_code) VALUES (?, ?, ?, ?)',
-      ['Kasir Pagi (Budi)', 'kasir1', 'cashier', cashierPinHash]
+      ['Owner', 'owner', 'owner', ownerPinHash]
     );
 
-    console.log('[DB] Seeding sample umbi-umbian products...');
+    await dbQuery.run(
+      'INSERT INTO users (name, username, role, pin_code) VALUES (?, ?, ?, ?)',
+      ['Budi (Kasir)', 'kasir', 'cashier', cashierPinHash]
+    );
+
+    console.log('[DB] Seeding real market commodities products...');
     const sampleProducts = [
-      ['Kentang Dieng Super', 'umbi', 'kg', 11000, 16000, 13500, 10.0, 300.0, '🥔'],
-      ['Ubi Madu Cilembu Asli', 'umbi', 'kg', 9000, 14000, 11500, 10.0, 200.0, '🍠'],
-      ['Ubi Ungu Grade A', 'umbi', 'kg', 7000, 11000, 9000, 10.0, 150.0, '🍠'],
-      ['Singkong Gajah Mentega', 'umbi', 'kg', 3500, 6500, 5000, 15.0, 450.0, '🍠'],
-      ['Bawang Merah Brebes Super', 'bumbu', 'kg', 28000, 38000, 32000, 5.0, 100.0, '🧅'],
-      ['Bawang Putih Kating', 'bumbu', 'kg', 25000, 34000, 29000, 5.0, 120.0, '🧄'],
-      ['Wortel Brastagi Curah', 'sayur', 'kg', 8000, 13000, 10500, 10.0, 180.0, '🥕'],
-      ['Kacang Tanah Kupas', 'palawija', 'kg', 24000, 32000, 28000, 5.0, 80.0, '🥜']
+      ['Ubi Putih Super (Besar)', 'umbi', 'kg', 5100, 7000, 5500, 15.0, 300.0, 30.0, '🍠'],
+      ['Ubi Putih (Kecil)', 'umbi', 'kg', 5100, 6500, 5500, 15.0, 200.0, 20.0, '🍠'],
+      ['Ubi Merah', 'umbi', 'kg', 6000, 7500, 6500, 15.0, 250.0, 25.0, '🍠'],
+      ['Ubi Ungu', 'umbi', 'kg', 5900, 8000, 6500, 15.0, 250.0, 25.0, '🍠'],
+      ['Ubi Cilembu Madu Asli', 'umbi', 'kg', 9000, 14000, 11500, 10.0, 200.0, 20.0, '🍠'],
+      ['Ubi Jepang', 'umbi', 'kg', 4500, 7500, 5000, 15.0, 250.0, 25.0, '🍠'],
+      ['Ubi To (Sortiran Kecil)', 'umbi', 'kg', 2500, 4500, 3200, 15.0, 200.0, 20.0, '🍠'],
+      ['Talas Bogor / Ketan', 'umbi', 'kg', 7000, 12000, 9000, 10.0, 150.0, 15.0, '🥔'],
+      ['Suuk (Kacang Tanah Basah)', 'palawija', 'kg', 14000, 18000, 14800, 10.0, 200.0, 25.0, '🥜'],
+      ['Singkong Mentega', 'umbi', 'kg', 3500, 6000, 4500, 15.0, 350.0, 30.0, '🍠'],
+      ['Kacang Kedelai / Bulu', 'palawija', 'kg', 6000, 7500, 6500, 10.0, 200.0, 20.0, '🫛'],
+      ['Kacang Tanah Kupas', 'palawija', 'kg', 24000, 32000, 28000, 5.0, 120.0, 15.0, '🥜'],
+      ['Bangkuang Super', 'sayur', 'kg', 5000, 7500, 5500, 15.0, 300.0, 30.0, '🥔'],
+      ['To Bangkuang (Kecil)', 'sayur', 'kg', 2500, 5000, 3500, 15.0, 200.0, 20.0, '🥔'],
+      ['Labu Parang / Kuning', 'sayur', 'kg', 7000, 9500, 7800, 10.0, 250.0, 25.0, '🎃'],
+      ['Kulang Kaleng (Kolang-Kaling)', 'olahan', 'kg', 7500, 15000, 11500, 10.0, 180.0, 20.0, '🥥'],
+      ['Gula Aren Plastik (10 kg)', 'bumbu', 'bal', 195000, 238000, 215000, 1.0, 50.0, 5.0, '🍯'],
+      ['Gula Aren Daun', 'bumbu', 'kg', 19500, 24500, 22000, 5.0, 100.0, 10.0, '🍯'],
+      ['Jagung Manis', 'sayur', 'kg', 6000, 9500, 7500, 10.0, 200.0, 20.0, '🌽'],
+      ['Edamame Pretelan Super', 'sayur', 'kg', 6000, 24000, 20000, 5.0, 120.0, 15.0, '🫛'],
+      ['Buah Kaweni (Kweni)', 'buah', 'kg', 12000, 18000, 15000, 10.0, 120.0, 15.0, '🥭']
     ];
 
     for (const p of sampleProducts) {
       await dbQuery.run(
         `INSERT INTO products 
-         (name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, stock_qty, image_emoji)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, stock_qty, min_stock_alert, image_emoji)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         p
       );
     }
@@ -286,9 +376,9 @@ async function seedInitialData() {
 
 async function seedStoreSettings() {
   const defaults = [
-    { key: 'store_name', value: 'TOKO UMBI JAYA' },
+    { key: 'store_name', value: 'PD. HASIL BUMI RAYA 1' },
     { key: 'store_tagline', value: 'Pusat Umbi, Bawang & Komoditas Pasar' },
-    { key: 'store_address', value: 'Pasar Induk Kramat Jati, Blok B No. 12-14' },
+    { key: 'store_address', value: 'Pasar induk modern, Cikopo, Kec. Campaka, Kabupaten Purwakarta, Jawa Barat 41183' },
     { key: 'store_phone', value: '0812-3456-7890' },
     { key: 'receipt_footer', value: 'Terima kasih atas kunjungan Anda!\nBarang yang sudah ditimbang & dibeli tidak dapat ditukar/dikembalikan.' }
   ];
@@ -301,8 +391,158 @@ async function seedStoreSettings() {
   }
 }
 
+async function seedInitialSuppliers() {
+  const count = await dbQuery.get('SELECT COUNT(*) as count FROM suppliers');
+  if (count.count === 0) {
+    console.log('[DB] Seeding default suppliers (Juragan Petani & Pengepul)...');
+    const defaultSuppliers = [
+      [
+        'Juragan Mahmud (Brebes)',
+        '0812-3456-7890',
+        'Kersana, Brebes, Jawa Tengah',
+        'Bawang Merah Super, Bawang Putih Kating',
+        'BCA 1234567890 a.n. Mahmud',
+        'Juragan bawang merah langganan utama, kiriman rutin setiap Selasa & Jumat pagi.'
+      ],
+      [
+        'Petani Pak Subur (Dieng)',
+        '0852-9876-5432',
+        'Kejajar, Wonosobo, Jawa Tengah',
+        'Kentang Granola Super, Kentang Dieng AB/AL',
+        'BRI 9876543210123 a.n. Subur Wibowo',
+        'Kelompok tani Dieng langsung, umbi kentang padat kadar air rendah.'
+      ],
+      [
+        'Kang Asep Pengepul (Sukabumi)',
+        '0878-1122-3344',
+        'Cikembar, Sukabumi, Jawa Barat',
+        'Ubi Cilembu Madu, Singkong Mentega, Ubi Ungu',
+        'Mandiri 1320011223344 a.n. Asep Saepudin',
+        'Pengepul ubi-ubian terpercaya, pasokan karungan 50 kg.'
+      ],
+      [
+        'Haji Anwar (Garut)',
+        '0813-5566-7788',
+        'Samarang, Garut, Jawa Barat',
+        'Talas Bogor Super, Jahe Merah, Kunyit Rimpang',
+        'BNI 0441122334 a.n. Anwar Sanusi',
+        'Spesialis talas pulen dan rempah hasil bumi pegunungan Garut.'
+      ]
+    ];
+
+    for (const sup of defaultSuppliers) {
+      await dbQuery.run(
+        `INSERT INTO suppliers (name, phone, address, supplied_commodities, bank_info, notes)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        sup
+      );
+    }
+  }
+}
+
+async function seedInitialExpenses() {
+  const count = await dbQuery.get('SELECT COUNT(*) as count FROM store_expenses');
+  if (count.count === 0) {
+    console.log('[DB] Seeding sample store operational expenses...');
+    const defaultExpenses = [
+      ['EXP-20261018-0001', 1, 2, 'makan_rokok', 'Makan, Minum & Rokok', 'expense', 35000, 'cash', 'Nasi bungkus siang 2 porsi + es teh kru kasir'],
+      ['EXP-20261018-0002', 1, 2, 'parkir_retribusi', 'Parkir & Retribusi Pasar', 'expense', 15000, 'cash', 'Salar kebersihan & keamanan pasar harian'],
+      ['EXP-20261018-0003', 1, 2, 'kuli_bongkar', 'Kuli Panggul & Bongkar Muat', 'expense', 50000, 'cash', 'Upah panggul turun 25 karung ubi cilembu'],
+      ['EXP-20261018-0004', 1, 1, 'listrik_token', 'Listrik & Token PLN', 'expense', 100000, 'transfer', 'Isi token listrik kios 1300VA'],
+      ['EXP-20261018-0005', 1, 1, 'wifi_pulsa', 'WiFi, Internet & Pulsa', 'expense', 150000, 'transfer', 'Tagihan bulanan WiFi router kios']
+    ];
+
+    for (const exp of defaultExpenses) {
+      await dbQuery.run(
+        `INSERT INTO store_expenses (expense_no, shift_id, user_id, category, category_name, type, amount, source, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        exp
+      );
+    }
+  }
+}
+
+/**
+ * Calculates real-time physical cash expected in the cashier drawer
+ * for the currently active shift (or a specified shift).
+ */
+async function getCurrentDrawerCash(targetShiftId = null) {
+  let shift;
+  if (targetShiftId) {
+    shift = await dbQuery.get('SELECT * FROM shifts WHERE id = ?', [targetShiftId]);
+  } else {
+    shift = await dbQuery.get("SELECT * FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
+  }
+
+  if (!shift) {
+    return {
+      has_active_shift: false,
+      shift: null,
+      starting_cash: 0,
+      cash_sales: 0,
+      cash_expenses: 0,
+      cash_income: 0,
+      cash_supplier_payments: 0,
+      current_drawer_cash: 0
+    };
+  }
+
+  const cashSalesRow = await dbQuery.get(
+    `SELECT COALESCE(SUM(total_amount), 0) as cash_sales
+     FROM orders
+     WHERE shift_id = ? AND payment_method = 'cash' AND status = 'completed'`,
+    [shift.id]
+  );
+
+  const expensesRow = await dbQuery.get(
+    `SELECT 
+       COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses,
+       COALESCE(SUM(CASE WHEN type = 'income' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_income
+     FROM store_expenses
+     WHERE shift_id = ?`,
+    [shift.id]
+  );
+
+  const supplierCashRow = await dbQuery.get(
+    `SELECT COALESCE(SUM(amount_paid), 0) as cash_supplier_payments
+     FROM supplier_payments
+     WHERE payment_method = 'cash' AND payment_date >= ?`,
+    [shift.start_time]
+  );
+
+  const debtCashRow = await dbQuery.get(
+    `SELECT COALESCE(SUM(amount_paid), 0) as cash_debt_collected
+     FROM debt_payments
+     WHERE (shift_id = ? OR (payment_date >= ? AND shift_id IS NULL)) AND payment_method = 'cash'`,
+    [shift.id, shift.start_time]
+  );
+
+  const starting_cash = Number(shift.starting_cash) || 0;
+  const cash_sales = Number(cashSalesRow ? cashSalesRow.cash_sales : 0) || 0;
+  const cash_expenses = Number(expensesRow ? expensesRow.cash_expenses : 0) || 0;
+  const cash_income = Number(expensesRow ? expensesRow.cash_income : 0) || 0;
+  const cash_supplier_payments = Number(supplierCashRow ? supplierCashRow.cash_supplier_payments : 0) || 0;
+  const cash_debt_collected = Number(debtCashRow ? debtCashRow.cash_debt_collected : 0) || 0;
+
+  const current_drawer_cash = starting_cash + cash_sales + cash_income + cash_debt_collected - cash_expenses - cash_supplier_payments;
+
+  return {
+    has_active_shift: true,
+    shift,
+    starting_cash,
+    cash_sales,
+    cash_expenses,
+    cash_income,
+    cash_debt_collected,
+    cash_supplier_payments,
+    current_drawer_cash
+  };
+}
+
 module.exports = {
   db,
   dbQuery,
-  initDatabase
+  initDatabase,
+  getCurrentDrawerCash
 };
+
