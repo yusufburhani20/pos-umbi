@@ -356,16 +356,6 @@
             <span class="total-val" id="totalAmountText">Rp 0</span>
           </div>
 
-          <!-- Quick Cash Presets (Pecahan Pasar Lengkap) -->
-          <div class="cash-presets" id="cashPresetsBar">
-            <button class="btn-preset" data-amount="exact">Uang Pas</button>
-            <button class="btn-preset" data-amount="10000">10.000</button>
-            <button class="btn-preset" data-amount="20000">20.000</button>
-            <button class="btn-preset" data-amount="50000">50.000</button>
-            <button class="btn-preset" data-amount="100000">100.000</button>
-            <button class="btn-preset" data-amount="200000">200.000</button>
-          </div>
-
           <!-- Primary Checkout Button (Touch-Friendly Tablet) -->
           <button class="btn-primary-checkout" id="btnCheckout" disabled>
             <span class="checkout-title">⚡ BAYAR SEKARANG</span>
@@ -571,77 +561,78 @@
 
   <!-- MODAL: Payment / Checkout -->
   <div class="modal-backdrop" id="paymentModal" style="display:none;">
-    <div class="modal-dialog modal-md">
-      <div class="modal-header">
-        <h2>Penyelesaian Pembayaran</h2>
+    <div class="modal-dialog modal-md modal-payment-compact" style="max-width: 440px; margin: auto;">
+      <div class="modal-header" style="padding: 10px 14px;">
+        <h2 style="font-size: 14px; font-weight: 700;">Penyelesaian Pembayaran</h2>
         <button class="modal-close" id="btnClosePaymentModal">✕</button>
       </div>
-      <div class="modal-body">
-        <div class="bill-summary-banner">
-          <span class="banner-label">Total yang Harus Dibayar:</span>
-          <span class="banner-amount" id="payModalTotal">Rp 0</span>
+      <div class="modal-body" style="padding: 8px 12px; gap: 6px;">
+        <div class="bill-summary-banner" style="padding: 6px 10px; border-radius: 8px;">
+          <span class="banner-label" style="font-size: 11px;">Total Tagihan:</span>
+          <span class="banner-amount" id="payModalTotal" style="font-size: 17px; font-weight: 800;">Rp 0</span>
         </div>
 
-        <div class="payment-method-selector">
-          <button class="btn-method active" data-method="cash">
-            <span class="method-icon">💵</span> Tunai (Cash)
+        <div class="payment-method-selector" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 2px;">
+          <button class="btn-method active" data-method="cash" style="height: 32px; font-size: 11px; padding: 0 4px; gap: 4px; border-radius: 6px;">
+            <span class="method-icon" style="font-size: 12px;">💵</span> Tunai
           </button>
-          <button class="btn-method" data-method="qris">
-            <span class="method-icon">📱</span> QRIS
+          <button class="btn-method" data-method="qris" style="height: 32px; font-size: 11px; padding: 0 4px; gap: 4px; border-radius: 6px;">
+            <span class="method-icon" style="font-size: 12px;">📱</span> QRIS
           </button>
-          <button class="btn-method" data-method="transfer">
-            <span class="method-icon">🏦</span> Transfer
+          <button class="btn-method" data-method="transfer" style="height: 32px; font-size: 11px; padding: 0 4px; gap: 4px; border-radius: 6px;">
+            <span class="method-icon" style="font-size: 12px;">🏦</span> Transfer
           </button>
-          <button class="btn-method btn-method-tempo" data-method="tempo" id="btnMethodTempo">
-            <span class="method-icon">📒</span> Tempo / Kasbon
+          <button class="btn-method btn-method-tempo" data-method="tempo" id="btnMethodTempo" style="height: 32px; font-size: 11px; padding: 0 4px; gap: 4px; border-radius: 6px;">
+            <span class="method-icon" style="font-size: 12px;">📒</span> Tempo
           </button>
         </div>
 
         <div id="cashPaymentSection">
-          <div class="form-group" style="margin-bottom: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <label class="field-label" style="margin: 0; font-size: 13px; font-weight: 700; color: #f8fafc;">Uang Diterima dari Pembeli (Rp):</label>
-              <button type="button" class="btn-toggle-keyboard-mode" id="btnToggleKeyboardMode" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #94a3b8; font-size: 11px; padding: 2px 8px; border-radius: 6px; cursor: pointer;">⌨️ Buka Keyboard Tab</button>
+          <div class="tender-change-row" style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 8px; margin-bottom: 5px;">
+            <div class="form-group" style="margin: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <label class="field-label" style="margin: 0; font-size: 11px; font-weight: 700; color: #f8fafc;">Uang Diterima (Rp):</label>
+                <button type="button" class="btn-toggle-keyboard-mode" id="btnToggleKeyboardMode" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #94a3b8; font-size: 10px; padding: 1px 6px; border-radius: 4px; cursor: pointer;">⌨️ Tab</button>
+              </div>
+              <input type="text" id="cashTenderedInput" class="input-huge font-mono" placeholder="0" inputmode="none" readonly style="cursor: pointer; text-align: right; font-size: 20px; height: 38px; font-weight: 800; color: #10b981; background: #0f172a; border: 1.5px solid #334155; border-radius: 8px; padding: 0 10px; width: 100%;">
             </div>
-            <input type="text" id="cashTenderedInput" class="input-huge font-mono" placeholder="0 (Gunakan keypad di bawah)" inputmode="none" readonly style="cursor: pointer; text-align: right; font-size: 26px; height: 50px; font-weight: 800; color: #10b981; background: #0f172a; border: 2px solid #334155; border-radius: 10px; padding: 0 16px;">
-          </div>
-
-          <div class="change-display-card" id="changeCard" style="margin-bottom: 10px; padding: 10px 14px; background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-            <span class="change-label" style="font-size: 13px; color: #94a3b8; font-weight: 600;">Kembalian:</span>
-            <span class="change-amount font-mono" id="changeDueText" style="font-size: 22px; font-weight: 900; color: #10b981;">Rp 0</span>
+            <div class="change-display-card" id="changeCard" style="margin: 0; padding: 4px 10px; background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end;">
+              <span class="change-label" style="font-size: 10px; color: #94a3b8; font-weight: 600;">Kembalian:</span>
+              <span class="change-amount font-mono" id="changeDueText" style="font-size: 18px; font-weight: 900; color: #10b981; line-height: 1.2;">Rp 0</span>
+            </div>
           </div>
 
           <!-- INTEGRATED TOUCH NUMPAD & NOMINAL CHIPS (NO SYSTEM KEYBOARD REQUIRED) -->
-          <div class="virtual-pos-keypad" id="tenderNumpad">
+          <div class="virtual-pos-keypad" id="tenderNumpad" style="margin-top: 3px;">
             <!-- Row 1: Fast Cash Chips -->
-            <div class="keypad-chips-bar" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 8px;">
-              <button type="button" class="btn-num btn-chip-exact" data-val="pas" style="height: 38px; font-size: 12px; font-weight: 800; background: #16a34a; color: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(22,163,74,0.3); cursor: pointer;">⚡ Pas</button>
-              <button type="button" class="btn-num btn-chip-add" data-add="10000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+10 Rb</button>
-              <button type="button" class="btn-num btn-chip-add" data-add="20000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+20 Rb</button>
-              <button type="button" class="btn-num btn-chip-add" data-add="50000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+50 Rb</button>
-              <button type="button" class="btn-num btn-chip-add" data-add="100000" style="height: 38px; font-size: 12px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">+100 Rb</button>
+            <div class="keypad-chips-bar" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 5px;">
+              <button type="button" class="btn-num btn-chip-exact" data-val="pas" style="height: 32px; font-size: 11px; font-weight: 800; background: #16a34a; color: #fff; border: none; border-radius: 6px; box-shadow: 0 1px 3px rgba(22,163,74,0.3); cursor: pointer;">⚡ Pas</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="10000" style="height: 32px; font-size: 11px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; cursor: pointer;">+10 Rb</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="20000" style="height: 32px; font-size: 11px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; cursor: pointer;">+20 Rb</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="50000" style="height: 32px; font-size: 11px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; cursor: pointer;">+50 Rb</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="100000" style="height: 32px; font-size: 11px; font-weight: 700; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; cursor: pointer;">+100 Rb</button>
             </div>
 
             <!-- Numeric Keypad Grid 4x4 -->
-            <div class="keypad-touch-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
-              <button type="button" class="btn-num btn-key-digit" data-num="7" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">7</button>
-              <button type="button" class="btn-num btn-key-digit" data-num="8" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">8</button>
-              <button type="button" class="btn-num btn-key-digit" data-num="9" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">9</button>
-              <button type="button" class="btn-num btn-key-action danger" data-val="clear" style="height: 44px; font-size: 16px; font-weight: 800; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; border-radius: 8px; cursor: pointer;">C</button>
+            <div class="keypad-touch-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+              <button type="button" class="btn-num btn-key-digit" data-num="7" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">7</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="8" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">8</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="9" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">9</button>
+              <button type="button" class="btn-num btn-key-action danger" data-val="clear" style="height: 35px; font-size: 14px; font-weight: 800; background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; border-radius: 6px; cursor: pointer;">C</button>
 
-              <button type="button" class="btn-num btn-key-digit" data-num="4" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">4</button>
-              <button type="button" class="btn-num btn-key-digit" data-num="5" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">5</button>
-              <button type="button" class="btn-num btn-key-digit" data-num="6" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">6</button>
-              <button type="button" class="btn-num btn-key-action" data-num="000" style="height: 44px; font-size: 15px; font-weight: 700; background: #1e293b; color: #38bdf8; border: 1px solid #334155; border-radius: 8px; cursor: pointer;">000</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="4" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">4</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="5" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">5</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="6" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">6</button>
+              <button type="button" class="btn-num btn-key-action" data-num="000" style="height: 35px; font-size: 13px; font-weight: 700; background: #1e293b; color: #38bdf8; border: 1px solid #334155; border-radius: 6px; cursor: pointer;">000</button>
 
-              <button type="button" class="btn-num btn-key-digit" data-num="1" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">1</button>
-              <button type="button" class="btn-num btn-key-digit" data-num="2" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">2</button>
-              <button type="button" class="btn-num btn-key-digit" data-num="3" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">3</button>
-              <button type="button" class="btn-num btn-key-action backspace" data-val="backspace" style="height: 44px; font-size: 18px; font-weight: 800; background: #475569; color: #f8fafc; border: 1px solid #64748b; border-radius: 8px; cursor: pointer;">⌫</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="1" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">1</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="2" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">2</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="3" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">3</button>
+              <button type="button" class="btn-num btn-key-action backspace" data-val="backspace" style="height: 35px; font-size: 15px; font-weight: 800; background: #475569; color: #f8fafc; border: 1px solid #64748b; border-radius: 6px; cursor: pointer;">⌫</button>
 
-              <button type="button" class="btn-num btn-key-digit" data-num="0" style="height: 44px; font-size: 18px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">0</button>
-              <button type="button" class="btn-num btn-key-digit" data-num="00" style="height: 44px; font-size: 16px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; cursor: pointer;">00</button>
-              <button type="button" class="btn-num btn-chip-add" data-add="200000" style="grid-column: span 2; height: 44px; font-size: 13px; font-weight: 700; background: #1e293b; color: #f59e0b; border: 1px solid #b45309; border-radius: 8px; cursor: pointer;">+200 Rb</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="0" style="height: 35px; font-size: 15px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">0</button>
+              <button type="button" class="btn-num btn-key-digit" data-num="00" style="height: 35px; font-size: 13px; font-weight: 700; background: #334155; color: #f8fafc; border: 1px solid #475569; border-radius: 6px; cursor: pointer;">00</button>
+              <button type="button" class="btn-num btn-chip-add" data-add="200000" style="grid-column: span 2; height: 35px; font-size: 11.5px; font-weight: 700; background: #1e293b; color: #f59e0b; border: 1px solid #b45309; border-radius: 6px; cursor: pointer;">+200 Rb</button>
             </div>
           </div>
         </div>
@@ -655,67 +646,67 @@
 
         <!-- Section: Tempo / Kasbon (Bisa Pembeli Siapa Saja) -->
         <div id="tempoPaymentSection" style="display:none;">
-          <div class="tempo-notice-box" style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 16px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(245, 158, 11, 0.25);">
-              <span style="font-size: 22px;">📒</span>
+          <div class="tempo-notice-box" style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(245, 158, 11, 0.25);">
+              <span style="font-size: 18px;">📒</span>
               <div>
-                <strong style="color: #fef08a; font-size: 13.5px; display: block;">Catat Kasbon / Piutang Pembeli</strong>
-                <span style="color: #94a3b8; font-size: 11px;">Bisa untuk pembeli siapa saja. Masukkan nama & nomor HP agar jelas siapa yang berhutang.</span>
+                <strong style="color: #fef08a; font-size: 12.5px; display: block;">Catat Kasbon / Piutang Pembeli</strong>
+                <span style="color: #94a3b8; font-size: 10px;">Bisa untuk pembeli siapa saja. Masukkan nama & nomor HP penagihan.</span>
               </div>
             </div>
 
             <!-- Input Nama Pembeli -->
-            <div class="form-group" style="margin-bottom: 10px;">
-              <label class="field-label" style="font-size: 12px; font-weight: 700; color: #f8fafc; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span>👤 Nama Pembeli / Peminjam Kasbon <span style="color: #ef4444;">*</span></span>
-                <span style="font-size: 10.5px; color: #94a3b8; font-weight: normal;">(Wajib diisi)</span>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label class="field-label" style="font-size: 11px; font-weight: 700; color: #f8fafc; display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>👤 Nama Pembeli <span style="color: #ef4444;">*</span></span>
+                <span style="font-size: 10px; color: #94a3b8; font-weight: normal;">(Wajib)</span>
               </label>
-              <input type="text" id="tempoCustomerNameInput" class="input-modern" placeholder="Ketik nama pembeli (misal: Pak Joko, Bu Siti, Mas Hendra)" list="registeredCustomersList" style="width: 100%; height: 42px; background: rgba(0,0,0,0.4); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 8px; color: #fff; font-size: 13.5px; font-weight: 600; padding: 0 12px;" autocomplete="off" required>
+              <input type="text" id="tempoCustomerNameInput" class="input-modern" placeholder="Ketik nama pembeli..." list="registeredCustomersList" style="width: 100%; height: 36px; background: rgba(0,0,0,0.4); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 6px; color: #fff; font-size: 12.5px; font-weight: 600; padding: 0 10px;" autocomplete="off" required>
               <datalist id="registeredCustomersList"></datalist>
             </div>
 
             <!-- Input Nomor HP Pembeli -->
-            <div class="form-group" style="margin-bottom: 12px;">
-              <label class="field-label" style="font-size: 12px; font-weight: 700; color: #f8fafc; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span>📞 No. HP / WhatsApp Pembeli <span style="color: #ef4444;">*</span></span>
-                <span style="font-size: 10.5px; color: #34d399; font-weight: normal;">(Untuk kontak penagihan)</span>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label class="field-label" style="font-size: 11px; font-weight: 700; color: #f8fafc; display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>📞 No. HP / WhatsApp <span style="color: #ef4444;">*</span></span>
+                <span style="font-size: 10px; color: #34d399; font-weight: normal;">(Untuk kontak penagihan)</span>
               </label>
-              <input type="tel" id="tempoCustomerPhoneInput" class="input-modern font-mono" placeholder="Contoh: 081234567890" style="width: 100%; height: 42px; background: rgba(0,0,0,0.4); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 8px; color: #34d399; font-size: 14px; font-weight: 600; padding: 0 12px;" required>
+              <input type="tel" id="tempoCustomerPhoneInput" class="input-modern font-mono" placeholder="Contoh: 081234567890" style="width: 100%; height: 36px; background: rgba(0,0,0,0.4); border: 1.5px solid rgba(245, 158, 11, 0.4); border-radius: 6px; color: #34d399; font-size: 13px; font-weight: 600; padding: 0 10px;" required>
             </div>
 
             <!-- Tanggal Jatuh Tempo & DP -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
               <div class="form-group">
-                <label class="field-label" style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">📅 Jatuh Tempo:</label>
-                <input type="date" id="tempoDueDateInput" class="input-modern font-mono" style="width: 100%; height: 38px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; padding: 0 10px; font-size: 12.5px;">
+                <label class="field-label" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 3px;">📅 Jatuh Tempo:</label>
+                <input type="date" id="tempoDueDateInput" class="input-modern font-mono" style="width: 100%; height: 34px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; padding: 0 8px; font-size: 11.5px;">
               </div>
               <div class="form-group">
-                <label class="field-label" style="font-size: 11.5px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 4px;">💵 DP Tunai (Opsional):</label>
-                <input type="text" inputmode="numeric" id="tempoDpInput" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 38px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; padding: 0 10px; font-size: 12.5px;">
+                <label class="field-label" style="font-size: 10.5px; font-weight: 600; color: #cbd5e1; display: block; margin-bottom: 3px;">💵 DP Tunai:</label>
+                <input type="text" inputmode="numeric" id="tempoDpInput" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 34px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; padding: 0 8px; font-size: 11.5px;">
               </div>
             </div>
 
             <!-- Ringkasan Perhitungan Kasbon -->
-            <div class="tempo-calc-banner" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 10px 14px;">
-              <div style="display: flex; justify-content: space-between; font-size: 12.5px; color: #cbd5e1;">
+            <div class="tempo-calc-banner" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 8px 10px;">
+              <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: #cbd5e1;">
                 <span>Total Belanja:</span>
                 <strong id="tempoTotalAmount" style="color: #f8fafc;">Rp 0</strong>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 12.5px; color: #cbd5e1; margin-top: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: #cbd5e1; margin-top: 3px;">
                 <span>Uang Muka (DP):</span>
                 <span id="tempoDpAmount" style="color: #34d399;">Rp 0</span>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; color: #f59e0b; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(245, 158, 11, 0.3);">
-                <span>Sisa Kasbon Dicatat:</span>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #f59e0b; margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(245, 158, 11, 0.3);">
+                <span>Sisa Kasbon:</span>
                 <strong id="tempoRemainingAmount">Rp 0</strong>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" id="btnCancelPayment">Batal</button>
-        <button class="btn-primary btn-lg" id="btnProcessPayment">⚡ Konfirmasi & Cetak Struk</button>
+      <div class="modal-footer" style="padding: 8px 12px; gap: 8px;">
+        <button class="btn-secondary" id="btnCancelPayment" style="height: 36px; font-size: 12px; padding: 0 14px;">Batal</button>
+        <button class="btn-primary" id="btnProcessPayment" style="height: 36px; font-size: 13px; font-weight: 700; padding: 0 16px; border-radius: 8px;">⚡ Konfirmasi & Cetak Struk</button>
       </div>
     </div>
   </div>

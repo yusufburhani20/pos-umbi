@@ -1968,19 +1968,21 @@ function bindEvents() {
   }
 
   // Cash preset bar
-  el.cashPresetsBar.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-preset');
-    if (!btn) return;
-    const amount = btn.dataset.amount;
-    const total = getCartTotal();
-    openPaymentModal();
-    if (amount === 'exact') {
-      el.cashTenderedInput.value = formatRupiahNumber(total);
-    } else {
-      el.cashTenderedInput.value = formatRupiahNumber(amount);
-    }
-    calculateChangeDue();
-  });
+  if (el.cashPresetsBar) {
+    el.cashPresetsBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-preset');
+      if (!btn) return;
+      const amount = btn.dataset.amount;
+      const total = getCartTotal();
+      openPaymentModal();
+      if (amount === 'exact') {
+        el.cashTenderedInput.value = formatRupiahNumber(total);
+      } else {
+        el.cashTenderedInput.value = formatRupiahNumber(amount);
+      }
+      calculateChangeDue();
+    });
+  }
 
   el.btnProcessPayment.addEventListener('click', handleProcessOrder);
 
