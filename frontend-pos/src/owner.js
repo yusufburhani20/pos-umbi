@@ -313,6 +313,13 @@ const el = {
   resetPinUserUsername: document.getElementById('resetPinUserUsername'),
   resetPinNewPin: document.getElementById('resetPinNewPin'),
   resetPinConfirmPin: document.getElementById('resetPinConfirmPin'),
+  modalConfirmDeleteCashier: document.getElementById('modalConfirmDeleteCashier'),
+  btnCloseModalDeleteCashier: document.getElementById('btnCloseModalDeleteCashier'),
+  btnCancelModalDeleteCashier: document.getElementById('btnCancelModalDeleteCashier'),
+  btnConfirmDeleteCashierSubmit: document.getElementById('btnConfirmDeleteCashierSubmit'),
+  deleteCashierUserId: document.getElementById('deleteCashierUserId'),
+  deleteCashierNameText: document.getElementById('deleteCashierNameText'),
+  deleteCashierUsernameText: document.getElementById('deleteCashierUsernameText'),
   toastContainer: document.getElementById('toastContainer'),
 
   // Mobile Navigation & Sheet Elements
@@ -977,6 +984,10 @@ function switchTab(tabId) {
   if (el.btnCloseModalResetPin) el.btnCloseModalResetPin.addEventListener('click', () => el.modalResetPin.style.display = 'none');
   if (el.btnCancelModalResetPin) el.btnCancelModalResetPin.addEventListener('click', () => el.modalResetPin.style.display = 'none');
   if (el.btnSaveModalResetPin) el.btnSaveModalResetPin.addEventListener('click', handleSaveResetPin);
+
+  if (el.btnCloseModalDeleteCashier) el.btnCloseModalDeleteCashier.addEventListener('click', closeDeleteCashierModal);
+  if (el.btnCancelModalDeleteCashier) el.btnCancelModalDeleteCashier.addEventListener('click', closeDeleteCashierModal);
+  if (el.btnConfirmDeleteCashierSubmit) el.btnConfirmDeleteCashierSubmit.addEventListener('click', handleConfirmDeleteCashier);
 
   // Settings & Live Receipt Preview Listeners
   ['setStoreName', 'setStoreTagline', 'setStoreAddress', 'setStorePhone', 'setReceiptFooter'].forEach(id => {
@@ -2853,26 +2864,56 @@ function renderCashiers() {
     });
   });
 
-  // Attach handlers to Delete Cashier buttons
-  el.cashierCardsGrid.querySelectorAll('[data-delete-id]').forEach(btn => {
-    btn.addEventListener('click', async () => {
+  // Attach handlers to Delete Cashier buttons (Opens in-app Confirmation Modal)
+  el.cashierCardsGrid.querySelectorAll('.btn-delete-cashier').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const userId = Number(btn.dataset.deleteId);
-      const userName = btn.dataset.userName || 'Kasir';
-      const user = state.users.find(u => u.id === userId);
-      if (!user) return;
-
-      const confirmed = window.confirm(`⚠️ PERINGATAN: Apakah Anda yakin ingin menghapus akun kasir "${userName}" (@${user.username})?\n\nKasir ini tidak akan dapat login lagi ke aplikasi.`);
-      if (!confirmed) return;
-
-      try {
-        const res = await api.deleteUser(userId);
-        showToast(res.message || `Akun kasir "${userName}" berhasil dihapus`, 'success');
-        await loadAllData();
-      } catch (err) {
-        showToast('Gagal menghapus kasir: ' + err.message, 'error');
+      const user = state.users.find(u => Number(u.id) === userId);
+      if (!user) {
+        showToast('Data kasir tidak ditemukan', 'error');
+        return;
       }
+      openDeleteCashierModal(user);
     });
   });
+}
+
+function openDeleteCashierModal(user) {
+  if (!el.modalConfirmDeleteCashier) return;
+  el.deleteCashierUserId.value = user.id;
+  el.deleteCashierNameText.textContent = user.name;
+  el.deleteCashierUsernameText.textContent = '@' + user.username;
+  el.modalConfirmDeleteCashier.style.display = 'flex';
+}
+
+function closeDeleteCashierModal() {
+  if (el.modalConfirmDeleteCashier) {
+    el.modalConfirmDeleteCashier.style.display = 'none';
+  }
+}
+
+async function handleConfirmDeleteCashier() {
+  const userId = Number(el.deleteCashierUserId.value);
+  if (!userId) return;
+
+  const btn = el.btnConfirmDeleteCashierSubmit;
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳ Menghapus...</span>';
+
+  try {
+    const res = await api.deleteUser(userId);
+    closeDeleteCashierModal();
+    showToast(res.message || 'Akun kasir berhasil dihapus', 'success');
+    await loadAllData();
+  } catch (err) {
+    showToast('Gagal menghapus kasir: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
 }
 
 function openAddCashierModal() {

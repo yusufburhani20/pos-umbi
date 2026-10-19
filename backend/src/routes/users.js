@@ -146,12 +146,21 @@ router.delete('/:id', authenticateToken, requireStrictOwner, async (req, res) =>
       return res.status(400).json({ success: false, message: 'Akun Owner tidak dapat dihapus' });
     }
 
-    // Protection 3: Cannot delete cashier with active open shift
+    // Protection 3: If cashier has active open shift, auto-close it gracefully with audit note
     const activeShift = await dbQuery.get('SELECT id FROM shifts WHERE cashier_id = ? AND status = "open"', [id]);
     if (activeShift) {
-      return res.status(400).json({
-        success: false,
-        message: `Kasir "${user.name}" saat ini masih memiliki shift yang sedang aktif (Shift #${activeShift.id}). Harap tutup shift kasir terlebih dahulu sebelum menghapus akun.`
+      await dbQuery.run(
+        `UPDATE shifts 
+         SET status = 'closed', 
+             end_time = datetime('now', 'localtime'), 
+             closing_notes = 'Ditutup otomatis oleh Owner saat akun kasir dihapus' 
+         WHERE id = ?`,
+        [activeShift.id]
+      );
+      await logAudit(req.user.id, 'SHIFT_CLOSED_ON_CASHIER_DELETE', {
+        shift_id: activeShift.id,
+        cashier_id: id,
+        cashier_name: user.name
       });
     }
 
