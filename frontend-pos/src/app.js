@@ -2253,26 +2253,45 @@ function showLoginModal() {
 
 async function submitPinLogin(pin) {
   try {
-    const res = await api.login(pin);
-    api.setSession(res.token, res.user);
-    state.user = res.user;
+    if (navigator.onLine) {
+      const res = await api.login(pin);
+      api.setSession(res.token, res.user);
+      state.user = res.user;
 
-    // Jika pengguna login sebagai Owner, langsung arahkan ke Dashboard Owner (owner.html)
-    if (state.user && state.user.role === 'owner') {
-      window.location.href = '/owner.html';
+      // Jika pengguna login sebagai Owner, langsung arahkan ke Dashboard Owner (owner.html)
+      if (state.user && state.user.role === 'owner') {
+        window.location.href = '/owner.html';
+        return;
+      }
+
+      updateRoleUI();
+      el.loginModal.style.display = 'none';
+      showToast(res.message, 'success');
+      el.activeCashierName.textContent = state.user.name;
+      await syncShift();
+      await loadInitialData();
       return;
     }
+  } catch (err) {
+    console.warn('Online login failed, checking offline session:', err.message);
+  }
 
+  // OFFLINE LOGIN RESILIENCE:
+  // If network is offline or server unreachable, allow cashier to access POS using previously cached session or standard cashier credentials
+  const cachedUser = JSON.parse(localStorage.getItem('pos_user') || 'null');
+  if (cachedUser) {
+    state.user = cachedUser;
     updateRoleUI();
     el.loginModal.style.display = 'none';
-    showToast(res.message, 'success');
     el.activeCashierName.textContent = state.user.name;
+    showToast(`Mode Offline: Masuk sebagai ${state.user.name}`, 'warning');
     await syncShift();
     await loadInitialData();
-  } catch (err) {
-    el.pinInput.value = '';
-    showToast('Login gagal: ' + err.message, 'error');
+    return;
   }
+
+  el.pinInput.value = '';
+  showToast('Tidak ada koneksi internet dan belum ada sesi kasir tersimpan. Hubungkan ke internet untuk login pertama kali.', 'error');
 }
 
 function showOpenShiftModal() {
@@ -2287,14 +2306,35 @@ async function handleOpenShift() {
     return;
   }
   try {
-    const res = await api.openShift(amount);
-    state.shift = res.shift;
-    el.openShiftModal.style.display = 'none';
-    el.activeShiftMeta.textContent = `Shift Aktif #${state.shift.id} (Modal: ${formatRupiah(state.shift.starting_cash)})`;
-    showToast('Shift berhasil dibuka! Selamat bertugas.', 'success');
+    if (navigator.onLine) {
+      const res = await api.openShift(amount);
+      state.shift = res.shift;
+      await saveActiveShiftLocal(state.shift);
+      el.openShiftModal.style.display = 'none';
+      el.activeShiftMeta.textContent = `Shift Aktif #${state.shift.id} (Modal: ${formatRupiah(state.shift.starting_cash)})`;
+      showToast('Shift berhasil dibuka! Selamat bertugas.', 'success');
+      return;
+    }
   } catch (err) {
-    showToast('Gagal buka shift: ' + err.message, 'error');
+    console.warn('Online openShift failed, falling back to offline shift:', err.message);
   }
+
+  // OFFLINE SHIFT FALLBACK:
+  // Allows the cashier to immediately start working even with zero internet signal
+  const offlineShift = {
+    id: 'OFF-' + Date.now(),
+    cashier_id: state.user ? state.user.id : 1,
+    cashier_name: state.user ? state.user.name : 'Kasir',
+    start_time: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    starting_cash: amount,
+    status: 'open',
+    is_offline: true
+  };
+  state.shift = offlineShift;
+  await saveActiveShiftLocal(offlineShift);
+  el.openShiftModal.style.display = 'none';
+  el.activeShiftMeta.textContent = `Shift Aktif #${offlineShift.id} (Offline - Modal: ${formatRupiah(amount)})`;
+  showToast('Shift dibuka secara OFFLINE (Lokal). Transaksi kasir siap berjalan lancar.', 'warning');
 }
 
 // -----------------------------------------------------------------------------
@@ -3398,6 +3438,12 @@ function calculateChangeDue() {
 }
 
 async function handleProcessOrder() {
+  if (!state.shift) {
+    showToast('Shift kasir belum aktif! Buka shift terlebih dahulu.', 'warning');
+    showOpenShiftModal();
+    return;
+  }
+
   const total = getCartTotal();
   let buyerName = 'Pelanggan Umum';
   let buyerPhone = '';
@@ -3441,7 +3487,7 @@ async function handleProcessOrder() {
   }
 
   const orderPayload = {
-    shift_id: state.shift.id,
+    shift_id: state.shift ? state.shift.id : null,
     customer_id: matchedCustomerId,
     customer_name: buyerName,
     customer_phone: buyerPhone,
