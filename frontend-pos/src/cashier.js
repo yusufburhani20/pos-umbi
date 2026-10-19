@@ -1016,25 +1016,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const tryAutoFullscreen = () => {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      const docEl = document.documentElement;
-      const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
-      if (req) {
-        req.call(docEl).catch(() => {});
-      }
-    }
-  };
 
-  tryAutoFullscreen();
-
-  const onFirstInteraction = () => {
-    tryAutoFullscreen();
-    document.removeEventListener('click', onFirstInteraction, true);
-    document.removeEventListener('touchstart', onFirstInteraction, true);
-  };
-  document.addEventListener('click', onFirstInteraction, { capture: true, once: true });
-  document.addEventListener('touchstart', onFirstInteraction, { capture: true, once: true });
 
   if (el.btnToggleFullscreen) {
     el.btnToggleFullscreen.addEventListener('click', () => {

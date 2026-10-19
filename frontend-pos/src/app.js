@@ -501,6 +501,7 @@ const el = {
   scaleRateDefaultHint: document.getElementById('scaleRateDefaultHint'),
   btnResetScaleRate: document.getElementById('btnResetScaleRate'),
   scaleCustomRateUnit: document.getElementById('scaleCustomRateUnit'),
+  scaleRateQuickChips: document.getElementById('scaleRateQuickChips'),
 
   // In-Cart Custom Price Edit Modal
   modalEditCartPrice: document.getElementById('modalEditCartPrice'),
@@ -511,6 +512,8 @@ const el = {
   editCartStandardRate: document.getElementById('editCartStandardRate'),
   inpEditCartNewRate: document.getElementById('inpEditCartNewRate'),
   editCartRatePresets: document.getElementById('editCartRatePresets'),
+  editRateTouchNumpad: document.getElementById('editRateTouchNumpad'),
+  btnToggleEditPriceKeyboard: document.getElementById('btnToggleEditPriceKeyboard'),
   editCartNewSubtotalText: document.getElementById('editCartNewSubtotalText'),
   btnResetToStandardRate: document.getElementById('btnResetToStandardRate'),
   btnCancelEditCartPrice: document.getElementById('btnCancelEditCartPrice'),
@@ -788,28 +791,7 @@ function initFullscreenAndViewportSupport() {
     }
   }
 
-  // Force auto-fullscreen on PWA launch / first user touch
-  const tryAutoFullscreen = () => {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      const docEl = document.documentElement;
-      const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
-      if (req) {
-        req.call(docEl).catch(() => {});
-      }
-    }
-  };
 
-  // Immediate attempt for standalone/PWA
-  tryAutoFullscreen();
-
-  // One-time gesture listener on first interaction
-  const onFirstInteraction = () => {
-    tryAutoFullscreen();
-    document.removeEventListener('click', onFirstInteraction, true);
-    document.removeEventListener('touchstart', onFirstInteraction, true);
-  };
-  document.addEventListener('click', onFirstInteraction, { capture: true, once: true });
-  document.addEventListener('touchstart', onFirstInteraction, { capture: true, once: true });
 
   if (btnToggleFullscreen) {
     btnToggleFullscreen.addEventListener('click', async () => {
@@ -1730,6 +1712,71 @@ function bindEvents() {
   if (el.inpEditCartNewRate) {
     attachCurrencyAutoFormat(el.inpEditCartNewRate, updateEditCartPreview);
   }
+
+  // Keyboard toggle for manual rate edit
+  if (el.btnToggleEditPriceKeyboard) {
+    el.btnToggleEditPriceKeyboard.addEventListener('click', () => {
+      const isReadonly = el.inpEditCartNewRate.hasAttribute('readonly');
+      if (isReadonly) {
+        el.inpEditCartNewRate.removeAttribute('readonly');
+        el.inpEditCartNewRate.setAttribute('inputmode', 'numeric');
+        el.inpEditCartNewRate.focus();
+        el.inpEditCartNewRate.select();
+        el.btnToggleEditPriceKeyboard.textContent = '🔢 Pakai Keypad Layar';
+      } else {
+        el.inpEditCartNewRate.setAttribute('readonly', 'true');
+        el.inpEditCartNewRate.setAttribute('inputmode', 'none');
+        el.inpEditCartNewRate.blur();
+        el.btnToggleEditPriceKeyboard.textContent = '⌨️ Keyboard Tablet';
+      }
+    });
+  }
+
+  // Touch Numpad for manual rate edit on tablet
+  if (el.editRateTouchNumpad) {
+    el.editRateTouchNumpad.querySelectorAll('.btn-rate-num').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const action = btn.dataset.action;
+        const val = btn.dataset.val;
+        const delta = btn.dataset.delta;
+        let current = parseRupiahInput(el.inpEditCartNewRate.value) || 0;
+
+        if (action === 'num') {
+          if (state.editRateIsFresh) {
+            current = Number(val);
+            state.editRateIsFresh = false;
+          } else {
+            const str = String(current) + val;
+            current = Number(str.slice(0, 10));
+          }
+          el.inpEditCartNewRate.value = formatRupiahNumber(current);
+        } else if (action === 'append') {
+          if (state.editRateIsFresh) {
+            state.editRateIsFresh = false;
+          }
+          const str = (current > 0 ? String(current) : '') + val;
+          current = Number(str.slice(0, 10));
+          el.inpEditCartNewRate.value = formatRupiahNumber(current);
+        } else if (action === 'delta') {
+          current = Math.max(0, current + Number(delta));
+          state.editRateIsFresh = false;
+          el.inpEditCartNewRate.value = formatRupiahNumber(current);
+        } else if (action === 'clear') {
+          el.inpEditCartNewRate.value = '0';
+          state.editRateIsFresh = true;
+        } else if (action === 'backspace') {
+          let str = String(current);
+          str = str.length > 1 ? str.slice(0, -1) : '0';
+          current = Number(str);
+          state.editRateIsFresh = false;
+          el.inpEditCartNewRate.value = formatRupiahNumber(current);
+        }
+
+        updateEditCartPreview();
+      });
+    });
+  }
   if (el.btnResetToStandardRate) {
     el.btnResetToStandardRate.addEventListener('click', () => {
       if (state.activeEditCartPriceIndex === null) return;
@@ -2432,6 +2479,41 @@ function openScaleModal(product, existingQty = null, cartIndex = null) {
     el.inpScaleCustomRate.value = formatRupiahNumber(state.scaleCustomRate || defaultRate);
   }
 
+  // Populate scale rate quick chips
+  if (el.scaleRateQuickChips) {
+    const retailP = Number(product.retail_price);
+    const resellerP = Number(product.reseller_price);
+    const chips = [
+      { label: `Ecer (${formatRupiah(retailP)})`, val: retailP },
+      { label: `Karung (${formatRupiah(resellerP)})`, val: resellerP }
+    ];
+    [-1000, -500, +500, +1000].forEach(d => {
+      const v = retailP + d;
+      if (v > 0 && v !== retailP && v !== resellerP) {
+        chips.push({ label: `${d > 0 ? '+' : ''}${d}`, val: v });
+      }
+    });
+
+    el.scaleRateQuickChips.innerHTML = chips.map(ch => `
+      <button type="button" class="btn-scale-rate-chip" data-val="${ch.val}">
+        ${ch.label}
+      </button>
+    `).join('');
+
+    el.scaleRateQuickChips.querySelectorAll('.btn-scale-rate-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = Number(btn.dataset.val);
+        el.inpScaleCustomRate.value = formatRupiahNumber(v);
+        state.scaleCustomRate = v;
+        if (state.scaleMode === 'weight') {
+          updateScaleWeightCalc();
+        } else {
+          updateScaleMoneyCalc();
+        }
+      });
+    });
+  }
+
   // Default to weight mode
   setModalScaleMode('weight');
 
@@ -2442,8 +2524,7 @@ function openScaleModal(product, existingQty = null, cartIndex = null) {
   updateScaleWeightCalc();
 
   el.modalScaleWeight.style.display = 'flex';
-  el.inpScaleWeightKg.focus();
-  el.inpScaleWeightKg.select();
+  // Do not auto-focus to prevent Android OS keyboard flash/flicker
 }
 
 function setModalScaleMode(mode) {
@@ -2463,7 +2544,6 @@ function setModalScaleMode(mode) {
       el.inpScaleMoneyRp.value = '10.000';
     }
     updateScaleMoneyCalc();
-    el.inpScaleMoneyRp.focus();
   }
 }
 
@@ -3127,10 +3207,20 @@ function openEditCartPriceModal(idx) {
     </button>
   `).join('');
 
+  state.editRateIsFresh = true;
+  if (el.inpEditCartNewRate) {
+    el.inpEditCartNewRate.setAttribute('readonly', 'true');
+    el.inpEditCartNewRate.setAttribute('inputmode', 'none');
+  }
+  if (el.btnToggleEditPriceKeyboard) {
+    el.btnToggleEditPriceKeyboard.textContent = '⌨️ Keyboard Tablet';
+  }
+
   el.editCartRatePresets.querySelectorAll('.btn-rate-preset').forEach(btn => {
     btn.addEventListener('click', () => {
       const v = Number(btn.dataset.val);
       el.inpEditCartNewRate.value = formatRupiahNumber(v);
+      state.editRateIsFresh = false;
       updateEditCartPreview();
     });
   });
@@ -3138,8 +3228,7 @@ function openEditCartPriceModal(idx) {
   updateEditCartPreview();
 
   el.modalEditCartPrice.style.display = 'flex';
-  el.inpEditCartNewRate.focus();
-  el.inpEditCartNewRate.select();
+  // Do not auto-focus to prevent Android OS soft keyboard flash/flicker
 }
 
 function updateEditCartPreview() {
@@ -3199,10 +3288,6 @@ function openKarungQtyModal(idx) {
 
   if (el.modalKarungQty) {
     el.modalKarungQty.style.display = 'flex';
-  }
-  if (el.inpKarungTotalKg) {
-    el.inpKarungTotalKg.focus();
-    el.inpKarungTotalKg.select();
   }
 }
 

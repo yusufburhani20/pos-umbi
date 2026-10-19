@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
@@ -411,6 +411,7 @@
             <span class="rate-unit" id="scaleCustomRateUnit">/kg</span>
             <button type="button" id="btnResetScaleRate" class="btn-reset-rate" title="Kembalikan ke tarif standar">Reset</button>
           </div>
+          <div class="scale-rate-quick-chips" id="scaleRateQuickChips" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;"></div>
         </div>
 
         <!-- Tab Mode: Berdasarkan Berat vs Berdasarkan Uang -->
@@ -1704,17 +1705,43 @@
           </div>
         </div>
 
-        <div class="form-group" style="margin-bottom: 14px;">
-          <label class="field-label" style="font-size: 13px; color: #0f172a; font-weight: 700; display: block; margin-bottom: 6px;">Masukkan Tarif Baru (Rp per satuan):</label>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <label class="field-label" style="font-size: 12.5px; color: #0f172a; font-weight: 700; margin: 0;">Tarif Baru (Rp per satuan):</label>
+            <button type="button" id="btnToggleEditPriceKeyboard" style="border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 6px; font-size: 11px; font-weight: 600; padding: 3px 8px; cursor: pointer; color: #475569;">⌨️ Keyboard Tablet</button>
+          </div>
           <div style="position: relative; display: flex; align-items: center;">
             <span style="position: absolute; left: 14px; font-weight: 800; color: #b45309; font-size: 17px;">Rp</span>
-            <input type="text" inputmode="numeric" id="inpEditCartNewRate" class="input-modern font-mono" style="width: 100%; height: 46px; padding-left: 45px; font-size: 20px; font-weight: 800; color: #b45309; background: #fffbeb; border: 2px solid #f59e0b; border-radius: 10px; box-shadow: 0 2px 8px rgba(245,158,11,0.12);" placeholder="7.500">
+            <input type="text" inputmode="none" readonly id="inpEditCartNewRate" class="input-modern font-mono" style="width: 100%; height: 44px; padding-left: 45px; font-size: 20px; font-weight: 800; color: #b45309; background: #fffbeb; border: 2px solid #f59e0b; border-radius: 10px; box-shadow: 0 2px 8px rgba(245,158,11,0.12);" placeholder="7.500">
           </div>
         </div>
 
         <!-- Tombol Preset Cepat Tarif -->
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;" id="editCartRatePresets">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;" id="editCartRatePresets">
           <!-- Populated dynamically -->
+        </div>
+
+        <!-- Keypad Touch Layar Tablet (Cepat tanpa keyboard tablet) -->
+        <div class="edit-rate-numpad" id="editRateTouchNumpad">
+          <button type="button" class="btn-rate-num" data-action="num" data-val="1">1</button>
+          <button type="button" class="btn-rate-num" data-action="num" data-val="2">2</button>
+          <button type="button" class="btn-rate-num" data-action="num" data-val="3">3</button>
+          <button type="button" class="btn-rate-num delta-danger" data-action="delta" data-delta="-500">-500</button>
+          
+          <button type="button" class="btn-rate-num" data-action="num" data-val="4">4</button>
+          <button type="button" class="btn-rate-num" data-action="num" data-val="5">5</button>
+          <button type="button" class="btn-rate-num" data-action="num" data-val="6">6</button>
+          <button type="button" class="btn-rate-num delta-success" data-action="delta" data-delta="500">+500</button>
+
+          <button type="button" class="btn-rate-num" data-action="num" data-val="7">7</button>
+          <button type="button" class="btn-rate-num" data-action="num" data-val="8">8</button>
+          <button type="button" class="btn-rate-num" data-action="num" data-val="9">9</button>
+          <button type="button" class="btn-rate-num util-thou" data-action="append" data-val="000">000</button>
+
+          <button type="button" class="btn-rate-num util-clear" data-action="clear">C</button>
+          <button type="button" class="btn-rate-num" data-action="num" data-val="0">0</button>
+          <button type="button" class="btn-rate-num util-thou" data-action="append" data-val="00">00</button>
+          <button type="button" class="btn-rate-num util-back" data-action="backspace">⌫</button>
         </div>
 
         <!-- Subtotal Preview -->

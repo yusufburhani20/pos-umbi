@@ -1766,13 +1766,15 @@ input, select, textarea {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
+  background-color: rgba(15, 23, 42, 0.72) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure stacked modals (Receipt reprint, Void auth, Child catalog modals) always appear in FRONT of parent modals */
@@ -1808,18 +1810,102 @@ input, select, textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: modalEnter 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: modalEnter 0.12s ease-out;
+  transform: translateZ(0);
+  will-change: opacity;
 }
 
 @keyframes modalEnter {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
   }
+}
+
+/* Touch Keypad for In-Cart Rate Adjustment on Tablet */
+.edit-rate-numpad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.btn-rate-num {
+  height: 42px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-rate-num:active {
+  background: #e2e8f0;
+  transform: scale(0.97);
+}
+
+.btn-rate-num.delta-danger {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.btn-rate-num.delta-success {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #16a34a;
+  font-size: 13px;
+}
+
+.btn-rate-num.util-clear {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
+.btn-rate-num.util-back {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.btn-rate-num.util-thou {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #2563eb;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.btn-scale-rate-chip {
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  border-radius: 7px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.btn-scale-rate-chip:active, .btn-scale-rate-chip.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
 }
 
 .modal-dialog.modal-sm { max-width: 380px; }
