@@ -405,7 +405,22 @@ F:\POS
 - [x] **Sinkronisasi & Rilis Produksi**:
   - Bundle Vite terkompilasi bersih, git commit dipusatkan ke `origin/main` (`7f5870f`), dan file aset terbaru telah dideploy ke server produksi `192.168.18.32` (`kassa.konfigin.my.id`).
 
+### 14. 🧾 Penamaan Laporan Harian & Perbaikan Preview Catatan Kasir (v1.9.1 - 19 Oktober 2026)
+- [x] **Penggantian Nama "Laporan Z" Menjadi "Laporan Harian"**:
+  - Seluruh tombol aksi, konfirmasi browser/modal, judul struk, dan teks cetak di [`cashier.html`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/cashier.html), [`cashier.js`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/src/cashier.js), [`app.js`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/src/app.js), dan [`hardware.js`](file:///home/yusufb/posumbi/pos-umbi/frontend-pos/src/hardware.js) diubah dari `Laporan Z` menjadi `Laporan Harian` (e.g. `[🔒 Tutup Shift & Cetak Laporan Harian]`, `*** LAPORAN HARIAN (TUTUP KASIR) ***`).
+- [x] **Perbaikan Preview Breakdown & Catatan Kasir**:
+  - Memisahkan data pecahan fisik (*breakdown*) dari kolom `closing_notes` di backend dan menambahkan kolom `breakdown TEXT` di database SQLite.
+  - Di pratinjau struk thermal dan cetakan printer, pecahan uang fisik kini dirender sebagai tabel rapi:
+    `RINCIAN PECAHAN UANG LACI:`
+    `Rp 100.000 x 2 : Rp 200.000`, dst.
+  - Menghilangkan teks debug JSON mentah (`Breakdown: {"d100k":...}`) dari `Catatan Kasir:`. Jika kasir tidak menulis catatan, bagian `Catatan Kasir` tidak dimunculkan sama sekali.
+- [x] **Perbaikan Stabilitas Database (`seedInitialExpenses`)**:
+  - Mencegah error `SQLITE_CONSTRAINT` pada relasi foreign key `shift_id` ketika kasir mengosongkan riwayat transaksi melalui menu `kontrol.sh`.
+- [x] **Service Worker v21 & Deploy Server**:
+  - Service worker dinaikkan ke `kassa-pos-cache-v21` dan seluruh kode dideploy ke server produksi `192.168.18.32` (`kassa.konfigin.my.id`).
+
 ---
 *Dokumen ini dibuat otomatis sebagai panduan kerja berkelanjutan. Setiap kali ada penambahan fitur baru, dokumen ini dapat diperbarui untuk menjaga kontinuitas pengembangan.*
+
 
 
