@@ -881,74 +881,102 @@ async function initApp() {
     return;
   }
 
-  try {
-    if (navigator.onLine) {
-      const meRes = await api.getMe().catch(() => null);
-      if (meRes && meRes.user) {
-        state.user = meRes.user;
-        if (state.user && state.user.role === 'owner' && !isPosMode && !isEmbedMode) {
-          window.location.href = '/owner.html';
-          return;
+  if (!isEmbedMode) {
+    try {
+      if (navigator.onLine) {
+        const meRes = await api.getMe().catch(() => null);
+        if (meRes && meRes.user) {
+          state.user = meRes.user;
+          if (state.user && state.user.role === 'owner' && !isPosMode) {
+            window.location.href = '/owner.html';
+            return;
+          }
+          el.activeCashierName.textContent = state.user.name;
+          updateRoleUI();
         }
-        el.activeCashierName.textContent = state.user.name;
-        updateRoleUI();
       }
-    }
 
-    await syncShift();
-    await loadInitialData();
-  } catch (err) {
-    console.error('Session error, fallback to offline:', err);
-    await loadInitialData();
+      await syncShift();
+      await loadInitialData();
+    } catch (err) {
+      console.error('Session error, fallback to offline:', err);
+      await loadInitialData();
+    }
+  } else {
+    // Non-blocking background local data load for embedded mode so modals have products ready instantly
+    Promise.all([getProductsLocal(), getSettingsLocal()]).then(([prods, sets]) => {
+      if (prods && prods.length > 0) state.products = prods;
+      if (sets) state.settings = sets;
+    }).catch(() => {});
   }
+
+  // Helper to open target modal immediately
+  window.openTargetModal = function(targetModal) {
+    try {
+      // Hide any existing open modal backdrops first
+      document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.style.display = 'none';
+      });
+
+      if (targetModal === 'history') openHistoryModal();
+      else if (targetModal === 'catalog') openCatalogMarginModal();
+      else if (targetModal === 'debts') openCashierDebtsModal();
+      else if (targetModal === 'stockOpname') openStockOpnameModal();
+      else if (targetModal === 'waste') openWasteModal();
+      else if (targetModal === 'lock') lockScreenNow();
+      else if (targetModal === 'suppliers') {
+        if (el.modalCashierSuppliers) el.modalCashierSuppliers.style.display = 'flex';
+        switchCashierSupplierTab('juragan');
+        loadCashierSuppliers();
+      }
+      else if (targetModal === 'supplierDebt') {
+        if (el.modalCashierSuppliers) el.modalCashierSuppliers.style.display = 'flex';
+        switchCashierSupplierTab('tempo');
+        loadCashierSuppliers();
+      }
+      else if (targetModal === 'expenses') {
+        if (el.modalCashierExpenses) el.modalCashierExpenses.style.display = 'flex';
+        switchCashierExpenseTab('record');
+        loadCashierExpenses();
+      }
+      else if (targetModal === 'identity') openEditIdentityModal();
+      else if (targetModal === 'hardware') {
+        if (el.hardwareModal) el.hardwareModal.style.display = 'flex';
+      }
+      if (isEmbedMode) {
+        window.parent.postMessage({ action: 'modalReady' }, '*');
+      }
+    } catch (err) {
+      console.warn('Gagal membuka modal:', err);
+    }
+  };
 
   // Handle URL modal parameter (e.g. from cashier.html header dropdown)
   const targetModal = urlParams.get('modal');
   if (targetModal) {
-    const triggerModal = () => {
-      try {
-        if (targetModal === 'history') openHistoryModal();
-        else if (targetModal === 'catalog') openCatalogMarginModal();
-        else if (targetModal === 'debts') openCashierDebtsModal();
-        else if (targetModal === 'stockOpname') openStockOpnameModal();
-        else if (targetModal === 'waste') openWasteModal();
-        else if (targetModal === 'lock') lockScreenNow();
-        else if (targetModal === 'suppliers') {
-          if (el.modalCashierSuppliers) el.modalCashierSuppliers.style.display = 'flex';
-          switchCashierSupplierTab('juragan');
-          loadCashierSuppliers();
-        }
-        else if (targetModal === 'supplierDebt') {
-          if (el.modalCashierSuppliers) el.modalCashierSuppliers.style.display = 'flex';
-          switchCashierSupplierTab('tempo');
-          loadCashierSuppliers();
-        }
-        else if (targetModal === 'expenses') {
-          if (el.modalCashierExpenses) el.modalCashierExpenses.style.display = 'flex';
-          switchCashierExpenseTab('record');
-          loadCashierExpenses();
-        }
-        else if (targetModal === 'identity') openEditIdentityModal();
-        else if (targetModal === 'hardware') {
-          if (el.hardwareModal) el.hardwareModal.style.display = 'flex';
-        }
-        if (isEmbedMode) {
-          window.parent.postMessage({ action: 'modalReady' }, '*');
-        }
-      } catch (err) {
-        console.warn('Gagal membuka modal dari parameter URL:', err);
-      }
-    };
-
     if (isEmbedMode) {
-      triggerModal();
+      window.openTargetModal(targetModal);
     } else {
-      setTimeout(triggerModal, 250);
+      setTimeout(() => window.openTargetModal(targetModal), 250);
     }
   }
 
-  // Embedded mode close listener
+  // Embedded mode close & open message listener
   if (isEmbedMode) {
+    window.addEventListener('message', (event) => {
+      if (event.data) {
+        if (event.data.action === 'pingReady') {
+          window.parent.postMessage({ action: 'iframeReady' }, '*');
+        } else if (event.data.action === 'openModal') {
+          window.openTargetModal(event.data.modal);
+        } else if (event.data.action === 'closeAllModals') {
+          document.querySelectorAll('.modal-backdrop').forEach(m => {
+            m.style.display = 'none';
+          });
+        }
+      }
+    });
+
     const notifyCloseToParent = () => {
       setTimeout(() => {
         const visibleModals = Array.from(document.querySelectorAll('.modal-backdrop')).filter(m => {
@@ -957,7 +985,7 @@ async function initApp() {
         if (visibleModals.length === 0) {
           window.parent.postMessage({ action: 'closeCashierModal' }, '*');
         }
-      }, 150);
+      }, 50);
     };
 
     document.addEventListener('click', (e) => {
@@ -971,6 +999,9 @@ async function initApp() {
         notifyCloseToParent();
       }
     });
+
+    // Notify parent that iframe is ready immediately
+    window.parent.postMessage({ action: 'iframeReady' }, '*');
   }
 }
 
@@ -3829,8 +3860,19 @@ async function handleSubmitBlindClose() {
 // -----------------------------------------------------------------------------
 // WASTE / SUSUT
 // -----------------------------------------------------------------------------
-function openWasteModal() {
-  if (state.products.length === 0) return;
+async function openWasteModal() {
+  if (!state.products || state.products.length === 0) {
+    const local = await getProductsLocal();
+    if (local && local.length > 0) state.products = local;
+    if (navigator.onLine) {
+      const res = await api.getProducts().catch(() => null);
+      if (res && res.products) state.products = res.products;
+    }
+  }
+  if (!state.products || state.products.length === 0) {
+    showToast('Belum ada data komoditas', 'warning');
+    return;
+  }
   el.wasteProductSelect.innerHTML = state.products.map(p => `
     <option value="${p.id}">${p.name} (Stok: ${p.stock_qty} kg)</option>
   `).join('');
@@ -4595,10 +4637,25 @@ async function handleSaveEditDebt() {
 // -----------------------------------------------------------------------------
 // KATALOG & MARGIN LABA (KASIR & ADMIN KIOS)
 // -----------------------------------------------------------------------------
-function openCatalogMarginModal() {
+async function openCatalogMarginModal() {
   if (!el.modalCatalogMargin) return;
   el.modalCatalogMargin.style.display = 'flex';
-  renderCatalogMarginTable();
+  if (!state.products || state.products.length === 0) {
+    const local = await getProductsLocal();
+    if (local && local.length > 0) {
+      state.products = local;
+      renderCatalogMarginTable();
+    }
+    if (navigator.onLine) {
+      const res = await api.getProducts().catch(() => null);
+      if (res && res.products) {
+        state.products = res.products;
+        renderCatalogMarginTable();
+      }
+    }
+  } else {
+    renderCatalogMarginTable();
+  }
 }
 
 function renderCatalogMarginTable() {

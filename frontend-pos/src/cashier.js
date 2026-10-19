@@ -1619,72 +1619,95 @@ function initCashierLockScreen() {
 
 // -----------------------------------------------------------------------------
 // EMBEDDED IN-PAGE MODAL CONTROLLER (Riwayat, Katalog, Piutang, Opname, dll.)
+// Instant 0ms modal opening via preloaded warm iframe & postMessage
 // -----------------------------------------------------------------------------
-const MODAL_TITLES = {
-  history: 'Riwayat Transaksi Kasir',
-  catalog: 'Katalog & Margin Harga',
-  stockOpname: 'Audit Stok Opname',
-  waste: 'Pencatatan Susut & Rusak',
-  debts: 'Buku Piutang & Kasbon',
-  suppliers: 'Pemasok & Buku Kulakan',
-  supplierDebt: 'Hutang Tempo Toko',
-  hardware: 'Printer & Laci Kasir',
-  identity: 'Identitas Toko & Profil'
-};
+let isModalIframeReady = false;
+let pendingModalName = null;
+
+function sendToModalIframe(message) {
+  const iframe = document.getElementById('cashierModalIframe');
+  if (iframe && iframe.contentWindow) {
+    try {
+      iframe.contentWindow.postMessage(message, '*');
+    } catch (err) {
+      console.warn('[Modal] Gagal kirim postMessage ke iframe:', err);
+    }
+  }
+}
 
 function openEmbeddedModal(modalName) {
   const overlay = document.getElementById('cashierModalOverlay');
   const iframe = document.getElementById('cashierModalIframe');
-  const loader = document.getElementById('cashierModalLoader');
-  const loaderText = document.getElementById('cashierModalLoaderText');
   const userDropdown = document.getElementById('userMenuDropdown');
   if (userDropdown) userDropdown.classList.remove('active');
 
   if (!overlay || !iframe) return;
 
-  const title = MODAL_TITLES[modalName] || 'Jendela';
-  if (loaderText) loaderText.textContent = `Memuat ${title}...`;
-  if (loader) loader.style.display = 'flex';
-  iframe.style.opacity = '0';
-
+  // Buka overlay dan tampilkan iframe seketika (0 milidetik, tanpa delay/loading)
   overlay.style.display = 'block';
-  iframe.src = `/?modal=${encodeURIComponent(modalName)}&embed=1`;
+  iframe.style.opacity = '1';
 
-  // Fallback to reveal iframe smoothly
-  clearTimeout(openEmbeddedModal._fallbackTimer);
-  openEmbeddedModal._fallbackTimer = setTimeout(() => {
-    iframe.style.opacity = '1';
-    if (loader) loader.style.display = 'none';
-  }, 350);
+  // Pastikan iframe mengarah ke /?embed=1 jika belum pernah dimuat
+  if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes('embed=1')) {
+    isModalIframeReady = false;
+    iframe.src = '/?embed=1';
+  }
+
+  if (isModalIframeReady) {
+    sendToModalIframe({ action: 'openModal', modal: modalName });
+  } else {
+    // Jika iframe masih menyelesaikan inisialisasi awal, simpan nama modal untuk dibuka seketika saat ready
+    pendingModalName = modalName;
+    sendToModalIframe({ action: 'pingReady' });
+  }
 }
 
 function closeEmbeddedModal() {
-  clearTimeout(openEmbeddedModal._fallbackTimer);
   const overlay = document.getElementById('cashierModalOverlay');
   const iframe = document.getElementById('cashierModalIframe');
-  const loader = document.getElementById('cashierModalLoader');
+  pendingModalName = null;
+
   if (overlay) overlay.style.display = 'none';
   if (iframe) {
     iframe.style.opacity = '0';
-    iframe.src = 'about:blank';
+    // PENTING: JANGAN ubah iframe.src ke about:blank agar iframe tetap hangat di memori dan modal berikutnya buka instan 0ms!
+    sendToModalIframe({ action: 'closeAllModals' });
   }
-  if (loader) loader.style.display = 'none';
+
+  // Sinkronkan data shift aktif di halaman kasir jika ada perubahan saat modal dibuka
   loadActiveShiftData();
 }
 
 window.addEventListener('message', (event) => {
-  if (event.data) {
-    if (event.data.action === 'closeCashierModal') {
-      closeEmbeddedModal();
-    } else if (event.data.action === 'modalReady') {
-      clearTimeout(openEmbeddedModal._fallbackTimer);
-      const iframe = document.getElementById('cashierModalIframe');
-      const loader = document.getElementById('cashierModalLoader');
-      if (iframe) iframe.style.opacity = '1';
-      if (loader) loader.style.display = 'none';
+  if (!event.data) return;
+
+  if (event.data.action === 'iframeReady') {
+    isModalIframeReady = true;
+    if (pendingModalName) {
+      sendToModalIframe({ action: 'openModal', modal: pendingModalName });
+      pendingModalName = null;
     }
+  } else if (event.data.action === 'closeCashierModal') {
+    closeEmbeddedModal();
+  } else if (event.data.action === 'modalReady') {
+    const iframe = document.getElementById('cashierModalIframe');
+    if (iframe) iframe.style.opacity = '1';
   }
 });
+
+const cashierIframeEl = document.getElementById('cashierModalIframe');
+if (cashierIframeEl) {
+  cashierIframeEl.addEventListener('load', () => {
+    sendToModalIframe({ action: 'pingReady' });
+  });
+}
+
+// Ping status awal iframe setelah script dimuat
+setTimeout(() => {
+  if (!isModalIframeReady) {
+    sendToModalIframe({ action: 'pingReady' });
+  }
+}, 300);
 
 const btnCloseOverlay = document.getElementById('btnCloseEmbeddedModalOverlay');
 if (btnCloseOverlay) {
