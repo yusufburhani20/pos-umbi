@@ -837,15 +837,39 @@ function openReceiptPreview(type, data) {
   if (type === 'shift_x') {
     titleText = 'Pratinjau Struk Laporan Harian (Cek Kas Berjalan)';
     htmlReceipt = renderThermalShiftReceipt(data, 'X');
+    if (el.btnConfirmPrintReceipt) {
+      el.btnConfirmPrintReceipt.innerHTML = '<span>🖨️</span> Cetak ke Printer Thermal';
+    }
+    if (el.btnCancelReceiptPreview) {
+      el.btnCancelReceiptPreview.textContent = 'Tutup';
+    }
   } else if (type === 'shift_z') {
     titleText = 'Pratinjau Struk Laporan Harian (Tutup Shift Kasir)';
     htmlReceipt = renderThermalShiftReceipt(data, 'Z');
+    if (el.btnConfirmPrintReceipt) {
+      el.btnConfirmPrintReceipt.innerHTML = '<span>🖨️</span> Cetak & Keluar ke PIN Kasir';
+    }
+    if (el.btnCancelReceiptPreview) {
+      el.btnCancelReceiptPreview.textContent = 'Selesai & Keluar ke PIN';
+    }
   } else if (type === 'expense') {
     titleText = 'Pratinjau Struk Biaya Operasional';
     htmlReceipt = renderThermalExpenseReceipt(data, false);
+    if (el.btnConfirmPrintReceipt) {
+      el.btnConfirmPrintReceipt.innerHTML = '<span>🖨️</span> Cetak ke Printer Thermal';
+    }
+    if (el.btnCancelReceiptPreview) {
+      el.btnCancelReceiptPreview.textContent = 'Tutup';
+    }
   } else if (type === 'income') {
     titleText = 'Pratinjau Bukti Kas Masuk Laci';
     htmlReceipt = renderThermalExpenseReceipt(data, false);
+    if (el.btnConfirmPrintReceipt) {
+      el.btnConfirmPrintReceipt.innerHTML = '<span>🖨️</span> Cetak ke Printer Thermal';
+    }
+    if (el.btnCancelReceiptPreview) {
+      el.btnCancelReceiptPreview.textContent = 'Tutup';
+    }
   }
 
   if (el.receiptPreviewTitle) {
@@ -866,11 +890,18 @@ function openReceiptPreview(type, data) {
 }
 
 function closeReceiptPreview() {
+  const wasZ = state.activePreviewType === 'shift_z';
   if (el.modalReceiptPreview) {
     el.modalReceiptPreview.style.display = 'none';
   }
   state.activePreviewType = null;
   state.activePreviewData = null;
+
+  if (wasZ) {
+    api.clearSession();
+    clearActiveShiftLocal().catch(() => {});
+    window.location.href = '/';
+  }
 }
 
 async function handleConfirmPrintReceipt() {
@@ -894,7 +925,13 @@ async function handleConfirmPrintReceipt() {
       const modeType = type === 'shift_z' ? 'Z' : 'X';
       await hardwareManager.printShiftReport(data, modeType, settings);
       const repLabel = 'Laporan Harian';
-      showToast(`🖨️ Struk ${repLabel} berhasil dikirim ke printer!`, 'success');
+      showToast(`🖨️ Struk ${repLabel} berhasil dicetak!`, 'success');
+      if (type === 'shift_z') {
+        setTimeout(() => {
+          closeReceiptPreview();
+        }, 1200);
+        return;
+      }
     } else if (type === 'expense' || type === 'income') {
       await hardwareManager.printExpense(data, settings, false);
       showToast('🖨️ Bukti kas berhasil dicetak ke printer!', 'success');
@@ -905,6 +942,12 @@ async function handleConfirmPrintReceipt() {
     console.warn('[Print] Gagal cetak thermal, fallback ke system print:', err);
     showToast('Printer belum terhubung (' + err.message + '). Membuka cetak browser...', 'warning');
     window.print();
+    if (state.activePreviewType === 'shift_z') {
+      setTimeout(() => {
+        closeReceiptPreview();
+      }, 1500);
+      return;
+    }
   } finally {
     if (el.btnConfirmPrintReceipt) {
       el.btnConfirmPrintReceipt.disabled = false;

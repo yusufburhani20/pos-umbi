@@ -23,6 +23,10 @@ class ApiClient {
     localStorage.removeItem('pos_user');
   }
 
+  clearAuth() {
+    this.clearSession();
+  }
+
   async request(endpoint, options = {}) {
     const url = `${BASE_URL}${endpoint}`;
     const headers = {

@@ -2502,21 +2502,28 @@ function bindEvents() {
 
   // Logout
   el.btnLogout.addEventListener('click', () => {
-    api.clearSession();
-    state.user = null;
-    state.shift = null;
-    el.activeCashierName.textContent = 'Belum Login';
-    el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
-    const userDisplayNameEl = document.getElementById('dropdownUserDisplayName');
-    const userRoleEl = document.getElementById('dropdownUserRole');
-    if (userDisplayNameEl) userDisplayNameEl.textContent = 'Belum Login';
-    if (userRoleEl) userRoleEl.textContent = 'Sesi Kasir Berakhir';
-    if (el.btnOwnerPanel) el.btnOwnerPanel.style.display = 'none';
-    if (el.btnStockOpname) el.btnStockOpname.style.display = 'none';
-    if (el.btnEditIdentity) el.btnEditIdentity.style.display = 'none';
-    showLoginModal();
-    showToast('Berhasil keluar. Silakan masukkan PIN untuk bertugas.', 'info');
+    performCashierLogout('Berhasil keluar. Silakan masukkan PIN untuk bertugas.');
   });
+}
+
+function performCashierLogout(toastMsg = 'Berhasil keluar. Silakan masukkan PIN untuk bertugas.') {
+  api.clearSession();
+  state.user = null;
+  state.shift = null;
+  clearActiveShiftLocal().catch(() => {});
+  if (el.activeCashierName) el.activeCashierName.textContent = 'Belum Login';
+  if (el.activeShiftMeta) el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
+  const userDisplayNameEl = document.getElementById('dropdownUserDisplayName');
+  const userRoleEl = document.getElementById('dropdownUserRole');
+  if (userDisplayNameEl) userDisplayNameEl.textContent = 'Belum Login';
+  if (userRoleEl) userRoleEl.textContent = 'Sesi Kasir Berakhir';
+  if (el.btnOwnerPanel) el.btnOwnerPanel.style.display = 'none';
+  if (el.btnStockOpname) el.btnStockOpname.style.display = 'none';
+  if (el.btnEditIdentity) el.btnEditIdentity.style.display = 'none';
+  if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
+  if (el.closeShiftModal) el.closeShiftModal.style.display = 'none';
+  showLoginModal();
+  if (toastMsg) showToast(toastMsg, 'info');
 }
 
 // -----------------------------------------------------------------------------
@@ -4001,8 +4008,8 @@ async function handleSubmitBlindClose() {
       alertMsg += `\nStatus: Selisih LEBIH ${formatRupiah(diff)}`;
     }
 
-    alert(alertMsg);
-    await syncShift();
+    alert(alertMsg + '\n\nSesi shift kasir telah berakhir. Layar akan beralih ke input PIN untuk kasir berikutnya.');
+    performCashierLogout('Shift kasir berhasil ditutup. Silakan masukkan PIN untuk bertugas.');
   } catch (err) {
     showToast('Gagal menutup shift: ' + err.message, 'error');
   } finally {
@@ -7420,8 +7427,8 @@ async function handleDashboardCloseShiftZ() {
     }
     alertMsg += '\n\nStruk Laporan Harian telah dicetak ke printer kasir.';
 
-    alert(alertMsg);
-    await syncShift();
+    alert(alertMsg + '\n\nSesi shift kasir telah berakhir. Layar akan beralih ke input PIN untuk kasir berikutnya.');
+    performCashierLogout('Shift kasir berhasil ditutup. Silakan masukkan PIN untuk bertugas.');
   } catch (err) {
     showToast('Gagal menutup shift: ' + err.message, 'error');
   } finally {
