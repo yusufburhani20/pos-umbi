@@ -228,6 +228,9 @@ let isCashierUpdateReloading = false;
 
 function showPwaUpdatePromptInCashier(newVersion) {
   if (pwaDismissedInCashier) return;
+  try {
+    if (sessionStorage.getItem('pwa_dismissed_ver_cashier') === String(newVersion)) return;
+  } catch (e) {}
   let banner = document.getElementById('pwaUpdateFloatingBanner');
   if (!banner) {
     banner = document.createElement('div');
@@ -258,6 +261,9 @@ function showPwaUpdatePromptInCashier(newVersion) {
     if (btnDismiss) {
       btnDismiss.addEventListener('click', () => {
         pwaDismissedInCashier = true;
+        try {
+          sessionStorage.setItem('pwa_dismissed_ver_cashier', String(newVersion || 'latest'));
+        } catch (e) {}
         banner.style.display = 'none';
       });
     }
@@ -287,9 +293,20 @@ async function applyPwaUpdateInCashier() {
     console.warn('[PWA Update] Gagal postMessage ke worker:', e);
   }
 
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        if (!name.includes('v36')) {
+          await caches.delete(name);
+        }
+      }
+    } catch (e) {}
+  }
+
   setTimeout(() => {
     window.location.reload();
-  }, 350);
+  }, 400);
 }
 
 function updateHeaderStatusPills() {

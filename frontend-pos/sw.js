@@ -24,7 +24,7 @@ self.addEventListener('message', (event) => {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Pre-caching static app shell v35');
+      console.log('[ServiceWorker] Pre-caching static app shell v36');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[ServiceWorker] Pre-cache warning (some assets may be bundled):', err);
       });

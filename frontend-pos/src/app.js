@@ -793,6 +793,9 @@ let isUpdateReloading = false;
 
 function showPwaUpdatePrompt(newVersion) {
   if (pwaDismissedThisSession) return;
+  try {
+    if (sessionStorage.getItem('pwa_dismissed_ver') === String(newVersion)) return;
+  } catch (e) {}
   // Anti-gangguan: jika kasir sedang melayani dan keranjang berisi barang, tunda tampilkan banner penuh
   if (state.cart && state.cart.length > 0) {
     console.log('[PWA Update] Ada versi baru, namun ditunda sementara karena kasir sedang aktif di keranjang belanja.');
@@ -829,6 +832,9 @@ function showPwaUpdatePrompt(newVersion) {
     if (btnDismiss) {
       btnDismiss.addEventListener('click', () => {
         pwaDismissedThisSession = true;
+        try {
+          sessionStorage.setItem('pwa_dismissed_ver', String(newVersion || 'latest'));
+        } catch (e) {}
         banner.style.display = 'none';
       });
     }
@@ -858,9 +864,20 @@ async function applyPwaUpdate() {
     console.warn('[PWA Update] Gagal postMessage ke worker:', e);
   }
 
+  if ('caches' in window) {
+    try {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        if (!name.includes('v36')) {
+          await caches.delete(name);
+        }
+      }
+    } catch (e) {}
+  }
+
   setTimeout(() => {
     window.location.reload();
-  }, 350);
+  }, 400);
 }
 
 function initPwaUpdateManager() {
