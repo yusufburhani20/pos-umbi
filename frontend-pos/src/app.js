@@ -786,6 +786,130 @@ function updateSyncStatusUI(syncState) {
 }
 
 // -----------------------------------------------------------------------------
+// PWA SMART AUTO-UPDATE SYSTEM (ZERO-DOWNTIME & SAFE FOR CASHIER)
+// -----------------------------------------------------------------------------
+let pwaDismissedThisSession = false;
+let isUpdateReloading = false;
+
+function showPwaUpdatePrompt(newVersion) {
+  if (pwaDismissedThisSession) return;
+  // Anti-gangguan: jika kasir sedang melayani dan keranjang berisi barang, tunda tampilkan banner penuh
+  if (state.cart && state.cart.length > 0) {
+    console.log('[PWA Update] Ada versi baru, namun ditunda sementara karena kasir sedang aktif di keranjang belanja.');
+    return;
+  }
+
+  let banner = document.getElementById('pwaUpdateFloatingBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'pwaUpdateFloatingBanner';
+    banner.className = 'pwa-update-floating-banner';
+    banner.innerHTML = `
+      <div class="pwa-update-pill-inner">
+        <div class="pwa-update-icon-glow">✨</div>
+        <div class="pwa-update-text-col">
+          <span class="pwa-update-title">Pembaruan Sistem Siap</span>
+          <span class="pwa-update-desc" id="pwaUpdateVersionLabel">Versi terbaru (${newVersion || 'PWA'}) siap dipasang</span>
+        </div>
+        <div class="pwa-update-btn-group">
+          <button type="button" class="btn-pwa-reload-action" id="btnApplyPwaUpdate">
+            <span>🔄</span> Muat Ulang
+          </button>
+          <button type="button" class="btn-pwa-dismiss-action" id="btnDismissPwaUpdate" title="Tunda">✕</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(banner);
+
+    const btnApply = banner.querySelector('#btnApplyPwaUpdate');
+    if (btnApply) {
+      btnApply.addEventListener('click', applyPwaUpdate);
+    }
+    const btnDismiss = banner.querySelector('#btnDismissPwaUpdate');
+    if (btnDismiss) {
+      btnDismiss.addEventListener('click', () => {
+        pwaDismissedThisSession = true;
+        banner.style.display = 'none';
+      });
+    }
+  } else {
+    const desc = banner.querySelector('#pwaUpdateVersionLabel');
+    if (desc) desc.textContent = `Versi terbaru (${newVersion || 'PWA'}) siap dipasang`;
+    banner.style.display = 'block';
+  }
+}
+
+async function applyPwaUpdate() {
+  if (isUpdateReloading) return;
+  isUpdateReloading = true;
+  showToast('Memperbarui aplikasi ke versi terbaru...', 'success');
+
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        await reg.update().catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('[PWA Update] Gagal postMessage ke worker:', e);
+  }
+
+  setTimeout(() => {
+    window.location.reload();
+  }, 350);
+}
+
+function initPwaUpdateManager() {
+  // 1. Dengarkan jika service worker baru mengontrol halaman
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!isUpdateReloading) {
+        isUpdateReloading = true;
+        window.location.reload();
+      }
+    });
+
+    // Tangkap event updatefound dari registrasi
+    navigator.serviceWorker.ready.then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[PWA Update] Service worker baru siap diterapkan!');
+              showPwaUpdatePrompt('v' + Date.now().toString().slice(-4));
+            }
+          });
+        }
+      });
+    }).catch(() => {});
+  }
+
+  // 2. Hubungkan ke SyncEngine listener (Mendeteksi perubahan versi dari heartbeat 1-menit)
+  syncEngine.onStateChange((syncState) => {
+    if (syncState && syncState.hasUpdate) {
+      showPwaUpdatePrompt(syncState.latestVersion);
+    }
+  });
+
+  // 3. Pengecekan otomatis saat tablet menyala kembali dari standby / lock
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && navigator.onLine) {
+      syncEngine.syncNow({ silent: true });
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+          if (reg) reg.update().catch(() => {});
+        }).catch(() => {});
+      }
+    }
+  });
+}
+
+// -----------------------------------------------------------------------------
 // DYNAMIC VIEWPORT & FULLSCREEN PWA SUPPORT (TABLET / CHROME FIX)
 // -----------------------------------------------------------------------------
 function updateViewportMetrics() {
@@ -868,6 +992,7 @@ async function initApp() {
   try {
     await syncEngine.init();
     syncEngine.onStateChange(updateSyncStatusUI);
+    initPwaUpdateManager();
   } catch (e) {
     console.warn('[Sync] Inisialisasi sync engine tertunda:', e);
   }

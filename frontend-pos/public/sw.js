@@ -1,5 +1,5 @@
 // Service Worker for Kassa POS (Offline-First PWA)
-const CACHE_NAME = 'kassa-pos-cache-v34';
+const CACHE_NAME = 'kassa-pos-cache-v35';
 
 const STATIC_ASSETS = [
   '/',
@@ -15,10 +15,16 @@ const STATIC_ASSETS = [
   '/manifest.webmanifest'
 ];
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Pre-caching static app shell');
+      console.log('[ServiceWorker] Pre-caching static app shell v35');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[ServiceWorker] Pre-cache warning (some assets may be bundled):', err);
       });

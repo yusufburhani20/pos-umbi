@@ -38,9 +38,12 @@ router.get('/status', async (req, res) => {
     const lastDeviceRow = await dbQuery.get("SELECT value FROM store_settings WHERE key = 'last_tablet_device'");
     const activeShift = await dbQuery.get("SELECT s.id, COALESCE(u.name, 'Kasir Bertugas') as cashier_name FROM shifts s LEFT JOIN users u ON s.cashier_id = u.id WHERE s.status = 'open' ORDER BY s.id DESC LIMIT 1");
 
+    const CURRENT_APP_VERSION = 'v35';
+
     return res.json({
       success: true,
       online: true,
+      app_version: CURRENT_APP_VERSION,
       server_time: new Date().toISOString(),
       last_sync: lastSyncRow ? lastSyncRow.value : null,
       last_sync_updated_at: lastSyncRow ? lastSyncRow.updated_at : null,

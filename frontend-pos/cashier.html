@@ -1196,5 +1196,14 @@
   </div>
 
   <script type="module" src="/src/cashier.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js?v=35').then((reg) => {
+          reg.update();
+        }).catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>

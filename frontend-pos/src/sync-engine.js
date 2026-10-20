@@ -17,6 +17,7 @@ import {
   getSyncMetaLocal
 } from './offline-db.js';
 
+export const APP_CURRENT_VERSION = 'v35';
 const SYNC_INTERVAL_MS = 60000; // 1 minute interval
 
 class SyncEngine {
@@ -28,6 +29,8 @@ class SyncEngine {
     this.timer = null;
     this.listeners = new Set();
     this.deviceId = this.getOrCreateDeviceId();
+    this.hasUpdate = false;
+    this.latestServerVersion = null;
   }
 
   getOrCreateDeviceId() {
@@ -64,7 +67,10 @@ class SyncEngine {
       isSyncing: this.isSyncing,
       lastSyncTime: this.lastSyncTime,
       pendingCount: this.pendingCount,
-      deviceId: this.deviceId
+      deviceId: this.deviceId,
+      hasUpdate: this.hasUpdate,
+      currentVersion: APP_CURRENT_VERSION,
+      latestVersion: this.latestServerVersion || APP_CURRENT_VERSION
     };
   }
 
@@ -130,6 +136,18 @@ class SyncEngine {
         throw new Error('Server backend tidak merespons');
       }
       this.isOnline = true;
+
+      // Smart Version Detection: Bandingkan versi server dengan versi aplikasi lokal
+      if (statusRes.app_version && statusRes.app_version !== APP_CURRENT_VERSION) {
+        console.log(`[SyncEngine] 🚀 Versi baru terdeteksi di server: ${statusRes.app_version} (Lokal: ${APP_CURRENT_VERSION})`);
+        this.hasUpdate = true;
+        this.latestServerVersion = statusRes.app_version;
+        if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg) reg.update();
+          }).catch(() => {});
+        }
+      }
 
       // 2. Gather pending outbox records from tablet's IndexedDB
       const pendingOrders = await getPendingOrdersLocal();

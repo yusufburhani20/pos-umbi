@@ -1,5 +1,6 @@
 import { api } from './api.js';
 import { hardwareManager } from './hardware.js';
+import { syncEngine } from './sync-engine.js';
 import { clearActiveShiftLocal } from './offline-db.js';
 
 // State
@@ -222,19 +223,104 @@ function initHeaderClock() {
   setInterval(updateTime, 1000);
 }
 
+let pwaDismissedInCashier = false;
+let isCashierUpdateReloading = false;
+
+function showPwaUpdatePromptInCashier(newVersion) {
+  if (pwaDismissedInCashier) return;
+  let banner = document.getElementById('pwaUpdateFloatingBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'pwaUpdateFloatingBanner';
+    banner.className = 'pwa-update-floating-banner';
+    banner.innerHTML = `
+      <div class="pwa-update-pill-inner">
+        <div class="pwa-update-icon-glow">✨</div>
+        <div class="pwa-update-text-col">
+          <span class="pwa-update-title">Pembaruan Sistem Siap</span>
+          <span class="pwa-update-desc" id="pwaUpdateVersionLabel">Versi terbaru (${newVersion || 'PWA'}) siap dipasang</span>
+        </div>
+        <div class="pwa-update-btn-group">
+          <button type="button" class="btn-pwa-reload-action" id="btnApplyPwaUpdateCashier">
+            <span>🔄</span> Muat Ulang
+          </button>
+          <button type="button" class="btn-pwa-dismiss-action" id="btnDismissPwaUpdateCashier" title="Tunda">✕</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(banner);
+
+    const btnApply = banner.querySelector('#btnApplyPwaUpdateCashier');
+    if (btnApply) {
+      btnApply.addEventListener('click', applyPwaUpdateInCashier);
+    }
+    const btnDismiss = banner.querySelector('#btnDismissPwaUpdateCashier');
+    if (btnDismiss) {
+      btnDismiss.addEventListener('click', () => {
+        pwaDismissedInCashier = true;
+        banner.style.display = 'none';
+      });
+    }
+  } else {
+    const desc = banner.querySelector('#pwaUpdateVersionLabel');
+    if (desc) desc.textContent = `Versi terbaru (${newVersion || 'PWA'}) siap dipasang`;
+    banner.style.display = 'block';
+  }
+}
+
+async function applyPwaUpdateInCashier() {
+  if (isCashierUpdateReloading) return;
+  isCashierUpdateReloading = true;
+  showToast('Memperbarui aplikasi ke versi terbaru...', 'success');
+
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        await reg.update().catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('[PWA Update] Gagal postMessage ke worker:', e);
+  }
+
+  setTimeout(() => {
+    window.location.reload();
+  }, 350);
+}
+
 function updateHeaderStatusPills() {
-  function updateSyncPill() {
+  function updateSyncPill(syncState = syncEngine ? syncEngine.getState() : {}) {
     if (!el.syncStatusPill) return;
-    if (navigator.onLine) {
-      el.syncStatusPill.className = 'sync-status-pill online';
-      if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🟢 Online';
-      if (el.syncSubLabel) el.syncSubLabel.textContent = 'Tersinkron (1 mnt)';
-      el.syncStatusPill.setAttribute('title', 'Status: Online • Terhubung ke Server Cloud');
+    const isOnline = syncState.isOnline !== undefined ? syncState.isOnline : navigator.onLine;
+    const isSyncing = syncState.isSyncing || false;
+    const pendingCount = syncState.pendingCount || 0;
+    const lastSyncTime = syncState.lastSyncTime || null;
+
+    el.syncStatusPill.classList.remove('online', 'offline', 'syncing');
+
+    if (isSyncing) {
+      el.syncStatusPill.classList.add('syncing');
+      if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🔄 Menyinkron...';
+      if (el.syncSubLabel) el.syncSubLabel.textContent = 'Kirim data cloud...';
+      if (el.btnManualSync) el.btnManualSync.classList.add('rotating');
+    } else if (!isOnline) {
+      el.syncStatusPill.classList.add('offline');
+      if (el.syncStatusLabel) el.syncStatusLabel.textContent = pendingCount > 0 ? `🟡 Offline (${pendingCount})` : '🟡 Offline';
+      if (el.syncSubLabel) el.syncSubLabel.textContent = 'Tersimpan di Tablet';
+      if (el.btnManualSync) el.btnManualSync.classList.remove('rotating');
     } else {
-      el.syncStatusPill.className = 'sync-status-pill offline';
-      if (el.syncStatusLabel) el.syncStatusLabel.textContent = '🔴 Offline';
-      if (el.syncSubLabel) el.syncSubLabel.textContent = 'Mode Mandiri';
-      el.syncStatusPill.setAttribute('title', 'Status: Offline • Mode Mandiri (Data tersimpan di perangkat)');
+      el.syncStatusPill.classList.add('online');
+      if (el.syncStatusLabel) el.syncStatusLabel.textContent = pendingCount > 0 ? `🟢 Ada Antrean (${pendingCount})` : '🟢 Online';
+      if (el.syncSubLabel) el.syncSubLabel.textContent = lastSyncTime ? `Sync ${lastSyncTime}` : 'Tersinkron (1 mnt)';
+      if (el.btnManualSync) el.btnManualSync.classList.remove('rotating');
+    }
+
+    if (syncState && syncState.hasUpdate) {
+      showPwaUpdatePromptInCashier(syncState.latestVersion);
     }
   }
 
@@ -253,8 +339,8 @@ function updateHeaderStatusPills() {
     } else if (hwState && hwState.isLocked) {
       el.printerStatusPill.className = 'printer-status-pill offline';
       if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hwState.lockedDeviceName || 'Printer'} (Offline)`;
-      if (el.printerSubLabel) el.printerSubLabel.textContent = 'Koneksi Terkunci';
-      el.printerStatusPill.setAttribute('title', `Printer: Terkunci ke ${hwState.lockedDeviceName} • Otomatis sambung saat printer menyala`);
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'Koneksi Terkunci (Klik Sambung)';
+      el.printerStatusPill.setAttribute('title', `Printer: Terkunci ke ${hwState.lockedDeviceName} • Klik untuk sambungkan kembali`);
     } else {
       el.printerStatusPill.className = 'printer-status-pill offline';
       if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ Printer: Putus';
@@ -265,11 +351,45 @@ function updateHeaderStatusPills() {
 
   updateSyncPill();
   updatePrinterPill();
+
+  if (syncEngine && syncEngine.onStateChange) {
+    syncEngine.onStateChange(updateSyncPill);
+  }
+
   if (hardwareManager && hardwareManager.subscribeState) {
     hardwareManager.subscribeState(updatePrinterPill);
   }
-  window.addEventListener('online', updateSyncPill);
-  window.addEventListener('offline', updateSyncPill);
+
+  // Quick Reconnect on Pill Click (Fix: Langsung sambungkan jika terkunci saat kasir pindah ke halaman ini)
+  if (el.printerStatusPill) {
+    el.printerStatusPill.addEventListener('click', (e) => {
+      if (e.target && e.target.id === 'btnHardwareModalTrigger') return;
+      const hwState = hardwareManager ? hardwareManager.getState() : {};
+      if (hwState.isLocked && !hwState.isConnected) {
+        showToast('Mencoba menyambungkan kembali ke printer terkunci...', 'info');
+        hardwareManager.startAutoReconnectWatcher();
+      } else {
+        openEmbeddedModal('hardware');
+      }
+    });
+  }
+
+  // Auto trigger sync & update check when screen turns on
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && navigator.onLine) {
+      if (syncEngine && syncEngine.syncNow) {
+        syncEngine.syncNow({ silent: true });
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+          if (reg) reg.update().catch(() => {});
+        }).catch(() => {});
+      }
+    }
+  });
+
+  window.addEventListener('online', () => updateSyncPill());
+  window.addEventListener('offline', () => updateSyncPill());
 }
 
 function initHeaderDropdowns() {
