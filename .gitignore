@@ -14,7 +14,8 @@ build/
 .env.*.local
 *.env
 
-# SQLite WAL & Temp Files
+# SQLite Databases & Temp Files
+*.db
 *.db-journal
 *.db-shm
 *.db-wal
