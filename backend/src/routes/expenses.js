@@ -104,7 +104,73 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const expenses = await dbQuery.all(sql, params);
 
-    // Calculate aggregated summary
+    // Filter conditions for period-specific summary & category breakdown
+    let filterCond = '1=1';
+    const filterParams = [];
+
+    if (type && type !== 'all') {
+      filterCond += ' AND type = ?';
+      filterParams.push(type);
+    }
+    if (category && category !== 'all') {
+      filterCond += ' AND category = ?';
+      filterParams.push(category);
+    }
+    if (source && source !== 'all') {
+      filterCond += ' AND source = ?';
+      filterParams.push(source);
+    }
+    if (shift_id) {
+      filterCond += ' AND shift_id = ?';
+      filterParams.push(shift_id);
+    }
+    if (start_date) {
+      filterCond += ' AND date(created_at) >= date(?)';
+      filterParams.push(start_date);
+    }
+    if (end_date) {
+      filterCond += ' AND date(created_at) <= date(?)';
+      filterParams.push(end_date);
+    }
+    if (search && search.trim()) {
+      const q = `%${search.trim()}%`;
+      filterCond += ' AND (expense_no LIKE ? OR category_name LIKE ? OR notes LIKE ?)';
+      filterParams.push(q, q, q);
+    }
+
+    // Period specific summary
+    const periodSummaryRow = await dbQuery.get(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as period_expenses,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN 1 ELSE 0 END), 0) as period_expenses_count,
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as period_income,
+        COALESCE(SUM(CASE WHEN type = 'income' THEN 1 ELSE 0 END), 0) as period_income_count,
+        COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as period_cash_drawer_out,
+        COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as period_transfer_out
+      FROM store_expenses
+      WHERE ${filterCond}
+    `, filterParams);
+
+    // Period Category breakdown
+    const categoryRows = await dbQuery.all(`
+      SELECT 
+        category,
+        category_name,
+        COUNT(id) as count,
+        SUM(amount) as total_amount
+      FROM store_expenses
+      WHERE type = 'expense' AND ${filterCond}
+      GROUP BY category, category_name
+      ORDER BY total_amount DESC
+    `, filterParams);
+
+    const totalPeriodExp = Number(periodSummaryRow.period_expenses) || 0;
+    const category_breakdown = categoryRows.map(row => ({
+      ...row,
+      percentage: totalPeriodExp > 0 ? Math.round(((Number(row.total_amount) || 0) / totalPeriodExp) * 100) : 0
+    }));
+
+    // Overall summary reference
     const summaryRow = await dbQuery.get(`
       SELECT 
         COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses,
@@ -117,25 +183,6 @@ router.get('/', authenticateToken, async (req, res) => {
         COALESCE(SUM(CASE WHEN type = 'expense' AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime') THEN amount ELSE 0 END), 0) as month_expenses
       FROM store_expenses
     `);
-
-    // Category breakdown
-    const categoryRows = await dbQuery.all(`
-      SELECT 
-        category,
-        category_name,
-        COUNT(id) as count,
-        SUM(amount) as total_amount
-      FROM store_expenses
-      WHERE type = 'expense'
-      GROUP BY category, category_name
-      ORDER BY total_amount DESC
-    `);
-
-    const totalExp = Number(summaryRow.total_expenses) || 1;
-    const category_breakdown = categoryRows.map(row => ({
-      ...row,
-      percentage: Math.round(((Number(row.total_amount) || 0) / totalExp) * 100)
-    }));
 
     // Active shift stats
     const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
@@ -164,6 +211,12 @@ router.get('/', authenticateToken, async (req, res) => {
       expenses,
       summary: {
         ...summaryRow,
+        period_expenses: Number(periodSummaryRow.period_expenses) || 0,
+        period_expenses_count: Number(periodSummaryRow.period_expenses_count) || 0,
+        period_income: Number(periodSummaryRow.period_income) || 0,
+        period_income_count: Number(periodSummaryRow.period_income_count) || 0,
+        period_cash_drawer_out: Number(periodSummaryRow.period_cash_drawer_out) || 0,
+        period_transfer_out: Number(periodSummaryRow.period_transfer_out) || 0,
         category_breakdown,
         shift_summary
       }

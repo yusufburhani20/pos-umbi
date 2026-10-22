@@ -657,6 +657,93 @@ body.executive-body {
   border-radius: 50%;
 }
 .sub-dot.green { background: #10b981; }
+.sub-dot.red { background: #ef4444; }
+
+/* KPI Profit Breakdown Box (Direct Transparent Formula inside Card 4) */
+.btn-kpi-info-trigger {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-kpi-info-trigger:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+  transform: translateY(-1px);
+}
+
+.kpi-profit-breakdown {
+  margin: 6px 0 10px 0;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.kpi-breakdown-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.kpi-breakdown-line .kb-label {
+  color: #64748b;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kpi-breakdown-line .kb-val {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 11.5px;
+}
+
+.kpi-profit-breakdown .kb-val.text-blue { color: #2563eb; }
+.kpi-profit-breakdown .kb-val.text-danger { color: #e11d48; }
+.kpi-profit-breakdown .kb-val.text-success { color: #059669; }
+
+/* Table for Expenses List inside Modal */
+.pb-expenses-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+.pb-expenses-table th {
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 700;
+  font-size: 11.5px;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1.5px solid #cbd5e1;
+}
+.pb-expenses-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+  color: #334155;
+  vertical-align: middle;
+}
+.pb-expenses-table tr:last-child td {
+  border-bottom: none;
+}
 
 /* --------------------------------------------------------------------------
    EXECUTIVE REVENUE & SALES CHARTS

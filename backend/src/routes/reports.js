@@ -312,6 +312,17 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
     const totalStoreExpenses = Number(expensesToday ? expensesToday.total_expenses_today : 0) || 0;
     const otherIncomeToday = Number(incomeTodayRow ? incomeTodayRow.total_income_today : 0) || 0;
     const netProfitToday = grossProfit + otherIncomeToday - totalStoreExpenses;
+    const netMarginPct = totalRevenue > 0 ? Math.round((netProfitToday / totalRevenue) * 1000) / 10 : 0;
+
+    // Today's full itemized expenses list for executive profit breakdown modal
+    const todayExpensesList = await dbQuery.all(`
+      SELECT se.id, se.expense_no, se.category, se.category_name, se.type, se.amount, se.source, se.notes, se.created_at,
+             u.name as recorded_by_name
+      FROM store_expenses se
+      LEFT JOIN users u ON se.user_id = u.id
+      WHERE date(se.created_at) = date('now', 'localtime') AND se.type = 'expense'
+      ORDER BY se.id DESC
+    `);
 
     const cashSalesToday = Number(salesSummary.total_cash) || 0;
     const digitalSalesToday = (Number(salesSummary.total_qris) || 0) + (Number(salesSummary.total_transfer) || 0);
@@ -351,7 +362,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         total_cash_outflow_today: totalCashOutflow,
         net_profit_today: netProfitToday,
         gross_profit_today: grossProfit,
-        gross_margin_pct: grossMarginPct
+        gross_margin_pct: grossMarginPct,
+        net_margin_pct: netMarginPct
       },
       profitability_today: {
         total_revenue: totalRevenue,
@@ -360,7 +372,9 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         gross_margin_pct: grossMarginPct,
         total_operating_expenses: totalStoreExpenses,
         other_income: otherIncomeToday,
-        net_profit: netProfitToday
+        net_profit: netProfitToday,
+        net_margin_pct: netMarginPct,
+        today_expenses_list: todayExpensesList || []
       },
       cashflow_today: {
         inflow: {

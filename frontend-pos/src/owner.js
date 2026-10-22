@@ -79,6 +79,28 @@ const el = {
   kpiNetProfitToday: document.getElementById('kpiNetProfitToday'),
   kpiProfitSubLabel: document.getElementById('kpiProfitSubLabel'),
   cardNetProfitWrap: document.getElementById('cardNetProfitWrap'),
+  kpiGrossProfitToday: document.getElementById('kpiGrossProfitToday'),
+  kpiStoreExpenseDeduction: document.getElementById('kpiStoreExpenseDeduction'),
+  kpiOtherIncomeRow: document.getElementById('kpiOtherIncomeRow'),
+  kpiOtherIncomeAdd: document.getElementById('kpiOtherIncomeAdd'),
+  btnOpenProfitBreakdownModal: document.getElementById('btnOpenProfitBreakdownModal'),
+
+  // Modal Profit Breakdown
+  modalProfitBreakdown: document.getElementById('modalProfitBreakdown'),
+  btnCloseProfitBreakdown: document.getElementById('btnCloseProfitBreakdown'),
+  btnCloseProfitBreakdownFooter: document.getElementById('btnCloseProfitBreakdownFooter'),
+  pbModalRevenue: document.getElementById('pbModalRevenue'),
+  pbModalCogs: document.getElementById('pbModalCogs'),
+  pbModalGrossProfit: document.getElementById('pbModalGrossProfit'),
+  pbModalGrossMarginNote: document.getElementById('pbModalGrossMarginNote'),
+  pbModalExpenses: document.getElementById('pbModalExpenses'),
+  pbModalExpenseCount: document.getElementById('pbModalExpenseCount'),
+  pbModalOtherIncomeRow: document.getElementById('pbModalOtherIncomeRow'),
+  pbModalOtherIncome: document.getElementById('pbModalOtherIncome'),
+  pbModalNetProfit: document.getElementById('pbModalNetProfit'),
+  pbModalNetMarginNote: document.getElementById('pbModalNetMarginNote'),
+  pbModalExpensesListContainer: document.getElementById('pbModalExpensesListContainer'),
+  btnModalGoToExpenses: document.getElementById('btnModalGoToExpenses'),
 
   // Liquidity & Working Capital Snapshot
   lblWorkingCapitalStatus: document.getElementById('lblWorkingCapitalStatus'),
@@ -451,6 +473,13 @@ const el = {
   ownerKpiDrawerExpenses: document.getElementById('ownerKpiDrawerExpenses'),
   ownerKpiTransferExpenses: document.getElementById('ownerKpiTransferExpenses'),
   ownerKpiTotalIncome: document.getElementById('ownerKpiTotalIncome'),
+  lblOwnerKpiExpensesTitle: document.getElementById('lblOwnerKpiExpensesTitle'),
+  expensePresetGroup: document.getElementById('expensePresetGroup'),
+  expStartDate: document.getElementById('expStartDate'),
+  expEndDate: document.getElementById('expEndDate'),
+  btnApplyExpenseFilter: document.getElementById('btnApplyExpenseFilter'),
+  btnResetExpenseFilter: document.getElementById('btnResetExpenseFilter'),
+  lblExpenseFilteredCount: document.getElementById('lblExpenseFilteredCount'),
   ownerExpenseCategoryBars: document.getElementById('ownerExpenseCategoryBars'),
   ownerSearchExpenseInput: document.getElementById('ownerSearchExpenseInput'),
   ownerFilterExpenseCategory: document.getElementById('ownerFilterExpenseCategory'),
@@ -1065,6 +1094,44 @@ function switchTab(tabId) {
     el.btnGoToSuppliersTab.addEventListener('click', () => switchTab('tab-suppliers'));
   }
 
+  // Profit Breakdown Modal Listeners
+  if (el.btnOpenProfitBreakdownModal) {
+    el.btnOpenProfitBreakdownModal.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openProfitBreakdownModal();
+    });
+  }
+  if (el.cardNetProfitWrap) {
+    el.cardNetProfitWrap.style.cursor = 'pointer';
+    el.cardNetProfitWrap.title = 'Klik untuk melihat rincian hitungan laba bersih & beban toko';
+    el.cardNetProfitWrap.addEventListener('click', () => {
+      openProfitBreakdownModal();
+    });
+  }
+  if (el.btnCloseProfitBreakdown) {
+    el.btnCloseProfitBreakdown.addEventListener('click', () => {
+      if (el.modalProfitBreakdown) el.modalProfitBreakdown.style.display = 'none';
+    });
+  }
+  if (el.btnCloseProfitBreakdownFooter) {
+    el.btnCloseProfitBreakdownFooter.addEventListener('click', () => {
+      if (el.modalProfitBreakdown) el.modalProfitBreakdown.style.display = 'none';
+    });
+  }
+  if (el.modalProfitBreakdown) {
+    el.modalProfitBreakdown.addEventListener('click', (e) => {
+      if (e.target === el.modalProfitBreakdown) {
+        el.modalProfitBreakdown.style.display = 'none';
+      }
+    });
+  }
+  if (el.btnModalGoToExpenses) {
+    el.btnModalGoToExpenses.addEventListener('click', () => {
+      if (el.modalProfitBreakdown) el.modalProfitBreakdown.style.display = 'none';
+      switchTab('tab-expenses');
+    });
+  }
+
   // Mobile Bottom Sheet Trigger & Dismiss
   if (el.btnOpenMobileMenu && el.mobileSheetBackdrop) {
     el.btnOpenMobileMenu.addEventListener('click', () => {
@@ -1173,10 +1240,12 @@ function switchTab(tabId) {
     el.btnExecutePrint.addEventListener('click', () => window.print());
   }
 
-  // Set default report dates to today
+  // Set default report & expense dates to today
   const todayStr = formatYMD(new Date());
   if (el.repStartDate) el.repStartDate.value = todayStr;
   if (el.repEndDate) el.repEndDate.value = todayStr;
+  if (el.expStartDate) el.expStartDate.value = todayStr;
+  if (el.expEndDate) el.expEndDate.value = todayStr;
 
   // Modals
   el.btnAddNewProduct.addEventListener('click', openNewProductModal);
@@ -1455,14 +1524,44 @@ function switchTab(tabId) {
     el.btnSubmitOwnerAddIncome.addEventListener('click', handleSaveOwnerIncome);
   }
 
+  // Expense Filter Bar, Presets & Controls
+  if (el.expensePresetGroup) {
+    el.expensePresetGroup.addEventListener('click', (e) => {
+      const chip = e.target.closest('.btn-period-chip');
+      if (!chip || !chip.dataset.period) return;
+      applyExpensePeriodPreset(chip.dataset.period);
+    });
+  }
+
+  if (el.btnApplyExpenseFilter) {
+    el.btnApplyExpenseFilter.addEventListener('click', () => {
+      if (el.expensePresetGroup) {
+        el.expensePresetGroup.querySelectorAll('.btn-period-chip').forEach(btn => btn.classList.remove('active'));
+      }
+      if (el.lblOwnerKpiExpensesTitle) {
+        el.lblOwnerKpiExpensesTitle.textContent = 'Total Beban Periode Terpilih';
+      }
+      loadOwnerExpensesData();
+    });
+  }
+
+  if (el.btnResetExpenseFilter) {
+    el.btnResetExpenseFilter.addEventListener('click', () => {
+      if (el.ownerFilterExpenseCategory) el.ownerFilterExpenseCategory.value = 'all';
+      if (el.ownerFilterExpenseSource) el.ownerFilterExpenseSource.value = 'all';
+      if (el.ownerSearchExpenseInput) el.ownerSearchExpenseInput.value = '';
+      applyExpensePeriodPreset('today');
+    });
+  }
+
   if (el.ownerSearchExpenseInput) {
     el.ownerSearchExpenseInput.addEventListener('input', renderOwnerExpensesTable);
   }
   if (el.ownerFilterExpenseCategory) {
-    el.ownerFilterExpenseCategory.addEventListener('change', renderOwnerExpensesTable);
+    el.ownerFilterExpenseCategory.addEventListener('change', () => loadOwnerExpensesData());
   }
   if (el.ownerFilterExpenseSource) {
-    el.ownerFilterExpenseSource.addEventListener('change', renderOwnerExpensesTable);
+    el.ownerFilterExpenseSource.addEventListener('change', () => loadOwnerExpensesData());
   }
   if (el.btnRefreshOwnerExpenses) {
     el.btnRefreshOwnerExpenses.addEventListener('click', () => loadOwnerExpensesData());
@@ -1619,18 +1718,36 @@ function renderKPIs() {
     el.kpiExpenseSubLabel.textContent = `Operasional: ${formatRupiah(storeExp)} | Kulakan: ${formatRupiah(supExp)}`;
   }
 
-  // Laba Bersih Riil Toko (Net Operating Profit)
+  // Laba Bersih Riil Toko (Net Operating Profit) & Transparent Breakdown
   const netProfit = s.net_profit_today !== undefined ? s.net_profit_today : 0;
+  const grossProfit = s.gross_profit_today !== undefined ? s.gross_profit_today : 0;
+  const storeExp = s.total_expenses_today || 0;
+  const grossMarginPct = s.gross_margin_pct || 0;
+  const totalRev = s.total_revenue || 0;
+  const netMarginPct = s.net_margin_pct !== undefined ? s.net_margin_pct : (totalRev > 0 ? Math.round((netProfit / totalRev) * 1000) / 10 : 0);
+  const otherIncome = (state.dashboard.profitability_today && state.dashboard.profitability_today.other_income) || 0;
+
   if (el.kpiNetProfitToday) el.kpiNetProfitToday.textContent = formatRupiah(netProfit);
+  if (el.kpiGrossProfitToday) el.kpiGrossProfitToday.textContent = `${formatRupiah(grossProfit)} (${grossMarginPct}%)`;
+  if (el.kpiStoreExpenseDeduction) el.kpiStoreExpenseDeduction.textContent = storeExp > 0 ? `- ${formatRupiah(storeExp)}` : 'Rp 0';
+
+  if (el.kpiOtherIncomeRow && el.kpiOtherIncomeAdd) {
+    if (otherIncome > 0) {
+      el.kpiOtherIncomeRow.style.display = 'flex';
+      el.kpiOtherIncomeAdd.textContent = `+ ${formatRupiah(otherIncome)}`;
+    } else {
+      el.kpiOtherIncomeRow.style.display = 'none';
+    }
+  }
+
   if (el.cardNetProfitWrap) {
     el.cardNetProfitWrap.className = netProfit >= 0 ? 'kpi-card-v2 kpi-emerald' : 'kpi-card-v2 kpi-rose';
   }
   if (el.kpiProfitSubLabel) {
-    const marginPct = s.gross_margin_pct || 0;
     if (netProfit >= 0) {
-      el.kpiProfitSubLabel.innerHTML = `<span class="sub-dot green"></span><span>Margin: ${marginPct}% (Net Profit)</span>`;
+      el.kpiProfitSubLabel.innerHTML = `<span class="sub-dot green" id="kpiProfitSubDot"></span><span id="kpiProfitSubText">Margin Bersih: ${netMarginPct}% (Net Profit Riil)</span>`;
     } else {
-      el.kpiProfitSubLabel.innerHTML = `<span class="sub-dot red"></span><span style="color:#e11d48; font-weight:600;">Defisit Pengeluaran Hari Ini</span>`;
+      el.kpiProfitSubLabel.innerHTML = `<span class="sub-dot red" id="kpiProfitSubDot"></span><span style="color:#e11d48; font-weight:600;" id="kpiProfitSubText">Defisit Operasional Hari Ini (${netMarginPct}%)</span>`;
     }
   }
 
@@ -1652,6 +1769,98 @@ function renderKPIs() {
     if (el.mobileCashierName) el.mobileCashierName.textContent = 'Tidak Ada Shift';
     if (el.mobileShiftDot) el.mobileShiftDot.classList.remove('active');
     if (el.kpiDrawerStatus) el.kpiDrawerStatus.textContent = 'Tidak ada shift kasir yang aktif';
+  }
+}
+
+function openProfitBreakdownModal() {
+  if (!state.dashboard) return;
+  const s = state.dashboard.summary || {};
+  const prof = state.dashboard.profitability_today || {};
+
+  const totalRev = prof.total_revenue !== undefined ? prof.total_revenue : (s.total_revenue || 0);
+  const totalCogs = prof.total_cogs !== undefined ? prof.total_cogs : 0;
+  const grossProfit = prof.gross_profit !== undefined ? prof.gross_profit : (s.gross_profit_today || (totalRev - totalCogs));
+  const grossMarginPct = prof.gross_margin_pct !== undefined ? prof.gross_margin_pct : (s.gross_margin_pct || 0);
+  const totalExp = prof.total_operating_expenses !== undefined ? prof.total_operating_expenses : (s.total_expenses_today || 0);
+  const otherIncome = prof.other_income !== undefined ? prof.other_income : 0;
+  const netProfit = prof.net_profit !== undefined ? prof.net_profit : (s.net_profit_today || 0);
+  const netMarginPct = prof.net_margin_pct !== undefined ? prof.net_margin_pct : (s.net_margin_pct || (totalRev > 0 ? Math.round((netProfit / totalRev) * 1000) / 10 : 0));
+  const expensesList = prof.today_expenses_list || [];
+
+  if (el.pbModalRevenue) el.pbModalRevenue.textContent = formatRupiah(totalRev);
+  if (el.pbModalCogs) el.pbModalCogs.textContent = totalCogs > 0 ? `- ${formatRupiah(totalCogs)}` : 'Rp 0';
+  if (el.pbModalGrossProfit) el.pbModalGrossProfit.textContent = formatRupiah(grossProfit);
+  if (el.pbModalGrossMarginNote) el.pbModalGrossMarginNote.textContent = `Margin Kotor: ${grossMarginPct}% dari Omset Penjualan`;
+  
+  if (el.pbModalExpenses) el.pbModalExpenses.textContent = totalExp > 0 ? `- ${formatRupiah(totalExp)}` : 'Rp 0';
+  if (el.pbModalExpenseCount) el.pbModalExpenseCount.textContent = `${expensesList.length} transaksi beban biaya hari ini`;
+
+  if (el.pbModalOtherIncomeRow && el.pbModalOtherIncome) {
+    if (otherIncome > 0) {
+      el.pbModalOtherIncomeRow.style.display = 'flex';
+      el.pbModalOtherIncome.textContent = `+ ${formatRupiah(otherIncome)}`;
+    } else {
+      el.pbModalOtherIncomeRow.style.display = 'none';
+    }
+  }
+
+  if (el.pbModalNetProfit) el.pbModalNetProfit.textContent = formatRupiah(netProfit);
+  if (el.pbModalNetMarginNote) {
+    el.pbModalNetMarginNote.textContent = netProfit >= 0 
+      ? `Margin Bersih Riil: ${netMarginPct}% (Uang keuntungan bersih riil milik Toko)`
+      : `Defisit: ${netMarginPct}% (Pengeluaran operasional melebihi laba kotor)`;
+  }
+
+  // Render expenses list
+  if (el.pbModalExpensesListContainer) {
+    if (expensesList.length === 0) {
+      el.pbModalExpensesListContainer.innerHTML = `
+        <div style="padding: 14px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; text-align: center; color: #64748b; font-size: 12.5px;">
+          Tidak ada pengeluaran biaya operasional yang dicatat hari ini.<br>
+          <span style="font-size: 11.5px; color: #94a3b8;">Laba bersih saat ini sama penuh dengan laba kotor penjualan.</span>
+        </div>
+      `;
+    } else {
+      let rowsHtml = '';
+      expensesList.forEach((exp) => {
+        const catName = exp.category_name || exp.category || 'Operasional';
+        const sourceBadge = exp.source === 'cash' 
+          ? '<span style="background:#ecfdf5; color:#047857; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; border:1px solid #a7f3d0;">Kas Laci</span>' 
+          : '<span style="background:#eff6ff; color:#1d4ed8; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; border:1px solid #bfdbfe;">Transfer</span>';
+        
+        rowsHtml += `
+          <tr>
+            <td style="font-weight: 600; color: #1e293b;">
+              <div>${escapeHtml(catName)}</div>
+              <small style="color: #64748b; font-size: 11px;">${escapeHtml(exp.notes || '-')}</small>
+            </td>
+            <td style="text-align: center;">${sourceBadge}</td>
+            <td style="text-align: right; font-weight: 700; font-family: var(--font-mono); color: #e11d48;">
+              - ${formatRupiah(exp.amount || 0)}
+            </td>
+          </tr>
+        `;
+      });
+
+      el.pbModalExpensesListContainer.innerHTML = `
+        <table class="pb-expenses-table">
+          <thead>
+            <tr>
+              <th>Kategori & Catatan</th>
+              <th style="text-align: center;">Sumber</th>
+              <th style="text-align: right;">Nominal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      `;
+    }
+  }
+
+  if (el.modalProfitBreakdown) {
+    el.modalProfitBreakdown.style.display = 'flex';
   }
 }
 
@@ -5008,10 +5217,76 @@ function initOwnerHardwareSupport() {
 }
 
 // Owner Expenses & Petty Cash Management Functions
+function applyExpensePeriodPreset(periodKey) {
+  const now = new Date();
+  let start = new Date();
+  let end = new Date();
+  let periodTitle = 'Total Beban Periode Terpilih';
+
+  if (periodKey === 'today') {
+    start = now;
+    end = now;
+    periodTitle = 'Total Beban Hari Ini';
+  } else if (periodKey === 'yesterday') {
+    start.setDate(now.getDate() - 1);
+    end.setDate(now.getDate() - 1);
+    periodTitle = 'Total Beban Kemarin';
+  } else if (periodKey === '7days') {
+    start.setDate(now.getDate() - 6);
+    end = now;
+    periodTitle = 'Total Beban 7 Hari Terakhir';
+  } else if (periodKey === '7weeks') {
+    start.setDate(now.getDate() - (7 * 7 - 1)); // 49 hari
+    end = now;
+    periodTitle = 'Total Beban 7 Minggu Terakhir';
+  } else if (periodKey === 'this_month') {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+    end = now;
+    periodTitle = 'Total Beban Bulan Ini';
+  } else if (periodKey === 'all') {
+    start = null;
+    end = null;
+    periodTitle = 'Total Beban Seluruh Riwayat';
+  }
+
+  state.activeExpensePeriod = periodKey;
+  if (el.lblOwnerKpiExpensesTitle) {
+    el.lblOwnerKpiExpensesTitle.textContent = periodTitle;
+  }
+
+  if (el.expStartDate) el.expStartDate.value = start ? formatYMD(start) : '';
+  if (el.expEndDate) el.expEndDate.value = end ? formatYMD(end) : '';
+
+  if (el.expensePresetGroup) {
+    el.expensePresetGroup.querySelectorAll('.btn-period-chip').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.period === periodKey);
+    });
+  }
+
+  loadOwnerExpensesData();
+}
+
 async function loadOwnerExpensesData() {
   try {
+    const params = {};
+    if (el.expStartDate && el.expStartDate.value) {
+      params.start_date = el.expStartDate.value;
+    }
+    if (el.expEndDate && el.expEndDate.value) {
+      params.end_date = el.expEndDate.value;
+    }
+    if (el.ownerFilterExpenseCategory && el.ownerFilterExpenseCategory.value !== 'all') {
+      params.category = el.ownerFilterExpenseCategory.value;
+    }
+    if (el.ownerFilterExpenseSource && el.ownerFilterExpenseSource.value !== 'all') {
+      params.source = el.ownerFilterExpenseSource.value;
+    }
+    if (el.ownerSearchExpenseInput && el.ownerSearchExpenseInput.value.trim()) {
+      params.search = el.ownerSearchExpenseInput.value.trim();
+    }
+
     const [expRes, catRes, shiftRes] = await Promise.all([
-      api.getExpenses(),
+      api.getExpenses(params),
       api.getExpenseCategories(),
       api.getCurrentShift()
     ]);
@@ -5032,20 +5307,26 @@ async function loadOwnerExpensesData() {
       state.ownerExpenseSummary = expRes.summary || {};
 
       const summary = state.ownerExpenseSummary;
+      const periodExpenses = summary.period_expenses !== undefined ? summary.period_expenses : (summary.month_expenses || summary.total_expenses || 0);
+      const periodCount = summary.period_expenses_count !== undefined ? summary.period_expenses_count : state.ownerExpenses.filter(e => e.type === 'expense').length;
+      const drawerExpenses = summary.period_cash_drawer_out !== undefined ? summary.period_cash_drawer_out : (summary.total_cash_drawer_out || 0);
+      const transferExpenses = summary.period_transfer_out !== undefined ? summary.period_transfer_out : (summary.total_transfer_out || 0);
+      const incomeTotal = summary.period_income !== undefined ? summary.period_income : (summary.total_income || 0);
+
       if (el.ownerKpiMonthExpenses) {
-        el.ownerKpiMonthExpenses.textContent = formatRupiah(summary.month_expenses || summary.total_expenses || 0);
+        el.ownerKpiMonthExpenses.textContent = formatRupiah(periodExpenses);
       }
       if (el.ownerKpiExpensesCount) {
-        el.ownerKpiExpensesCount.textContent = `${state.ownerExpenses.filter(e => e.type === 'expense').length} transaksi pengeluaran`;
+        el.ownerKpiExpensesCount.textContent = `${periodCount} transaksi pengeluaran`;
       }
       if (el.ownerKpiDrawerExpenses) {
-        el.ownerKpiDrawerExpenses.textContent = formatRupiah(summary.total_cash_drawer_out || 0);
+        el.ownerKpiDrawerExpenses.textContent = formatRupiah(drawerExpenses);
       }
       if (el.ownerKpiTransferExpenses) {
-        el.ownerKpiTransferExpenses.textContent = formatRupiah(summary.total_transfer_out || 0);
+        el.ownerKpiTransferExpenses.textContent = formatRupiah(transferExpenses);
       }
       if (el.ownerKpiTotalIncome) {
-        el.ownerKpiTotalIncome.textContent = formatRupiah(summary.total_income || 0);
+        el.ownerKpiTotalIncome.textContent = formatRupiah(incomeTotal);
       }
       if (el.expenseCountBadge) {
         el.expenseCountBadge.textContent = state.ownerExpenses.length;
@@ -5131,6 +5412,10 @@ function renderOwnerExpensesTable() {
     const matchSrc = filterSrc === 'all' || e.source === filterSrc;
     return matchSearch && matchCat && matchSrc;
   });
+
+  if (el.lblExpenseFilteredCount) {
+    el.lblExpenseFilteredCount.textContent = `Menampilkan ${list.length} data`;
+  }
 
   if (list.length === 0) {
     el.ownerExpensesTableBody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 30px; color: #94a3b8;">Tidak ada data pengeluaran yang cocok dengan kriteria.</td></tr>';
