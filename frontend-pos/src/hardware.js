@@ -883,11 +883,11 @@ class HardwareManager {
     const formatLine = (left, right) => {
       const leftStr = String(left || '');
       const rightStr = String(right || '');
-      const spaces = maxCols - (leftStr.length + rightStr.length);
-      if (spaces > 0) {
-        return leftStr + ' '.repeat(spaces) + rightStr;
+      const space = maxCols - (leftStr.length + rightStr.length);
+      if (space >= 0) {
+        return leftStr + ' '.repeat(space) + rightStr;
       }
-      return leftStr + ' ' + rightStr;
+      return leftStr + '\n' + ' '.repeat(Math.max(0, maxCols - rightStr.length)) + rightStr;
     };
 
     const formatCurrency = (val) => {
@@ -953,32 +953,32 @@ class HardwareManager {
 
     const expectedCash = startingCash + cashSales + cashDebt + cashIncome - cashExpenses - cashSupplier;
 
-    append(formatLine('  Modal Awal (Float)     :', formatCurrency(startingCash)) + '\n');
-    append(formatLine('  (+) Penjualan Tunai    :', formatCurrency(cashSales)) + '\n');
+    append(formatLine(is80mm ? '  Modal Awal (Float)     :' : 'Modal Awal      :', formatCurrency(startingCash)) + '\n');
+    append(formatLine(is80mm ? '  (+) Penjualan Tunai    :' : '(+) Jual Tunai  :', formatCurrency(cashSales)) + '\n');
     if (cashDebt > 0) {
-      append(formatLine('  (+) Pelunasan Bon Tunai:', formatCurrency(cashDebt)) + '\n');
+      append(formatLine(is80mm ? '  (+) Pelunasan Bon Tunai:' : '(+) Lunas Bon   :', formatCurrency(cashDebt)) + '\n');
     }
     if (cashIncome > 0) {
-      append(formatLine('  (+) Kas Masuk Tambahan :', formatCurrency(cashIncome)) + '\n');
+      append(formatLine(is80mm ? '  (+) Kas Masuk Tambahan :' : '(+) Kas Masuk   :', formatCurrency(cashIncome)) + '\n');
     }
     if (cashExpenses > 0) {
-      append(formatLine('  (-) Pengeluaran Laci   :', '(' + formatCurrency(cashExpenses) + ')') + '\n');
+      append(formatLine(is80mm ? '  (-) Pengeluaran Laci   :' : '(-) Biaya Laci  :', '(' + formatCurrency(cashExpenses) + ')') + '\n');
     }
     if (cashSupplier > 0) {
-      append(formatLine('  (-) Kulakan Kas Laci   :', '(' + formatCurrency(cashSupplier) + ')') + '\n');
+      append(formatLine(is80mm ? '  (-) Kulakan Kas Laci   :' : '(-) Kulakan     :', '(' + formatCurrency(cashSupplier) + ')') + '\n');
     }
     append(subDivider + '\n');
 
     // Expected Drawer Cash
     append(COMMANDS.BOLD_ON);
-    append(formatLine('SALDO LACI SEHARUSNYA:', formatCurrency(expectedCash)) + '\n');
+    append(formatLine(is80mm ? 'SALDO LACI SEHARUSNYA:' : 'SALDO SEHARUSNYA:', formatCurrency(expectedCash)) + '\n');
     append(COMMANDS.BOLD_OFF);
 
     // 5. Cash Physically Counted & Variance
     const actualCash = Number(shiftData.actual_cash !== undefined ? shiftData.actual_cash : (shiftData.actual_cash_input !== undefined ? shiftData.actual_cash_input : expectedCash));
     const difference = actualCash - expectedCash;
 
-    append(formatLine('FISIK UANG DIHITUNG  :', formatCurrency(actualCash)) + '\n');
+    append(formatLine(is80mm ? 'FISIK UANG DIHITUNG  :' : 'FISIK DIHITUNG   :', formatCurrency(actualCash)) + '\n');
     append(subDivider + '\n');
 
     append(COMMANDS.ALIGN_CENTER);
@@ -1000,15 +1000,15 @@ class HardwareManager {
       append('RINCIAN PECAHAN UANG FISIK:\n');
       append(COMMANDS.BOLD_OFF);
       const b = shiftData.breakdown;
-      if (b.d100k) append(formatLine('  100.000 x ' + Math.round(b.d100k / 100000), formatCurrency(b.d100k)) + '\n');
-      if (b.d75k)  append(formatLine('   75.000 x ' + Math.round(b.d75k / 75000), formatCurrency(b.d75k)) + '\n');
-      if (b.d50k)  append(formatLine('   50.000 x ' + Math.round(b.d50k / 50000), formatCurrency(b.d50k)) + '\n');
-      if (b.d20k)  append(formatLine('   20.000 x ' + Math.round(b.d20k / 20000), formatCurrency(b.d20k)) + '\n');
-      if (b.d10k)  append(formatLine('   10.000 x ' + Math.round(b.d10k / 10000), formatCurrency(b.d10k)) + '\n');
-      if (b.d5k)   append(formatLine('    5.000 x ' + Math.round(b.d5k / 5000), formatCurrency(b.d5k)) + '\n');
-      if (b.d2k)   append(formatLine('    2.000 x ' + Math.round(b.d2k / 2000), formatCurrency(b.d2k)) + '\n');
-      if (b.d1k)   append(formatLine('    1.000 x ' + Math.round(b.d1k / 1000), formatCurrency(b.d1k)) + '\n');
-      if (b.dKoin) append(formatLine('    Koin / Receh         :', formatCurrency(b.dKoin)) + '\n');
+      if (b.d100k) append(formatLine(is80mm ? '  100.000 x ' + Math.round(b.d100k / 100000) : '100rb x ' + Math.round(b.d100k / 100000), formatCurrency(b.d100k)) + '\n');
+      if (b.d75k)  append(formatLine(is80mm ? '   75.000 x ' + Math.round(b.d75k / 75000) : ' 75rb x ' + Math.round(b.d75k / 75000), formatCurrency(b.d75k)) + '\n');
+      if (b.d50k)  append(formatLine(is80mm ? '   50.000 x ' + Math.round(b.d50k / 50000) : ' 50rb x ' + Math.round(b.d50k / 50000), formatCurrency(b.d50k)) + '\n');
+      if (b.d20k)  append(formatLine(is80mm ? '   20.000 x ' + Math.round(b.d20k / 20000) : ' 20rb x ' + Math.round(b.d20k / 20000), formatCurrency(b.d20k)) + '\n');
+      if (b.d10k)  append(formatLine(is80mm ? '   10.000 x ' + Math.round(b.d10k / 10000) : ' 10rb x ' + Math.round(b.d10k / 10000), formatCurrency(b.d10k)) + '\n');
+      if (b.d5k)   append(formatLine(is80mm ? '    5.000 x ' + Math.round(b.d5k / 5000) : '  5rb x ' + Math.round(b.d5k / 5000), formatCurrency(b.d5k)) + '\n');
+      if (b.d2k)   append(formatLine(is80mm ? '    2.000 x ' + Math.round(b.d2k / 2000) : '  2rb x ' + Math.round(b.d2k / 2000), formatCurrency(b.d2k)) + '\n');
+      if (b.d1k)   append(formatLine(is80mm ? '    1.000 x ' + Math.round(b.d1k / 1000) : '  1rb x ' + Math.round(b.d1k / 1000), formatCurrency(b.d1k)) + '\n');
+      if (b.dKoin) append(formatLine(is80mm ? '    Koin / Receh         :' : 'Koin / Receh    :', formatCurrency(b.dKoin)) + '\n');
       append(subDivider + '\n');
     }
 
@@ -1022,11 +1022,11 @@ class HardwareManager {
     append(COMMANDS.BOLD_ON);
     append('RINGKASAN METODE NON-TUNAI:\n');
     append(COMMANDS.BOLD_OFF);
-    append(formatLine('  QRIS                :', formatCurrency(qris)) + '\n');
-    append(formatLine('  Transfer Bank       :', formatCurrency(transfer)) + '\n');
-    append(formatLine('  Bon Hutang Baru     :', formatCurrency(tempo)) + '\n');
-    append(formatLine('  Total Omset Shift   :', formatCurrency(totalOmset)) + '\n');
-    append(formatLine('  Total Nota Transaksi:', String(totalOrders) + ' Nota') + '\n');
+    append(formatLine(is80mm ? '  QRIS                :' : 'QRIS            :', formatCurrency(qris)) + '\n');
+    append(formatLine(is80mm ? '  Transfer Bank       :' : 'Transfer Bank   :', formatCurrency(transfer)) + '\n');
+    append(formatLine(is80mm ? '  Bon Hutang Baru     :' : 'Bon Hutang Baru :', formatCurrency(tempo)) + '\n');
+    append(formatLine(is80mm ? '  Total Omset Shift   :' : 'Total Omset     :', formatCurrency(totalOmset)) + '\n');
+    append(formatLine(is80mm ? '  Total Nota Transaksi:' : 'Total Nota      :', String(totalOrders) + ' Nota') + '\n');
     append(subDivider + '\n');
 
     // 8. Notes (Cleaned without raw breakdown JSON)
@@ -1047,7 +1047,7 @@ class HardwareManager {
       append(' ( ........ )     ( ........ )\n');
     }
     append(divider + '\n');
-    append('Kassa POS • Sistem Kasir Pintar\n& Anti-Kecolongan Toko Pasar\n');
+    append('Kassa POS - Sistem Kasir Pintar\nAnti-Kecolongan Toko Pasar\n');
     append(COMMANDS.FEED_AND_CUT);
 
     let totalLen = 0;
