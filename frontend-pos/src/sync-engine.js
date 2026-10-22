@@ -17,7 +17,7 @@ import {
   getSyncMetaLocal
 } from './offline-db.js';
 
-export const APP_CURRENT_VERSION = 'v38';
+export const APP_CURRENT_VERSION = 'v39';
 const SYNC_INTERVAL_MS = 60000; // 1 minute interval
 
 class SyncEngine {

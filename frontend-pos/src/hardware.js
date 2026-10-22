@@ -37,6 +37,42 @@ function parseSafeDate(dateInput) {
   return new Date(s);
 }
 
+// Word-wrap text so lines never exceed maxCols and words are not split mid-word
+function wrapByWords(text, maxCols = 32) {
+  if (!text) return [];
+  const lines = [];
+  const paragraphs = String(text).split('\n');
+  for (const para of paragraphs) {
+    const trimmed = para.trim();
+    if (!trimmed) continue;
+    const words = trimmed.split(/\s+/);
+    let currentLine = '';
+    for (const w of words) {
+      if (!w) continue;
+      if (!currentLine) {
+        if (w.length > maxCols) {
+          lines.push(w.slice(0, maxCols));
+          currentLine = w.slice(maxCols);
+        } else {
+          currentLine = w;
+        }
+      } else if ((currentLine + ' ' + w).length <= maxCols) {
+        currentLine += ' ' + w;
+      } else {
+        lines.push(currentLine);
+        if (w.length > maxCols) {
+          lines.push(w.slice(0, maxCols));
+          currentLine = w.slice(maxCols);
+        } else {
+          currentLine = w;
+        }
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+  }
+  return lines;
+}
+
 // Known BLE Primary Services & Characteristics for Thermal Printers (Panda, RPP, MPT, Feasycom, etc.)
 const PRINTER_SERVICES = [
   '000018f0-0000-1000-8000-00805f9b34fb', // Standard Print Service
@@ -540,17 +576,25 @@ class HardwareManager {
       append(COMMANDS.DRAWER_KICK);
     }
 
-    // 2. Header (Store Title Double Size, Centered)
+    // 2. Header (Store Title: Double Height on 58mm to fit on 1 line, Centered)
     append(COMMANDS.ALIGN_CENTER);
-    append(COMMANDS.DOUBLE_SIZE_ON);
+    if (is80mm && (settings.store_name || 'PD. HASIL BUMI RAYA 1').length <= 24) {
+      append(COMMANDS.DOUBLE_SIZE_ON);
+    } else {
+      append(COMMANDS.DOUBLE_HEIGHT_ON);
+    }
     append(COMMANDS.BOLD_ON);
     append((settings.store_name || 'PD. HASIL BUMI RAYA 1') + '\n');
     append(COMMANDS.NORMAL_TEXT);
     append(COMMANDS.BOLD_OFF);
 
-    append((settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas') + '\n');
-    if (settings.store_address) append(settings.store_address + '\n');
-    if (settings.store_phone) append('Telp/WA: ' + settings.store_phone + '\n');
+    wrapByWords(settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas Pasar', maxCols).forEach(l => append(l + '\n'));
+    if (settings.store_address) {
+      wrapByWords(settings.store_address, maxCols).forEach(l => append(l + '\n'));
+    }
+    if (settings.store_phone) {
+      wrapByWords('Telp/WA: ' + settings.store_phone, maxCols).forEach(l => append(l + '\n'));
+    }
 
     if (isReprint) {
       append(COMMANDS.BOLD_ON);
@@ -607,11 +651,11 @@ class HardwareManager {
       append(formatRow('Kembali', formatRp(order.change_due)));
     }
 
-    // 6. Footer Notes
+    // 6. Footer Notes (Clean word-wrapping so "!" and words are not orphaned)
     append(divider + '\n');
     append(COMMANDS.ALIGN_CENTER);
-    const footerText = settings.receipt_footer || 'Terima kasih atas kunjungan Anda!\nBarang yang sudah ditimbang tidak dapat ditukar.';
-    footerText.split('\n').forEach(line => {
+    const footerText = settings.receipt_footer || 'Terima kasih atas kunjungan Anda!\nBarang yang sudah ditimbang & dibeli tidak dapat ditukar/dikembalikan.';
+    wrapByWords(footerText, maxCols).forEach(line => {
       append(line + '\n');
     });
 
@@ -647,7 +691,11 @@ class HardwareManager {
 
     append(COMMANDS.INIT);
     append(COMMANDS.ALIGN_CENTER);
-    append(COMMANDS.DOUBLE_SIZE_ON);
+    if (is80mm) {
+      append(COMMANDS.DOUBLE_SIZE_ON);
+    } else {
+      append(COMMANDS.DOUBLE_HEIGHT_ON);
+    }
     append(COMMANDS.BOLD_ON);
     append('THERMAL PRINTER TEST\n');
     append(COMMANDS.NORMAL_TEXT);
@@ -757,15 +805,23 @@ class HardwareManager {
 
     // 2. Header
     append(COMMANDS.ALIGN_CENTER);
-    append(COMMANDS.DOUBLE_SIZE_ON);
+    if (is80mm && (settings.store_name || 'PD. HASIL BUMI RAYA 1').length <= 24) {
+      append(COMMANDS.DOUBLE_SIZE_ON);
+    } else {
+      append(COMMANDS.DOUBLE_HEIGHT_ON);
+    }
     append(COMMANDS.BOLD_ON);
     append((settings.store_name || 'PD. HASIL BUMI RAYA 1') + '\n');
     append(COMMANDS.NORMAL_TEXT);
     append(COMMANDS.BOLD_OFF);
 
-    append((settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas') + '\n');
-    if (settings.store_address) append(settings.store_address + '\n');
-    if (settings.store_phone) append('Telp/WA: ' + settings.store_phone + '\n');
+    wrapByWords(settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas Pasar', maxCols).forEach(l => append(l + '\n'));
+    if (settings.store_address) {
+      wrapByWords(settings.store_address, maxCols).forEach(l => append(l + '\n'));
+    }
+    if (settings.store_phone) {
+      wrapByWords('Telp/WA: ' + settings.store_phone, maxCols).forEach(l => append(l + '\n'));
+    }
 
     append(doubleDivider + '\n');
     append(COMMANDS.BOLD_ON);
@@ -898,17 +954,24 @@ class HardwareManager {
 
     // 1. Store Header
     append(COMMANDS.ALIGN_CENTER);
-    append(COMMANDS.DOUBLE_SIZE_ON);
+    if (is80mm && (settings.store_name || 'PD. HASIL BUMI RAYA 1').length <= 24) {
+      append(COMMANDS.DOUBLE_SIZE_ON);
+    } else {
+      append(COMMANDS.DOUBLE_HEIGHT_ON);
+    }
     append(COMMANDS.BOLD_ON);
     const storeName = settings.store_name || 'PD. HASIL BUMI RAYA 1';
     append(storeName + '\n');
     append(COMMANDS.NORMAL_TEXT);
     append(COMMANDS.BOLD_OFF);
 
-    const storeTagline = settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas Pasar';
-    append(storeTagline + '\n');
-    if (settings.store_address) append(settings.store_address + '\n');
-    if (settings.store_phone) append('Telp/WA: ' + settings.store_phone + '\n');
+    wrapByWords(settings.store_tagline || 'Pusat Umbi, Bawang & Komoditas Pasar', maxCols).forEach(l => append(l + '\n'));
+    if (settings.store_address) {
+      wrapByWords(settings.store_address, maxCols).forEach(l => append(l + '\n'));
+    }
+    if (settings.store_phone) {
+      wrapByWords('Telp/WA: ' + settings.store_phone, maxCols).forEach(l => append(l + '\n'));
+    }
     append(divider + '\n');
 
     // 2. Report Title
