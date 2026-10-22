@@ -163,6 +163,17 @@ export async function deductProductStockLocal(productId, qty) {
   });
 }
 
+export async function deleteProductLocal(productId) {
+  try {
+    const store = await getStore('products', 'readwrite');
+    store.delete(Number(productId));
+    return true;
+  } catch (e) {
+    console.warn('deleteProductLocal error:', e);
+    return false;
+  }
+}
+
 // ==========================================
 // 2. CUSTOMERS MASTER DATA
 // ==========================================

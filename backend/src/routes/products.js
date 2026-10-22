@@ -149,11 +149,22 @@ router.get('/:id/restock-history', authenticateToken, async (req, res) => {
       WHERE product_id = ?
     `, [id]);
 
+    const adjustments = await dbQuery.all(`
+      SELECT 
+        sa.*,
+        u.name as recorded_by_name
+      FROM stock_adjustments sa
+      LEFT JOIN users u ON sa.user_id = u.id
+      WHERE sa.product_id = ?
+      ORDER BY sa.id DESC
+    `, [id]);
+
     return res.json({
       success: true,
       product,
       summary: summary || { total_entries: 0, total_qty_received: 0, total_cost_spent: 0, total_debt_remaining: 0 },
-      purchases
+      purchases,
+      adjustments
     });
   } catch (err) {
     console.error('Error fetching product restock history:', err);
@@ -213,7 +224,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
       wholesale_min_qty,
       stock_qty,
       min_stock_alert,
-      image_emoji
+      image_emoji,
+      stock_notes
     } = req.body;
 
     const existing = await dbQuery.get('SELECT * FROM products WHERE id = ?', [id]);
@@ -221,7 +233,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Produk tidak ditemukan' });
     }
 
-    const sanitizedStock = stock_qty !== undefined ? Math.round(Number(stock_qty) * 100) / 100 : null;
+    const oldStock = Math.round((Number(existing.stock_qty || 0) + Number.EPSILON) * 100) / 100;
+    let sanitizedStock = oldStock;
+    let stockChanged = false;
+    let diff = 0;
+
+    if (stock_qty !== undefined && stock_qty !== null && stock_qty !== '') {
+      sanitizedStock = Math.round((Number(stock_qty) + Number.EPSILON) * 100) / 100;
+      diff = Math.round((sanitizedStock - oldStock) * 100) / 100;
+      if (Math.abs(diff) > 0.001) {
+        stockChanged = true;
+      }
+    }
 
     await dbQuery.run(
       `UPDATE products
@@ -232,23 +255,93 @@ router.put('/:id', authenticateToken, async (req, res) => {
            retail_price = COALESCE(?, retail_price),
            reseller_price = COALESCE(?, reseller_price),
            wholesale_min_qty = COALESCE(?, wholesale_min_qty),
-           stock_qty = COALESCE(?, stock_qty),
+           stock_qty = ?,
            min_stock_alert = COALESCE(?, min_stock_alert),
            image_emoji = COALESCE(?, image_emoji)
        WHERE id = ?`,
       [name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, sanitizedStock, min_stock_alert, image_emoji, id]
     );
 
+    // If stock was edited manually, record into stock_adjustments history and audit trail
+    if (stockChanged) {
+      const diffText = diff >= 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2);
+      const noteText = `[KOREKSI MANUAL STOK] Diubah dari ${oldStock} kg menjadi ${sanitizedStock} kg (Selisih: ${diffText} kg)${stock_notes ? '. Catatan: ' + stock_notes : ''}`;
+
+      await dbQuery.run(
+        `INSERT INTO stock_adjustments (product_id, shift_id, user_id, type, qty_kg, notes, photo_url, created_at)
+         VALUES (?, NULL, ?, 'opname', ?, ?, '', datetime('now', 'localtime'))`,
+        [id, req.user.id, Math.abs(diff), noteText]
+      );
+
+      await logAudit(req.user.id, 'PRODUCT_STOCK_MANUAL_EDIT', {
+        product_id: id,
+        product_name: name || existing.name,
+        old_stock: oldStock,
+        new_stock: sanitizedStock,
+        difference: diff,
+        notes: stock_notes || ''
+      });
+    }
+
     await logAudit(req.user.id, 'PRODUCT_UPDATED', {
       product_id: id,
-      old: { retail: existing.retail_price, reseller: existing.reseller_price },
-      new: { retail: retail_price, reseller: reseller_price }
+      old: { name: existing.name, retail: existing.retail_price, reseller: existing.reseller_price, cost: existing.cost_price, stock: oldStock },
+      new: { name: name || existing.name, retail: retail_price, reseller: reseller_price, cost: cost_price, stock: sanitizedStock }
     });
 
-    const updated = await dbQuery.get('SELECT * FROM products WHERE id = ?', [id]);
-    return res.json({ success: true, message: 'Produk berhasil diperbarui', product: updated });
+    const updated = await dbQuery.get('SELECT *, ROUND(stock_qty, 2) AS stock_qty FROM products WHERE id = ?', [id]);
+    return res.json({
+      success: true,
+      message: stockChanged 
+        ? `Komoditas & stok berhasil diperbarui (Stok: ${sanitizedStock} ${updated.unit || 'kg'})` 
+        : 'Komoditas berhasil diperbarui',
+      product: updated,
+      stock_changed: stockChanged,
+      stock_diff: diff
+    });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/products/:id (Cashier / Owner)
+router.delete('/:id', authenticateToken, requireOwner, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await dbQuery.get('SELECT * FROM products WHERE id = ?', [id]);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Komoditas tidak ditemukan' });
+    }
+
+    // Check if product is referenced in order items or purchases
+    const orderRef = await dbQuery.get('SELECT COUNT(*) as cnt FROM order_items WHERE product_id = ?', [id]);
+    const purchaseRef = await dbQuery.get('SELECT COUNT(*) as cnt FROM purchases WHERE product_id = ?', [id]);
+    const hasReferences = ((orderRef && orderRef.cnt > 0) || (purchaseRef && purchaseRef.cnt > 0));
+
+    if (hasReferences) {
+      // Soft-delete so historical receipts, reports, and debt records maintain referential integrity
+      await dbQuery.run('UPDATE products SET is_active = 0 WHERE id = ?', [id]);
+    } else {
+      // Hard-delete if product was never transacted
+      await dbQuery.run('DELETE FROM products WHERE id = ?', [id]);
+    }
+
+    await logAudit(req.user.id, 'PRODUCT_DELETED', {
+      product_id: id,
+      name: product.name,
+      stock_qty: product.stock_qty,
+      is_soft_delete: hasReferences
+    });
+
+    return res.json({
+      success: true,
+      message: `Komoditas "${product.name}" berhasil dihapus dari katalog toko`,
+      product_id: id,
+      soft_delete: hasReferences
+    });
+  } catch (err) {
+    console.error('Error deleting product:', err);
+    return res.status(500).json({ success: false, message: 'Gagal menghapus komoditas: ' + err.message });
   }
 });
 

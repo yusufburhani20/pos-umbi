@@ -246,8 +246,14 @@ const el = {
   btnCloseModalEditPrice: document.getElementById('btnCloseModalEditPrice'),
   btnCancelModalEditPrice: document.getElementById('btnCancelModalEditPrice'),
   btnSaveModalEditPrice: document.getElementById('btnSaveModalEditPrice'),
+  btnDeleteProductModal: document.getElementById('btnDeleteProductModal'),
   editPriceProdId: document.getElementById('editPriceProdId'),
   editPriceProdName: document.getElementById('editPriceProdName'),
+  editPriceStock: document.getElementById('editPriceStock'),
+  editPriceUnitLabel: document.getElementById('editPriceUnitLabel'),
+  editPriceCurrentStockBadge: document.getElementById('editPriceCurrentStockBadge'),
+  editPriceStockDiffPreview: document.getElementById('editPriceStockDiffPreview'),
+  editPriceStockNotes: document.getElementById('editPriceStockNotes'),
   editPriceCost: document.getElementById('editPriceCost'),
   editPriceRetail: document.getElementById('editPriceRetail'),
   editPriceReseller: document.getElementById('editPriceReseller'),
@@ -1282,6 +1288,29 @@ function switchTab(tabId) {
   el.btnCloseModalEditPrice.addEventListener('click', () => el.modalEditPrice.style.display = 'none');
   el.btnCancelModalEditPrice.addEventListener('click', () => el.modalEditPrice.style.display = 'none');
   el.btnSaveModalEditPrice.addEventListener('click', handleSaveEditPrice);
+  if (el.btnDeleteProductModal) el.btnDeleteProductModal.addEventListener('click', handleDeleteProduct);
+
+  if (el.editPriceStock) {
+    el.editPriceStock.addEventListener('input', () => {
+      const orig = parseFloat(el.editPriceStock.dataset.original || 0);
+      const val = parseFloat(el.editPriceStock.value);
+      if (isNaN(val) || Math.abs(val - orig) < 0.001) {
+        if (el.editPriceStockDiffPreview) el.editPriceStockDiffPreview.style.display = 'none';
+        if (el.editPriceStockNotes) el.editPriceStockNotes.style.display = 'none';
+      } else {
+        const diff = Math.round((val - orig) * 100) / 100;
+        const diffText = diff >= 0 ? `+${diff}` : `${diff}`;
+        if (el.editPriceStockDiffPreview) {
+          el.editPriceStockDiffPreview.style.display = 'block';
+          el.editPriceStockDiffPreview.style.color = diff >= 0 ? '#059669' : '#dc2626';
+          el.editPriceStockDiffPreview.textContent = `⚡ Koreksi Manual: ${orig} ➔ ${val} (Selisih: ${diffText} ${el.editPriceUnitLabel ? el.editPriceUnitLabel.textContent : 'kg'})`;
+        }
+        if (el.editPriceStockNotes) {
+          el.editPriceStockNotes.style.display = 'block';
+        }
+      }
+    });
+  }
 
   // Cashier Management Events
   if (el.btnAddNewCashier) el.btnAddNewCashier.addEventListener('click', openAddCashierModal);
@@ -2705,13 +2734,68 @@ async function openProductRestockHistoryModal(productId) {
       el.statProdDebtRemaining.className = debt > 0 ? 'kpi-v2-main text-danger' : 'kpi-v2-main text-success';
     }
 
-    if (purchases.length === 0) {
+    const adjustments = res.adjustments || [];
+
+    const allLogs = [
+      ...purchases.map(p => ({
+        created_at: p.created_at,
+        ref_no: p.purchase_no || '-',
+        source_title: `👤 ${escapeHtml(p.supplier_name || 'Tanpa Nama / Non-Supplier')}`,
+        source_sub: p.supplier_address ? `📍 ${escapeHtml(p.supplier_address)}` : '',
+        phone: p.supplier_phone,
+        qty_display: `+${Number(p.qty_kg).toLocaleString('id-ID')} ${prod.unit}`,
+        qty_style: 'color: #059669;',
+        cost_display: formatRupiah(p.cost_price),
+        total_display: formatRupiah(p.total_cost),
+        status_html: p.payment_status === 'lunas' 
+          ? '<span class="kpi-badge success" style="font-size: 11px;">🟢 Lunas</span>'
+          : (p.remaining_amount > 0 ? `<span class="kpi-badge amber" style="font-size: 11px;">⏳ Tempo (${formatRupiah(p.remaining_amount)})</span>` : '<span class="kpi-badge success" style="font-size: 11px;">🟢 Lunas</span>'),
+        user_name: p.recorded_by_name || 'Admin',
+        notes: p.notes || '-'
+      })),
+      ...adjustments.map(a => {
+        const isManual = a.notes && a.notes.includes('KOREKSI MANUAL');
+        const isOpname = a.type === 'opname';
+        const isNeg = a.notes && a.notes.includes('Selisih: -');
+        const isPos = a.notes && a.notes.includes('Selisih: +');
+        let badgeHtml = '';
+        if (isManual) {
+          badgeHtml = '<span class="kpi-badge amber" style="font-size: 11px;">⚖️ Koreksi Manual</span>';
+        } else if (isOpname) {
+          badgeHtml = '<span class="kpi-badge blue" style="font-size: 11px;">📋 Opname</span>';
+        } else {
+          badgeHtml = '<span class="kpi-badge rose" style="font-size: 11px;">⚠️ Susut/Rusak</span>';
+        }
+
+        let prefix = '';
+        let colorStyle = 'color: #475569;';
+        if (isPos) { prefix = '+'; colorStyle = 'color: #059669;'; }
+        else if (isNeg) { prefix = '-'; colorStyle = 'color: #dc2626;'; }
+
+        return {
+          created_at: a.created_at,
+          ref_no: `ADJ-${a.id}`,
+          source_title: isManual ? '⚖️ Koreksi Manual Stok' : (isOpname ? '📋 Stok Opname Toko' : '⚠️ Barang Susut / Rusak'),
+          source_sub: 'Penyesuaian Fisik',
+          phone: null,
+          qty_display: `${prefix}${Number(a.qty_kg).toLocaleString('id-ID')} ${prod.unit}`,
+          qty_style: colorStyle,
+          cost_display: '-',
+          total_display: '-',
+          status_html: badgeHtml,
+          user_name: a.recorded_by_name || 'Admin / Kasir',
+          notes: a.notes || '-'
+        };
+      })
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (allLogs.length === 0) {
       el.prodRestockTableBody.innerHTML = `
         <tr>
           <td colspan="9" class="text-center" style="padding: 40px 20px; color: #64748b;">
             <div style="font-size: 32px; margin-bottom: 8px;">📦</div>
-            <strong style="color: #0f172a; font-size: 15px; display: block;">Belum Ada Riwayat Kulakan Masuk</strong>
-            <p style="margin: 4px 0 16px 0; font-size: 13px;">Belum pernah ada pasokan stok yang dicatat dari juragan petani untuk komoditas ini.</p>
+            <strong style="color: #0f172a; font-size: 15px; display: block;">Belum Ada Riwayat Kulakan / Perubahan Stok</strong>
+            <p style="margin: 4px 0 16px 0; font-size: 13px;">Belum pernah ada pasokan stok masuk atau koreksi stok yang dicatat untuk komoditas ini.</p>
             <button class="btn-action-emerald" id="btnRestockFromEmptyModal" style="margin: 0 auto; padding: 8px 18px; border-radius: 8px;">
               <span>📦</span> + Catat Kulakan Masuk Sekarang
             </button>
@@ -2728,22 +2812,13 @@ async function openProductRestockHistoryModal(productId) {
       return;
     }
 
-    el.prodRestockTableBody.innerHTML = purchases.map(p => {
-      const timeFormatted = parseSafeDate(p.created_at).toLocaleString('id-ID', {
+    el.prodRestockTableBody.innerHTML = allLogs.map(item => {
+      const timeFormatted = parseSafeDate(item.created_at).toLocaleString('id-ID', {
         day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
       });
 
-      let statusBadge = '';
-      if (p.payment_status === 'lunas') {
-        statusBadge = '<span class="kpi-badge success" style="font-size: 11px;">🟢 Lunas</span>';
-      } else if (p.remaining_amount > 0) {
-        statusBadge = `<span class="kpi-badge amber" style="font-size: 11px;">⏳ Tempo (Sisa: ${formatRupiah(p.remaining_amount)})</span>`;
-      } else {
-        statusBadge = '<span class="kpi-badge success" style="font-size: 11px;">🟢 Lunas</span>';
-      }
-
-      const waBtn = p.supplier_phone 
-        ? `<a href="https://wa.me/${p.supplier_phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}" target="_blank" class="btn-wa-chip" style="padding: 2px 7px; font-size: 11px; margin-left: 6px;" title="Hubungi via WhatsApp">💬 WA</a>`
+      const waBtn = item.phone 
+        ? `<a href="https://wa.me/${item.phone.replace(/[^0-9]/g, '').replace(/^0/, '62')}" target="_blank" class="btn-wa-chip" style="padding: 2px 7px; font-size: 11px; margin-left: 6px;" title="Hubungi via WhatsApp">💬 WA</a>`
         : '';
 
       return `
@@ -2752,32 +2827,32 @@ async function openProductRestockHistoryModal(productId) {
             📅 ${timeFormatted}
           </td>
           <td>
-            <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; color: #0f172a; font-weight: 700;">${p.purchase_no || '-'}</code>
+            <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; color: #0f172a; font-weight: 700;">${item.ref_no}</code>
           </td>
           <td>
             <div style="font-weight: 700; color: #0f172a; font-size: 13px; display: flex; align-items: center;">
-              <span>👤 ${escapeHtml(p.supplier_name || 'Tanpa Nama / Non-Supplier')}</span>
+              <span>${item.source_title}</span>
               ${waBtn}
             </div>
-            ${p.supplier_address ? `<div style="font-size: 11px; color: #64748b;">📍 ${escapeHtml(p.supplier_address)}</div>` : ''}
+            ${item.source_sub ? `<div style="font-size: 11px; color: #64748b;">${item.source_sub}</div>` : ''}
           </td>
-          <td class="text-right" style="font-weight: 800; color: #059669; font-family: var(--font-mono); font-size: 13.5px; white-space: nowrap;">
-            +${Number(p.qty_kg).toLocaleString('id-ID')} ${prod.unit}
+          <td class="text-right" style="font-weight: 800; ${item.qty_style} font-family: var(--font-mono); font-size: 13.5px; white-space: nowrap;">
+            ${item.qty_display}
           </td>
           <td class="text-right" style="font-family: var(--font-mono); font-weight: 600; color: #475569; font-size: 13px; white-space: nowrap;">
-            ${formatRupiah(p.cost_price)}
+            ${item.cost_display}
           </td>
           <td class="text-right" style="font-family: var(--font-mono); font-weight: 800; color: #0f172a; font-size: 13.5px; white-space: nowrap;">
-            ${formatRupiah(p.total_cost)}
+            ${item.total_display}
           </td>
           <td class="text-center" style="white-space: nowrap;">
-            ${statusBadge}
+            ${item.status_html}
           </td>
           <td style="font-size: 12px; color: #475569; white-space: nowrap;">
-            ${escapeHtml(p.recorded_by_name || 'Admin')}
+            ${escapeHtml(item.user_name)}
           </td>
           <td style="font-size: 12px; color: #64748b; max-width: 200px;">
-            ${escapeHtml(p.notes || '-')}
+            ${escapeHtml(item.notes)}
           </td>
         </tr>
       `;
@@ -2983,6 +3058,20 @@ function parseAuditToNarrative(log) {
       narrative = `Komoditas baru <strong>"${d.name}"</strong> didaftarkan ke katalog (Eceran: ${formatRupiah(d.retail_price)}, Grosir: ${formatRupiah(d.reseller_price)}).`;
       break;
 
+    case 'PRODUCT_STOCK_MANUAL_EDIT':
+      icon = '⚖️';
+      badgeClass = 'amber';
+      badgeTitle = 'Koreksi Stok Manual';
+      narrative = `Stok komoditas <strong>"${d.product_name || ''}"</strong> diedit manual: dari <strong>${d.old_stock} kg</strong> menjadi <strong>${d.new_stock} kg</strong> (Selisih: <strong>${d.difference >= 0 ? '+' : ''}${d.difference} kg</strong>). ${d.notes ? 'Catatan: "' + d.notes + '"' : ''}`;
+      break;
+
+    case 'PRODUCT_DELETED':
+      icon = '🗑️';
+      badgeClass = 'rose';
+      badgeTitle = 'Hapus Komoditas';
+      narrative = `Komoditas <strong>"${d.name || ''}"</strong> (Stok terakhir: ${d.stock_qty || 0} kg) dihapus dari katalog toko oleh Owner.`;
+      break;
+
     case 'PRODUCT_UPDATED':
       icon = '🏷️';
       badgeClass = 'amber';
@@ -3186,6 +3275,25 @@ async function handleSaveRestock() {
 function openEditPriceModal(p) {
   el.editPriceProdId.value = p.id;
   el.editPriceProdName.value = p.name;
+  if (el.editPriceUnitLabel) el.editPriceUnitLabel.textContent = p.unit || 'kg';
+
+  const stockFormatted = formatStockDisplay(p.stock_qty);
+  if (el.editPriceCurrentStockBadge) {
+    el.editPriceCurrentStockBadge.textContent = `Sistem: ${stockFormatted} ${p.unit || 'kg'}`;
+  }
+  if (el.editPriceStock) {
+    el.editPriceStock.value = stockFormatted;
+    el.editPriceStock.dataset.original = stockFormatted;
+  }
+  if (el.editPriceStockDiffPreview) {
+    el.editPriceStockDiffPreview.style.display = 'none';
+    el.editPriceStockDiffPreview.textContent = '';
+  }
+  if (el.editPriceStockNotes) {
+    el.editPriceStockNotes.value = '';
+    el.editPriceStockNotes.style.display = 'none';
+  }
+
   el.editPriceCost.value = formatRupiahNumber(p.cost_price);
   el.editPriceRetail.value = formatRupiahNumber(p.retail_price);
   el.editPriceReseller.value = formatRupiahNumber(p.reseller_price);
@@ -3198,24 +3306,63 @@ function openEditPriceModal(p) {
 
 async function handleSaveEditPrice() {
   const id = el.editPriceProdId.value;
+  const nameVal = el.editPriceProdName.value.trim();
+  const stockVal = el.editPriceStock ? parseFloat(el.editPriceStock.value) : undefined;
+  const stockNotesVal = el.editPriceStockNotes ? el.editPriceStockNotes.value.trim() : '';
+
   const payload = {
+    name: nameVal || undefined,
     cost_price: parseRupiahInput(el.editPriceCost.value),
     retail_price: parseRupiahInput(el.editPriceRetail.value),
     reseller_price: parseRupiahInput(el.editPriceReseller.value),
     wholesale_min_qty: Number(el.editPriceMinQty.value),
-    min_stock_alert: el.editPriceMinAlert ? (parseFloat(el.editPriceMinAlert.value) || 15.0) : 15.0
+    min_stock_alert: el.editPriceMinAlert ? (parseFloat(el.editPriceMinAlert.value) || 15.0) : 15.0,
+    stock_qty: isNaN(stockVal) ? undefined : stockVal,
+    stock_notes: stockNotesVal
   };
 
   try {
     el.btnSaveModalEditPrice.disabled = true;
-    await api.updateProduct(id, payload);
+    el.btnSaveModalEditPrice.textContent = 'Menyimpan...';
+    const res = await api.updateProduct(id, payload);
     el.modalEditPrice.style.display = 'none';
-    showToast('Harga komoditas berhasil diperbarui!', 'success');
+    showToast(res.message || 'Komoditas & stok berhasil diperbarui!', 'success');
     await loadAllData();
   } catch (err) {
-    showToast('Gagal update harga: ' + err.message, 'error');
+    showToast('Gagal update komoditas: ' + err.message, 'error');
   } finally {
     el.btnSaveModalEditPrice.disabled = false;
+    el.btnSaveModalEditPrice.textContent = 'Simpan Perubahan';
+  }
+}
+
+async function handleDeleteProduct() {
+  const id = el.editPriceProdId.value;
+  const prod = state.products.find(p => p.id === Number(id));
+  const prodName = prod ? prod.name : 'komoditas ini';
+
+  const confirmMsg = `Apakah Anda yakin ingin MENGHAPUS komoditas "${prodName}"?\n\n` +
+    `• Komoditas akan dihapus dari katalog toko dan menu kasir.\n` +
+    `• Seluruh riwayat transaksi nota masa lalu tetap aman tercatat.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    if (el.btnDeleteProductModal) {
+      el.btnDeleteProductModal.disabled = true;
+      el.btnDeleteProductModal.textContent = 'Menghapus...';
+    }
+    const res = await api.deleteProduct(id);
+    el.modalEditPrice.style.display = 'none';
+    showToast(res.message || `Komoditas "${prodName}" berhasil dihapus`, 'success');
+    await loadAllData();
+  } catch (err) {
+    showToast('Gagal menghapus komoditas: ' + err.message, 'error');
+  } finally {
+    if (el.btnDeleteProductModal) {
+      el.btnDeleteProductModal.disabled = false;
+      el.btnDeleteProductModal.innerHTML = '🗑️ Hapus Komoditas';
+    }
   }
 }
 

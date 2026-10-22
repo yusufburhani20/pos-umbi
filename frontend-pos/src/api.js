@@ -90,6 +90,12 @@ class ApiClient {
     });
   }
 
+  deleteProduct(id) {
+    return this.request(`/products/${id}`, {
+      method: 'DELETE'
+    });
+  }
+
   
   restockProduct(productId, qtyKg, newCostPrice, notes, supplierId = null, paymentStatus = 'lunas', dpAmount = 0, dueDate = null) {
     return this.request('/products/restock', {

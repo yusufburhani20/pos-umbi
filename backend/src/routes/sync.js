@@ -76,6 +76,7 @@ router.get('/pull', authenticateToken, async (req, res) => {
       SELECT id, name, category, unit, cost_price, retail_price, reseller_price,
              wholesale_min_qty, ROUND(stock_qty, 2) AS stock_qty, min_stock_alert, image_emoji, is_active
       FROM products
+      WHERE is_active = 1
       ORDER BY category ASC, name ASC
     `);
 
