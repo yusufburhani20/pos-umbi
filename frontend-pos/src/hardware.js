@@ -23,8 +23,8 @@ const COMMANDS = {
   // Panda Cash Drawer Kick (Sends 24V pulse to RJ-11 pin 2 and pin 5)
   // ESC p 0 25 250 (Pin 2) + ESC p 1 25 250 (Pin 5)
   DRAWER_KICK: [ESC, 0x70, 0x00, 0x19, 0xfa, ESC, 0x70, 0x01, 0x19, 0xfa],
-  // Paper Feed & Partial Cut
-  FEED_AND_CUT: [0x0a, 0x0a, 0x0a, 0x0a, GS, 0x56, 0x42, 0x00]
+  // Paper Feed & Cut (Compact 2-line feed to clear tear bar without wasting paper)
+  FEED_AND_CUT: [0x0a, 0x0a, GS, 0x56, 0x01]
 };
 
 function parseSafeDate(dateInput) {
