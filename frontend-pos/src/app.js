@@ -701,6 +701,14 @@ function formatRupiah(num) {
   return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
 }
 
+// Universal Clean Stock Formatter (eliminates IEEE-754 precision glitches like 750.5999999999999)
+function formatStockDisplay(qty) {
+  const num = Number(qty);
+  if (isNaN(num)) return '0';
+  const rounded = Math.round((num + Number.EPSILON) * 100) / 100;
+  return String(Number(rounded.toFixed(2)));
+}
+
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
@@ -1235,7 +1243,12 @@ async function loadInitialData() {
     ]);
 
     if (localProds && localProds.length > 0) {
-      const validProds = localProds.filter(p => p && (p.name || p.product_name));
+      const validProds = localProds.filter(p => p && (p.name || p.product_name)).map(p => {
+        if (p.stock_qty !== undefined && p.stock_qty !== null) {
+          p.stock_qty = Math.round((Number(p.stock_qty) + Number.EPSILON) * 100) / 100;
+        }
+        return p;
+      });
       if (validProds.length > 0) {
         state.products = validProds;
         state.filteredProducts = [...state.products];
@@ -1262,6 +1275,9 @@ async function loadInitialData() {
       if (prodRes && prodRes.products && prodRes.products.length > 0) {
         const serverProds = prodRes.products.map(p => {
           if (!p.name && p.product_name) p.name = p.product_name;
+          if (p.stock_qty !== undefined && p.stock_qty !== null) {
+            p.stock_qty = Math.round((Number(p.stock_qty) + Number.EPSILON) * 100) / 100;
+          }
           return p;
         });
         state.products = serverProds;
@@ -2696,10 +2712,10 @@ function renderProductGrid() {
       tagHtml = `<span class="stock-tag empty">🚨 Habis</span>`;
       cardClass = 'out-of-stock';
     } else if (isLow) {
-      tagHtml = `<span class="stock-tag low">⚠️ Sisa ${p.stock_qty} ${p.unit}</span>`;
+      tagHtml = `<span class="stock-tag low">⚠️ Sisa ${formatStockDisplay(p.stock_qty)} ${p.unit}</span>`;
       cardClass = 'low-stock-card';
     } else {
-      tagHtml = `<span class="stock-tag safe">🟢 ${p.stock_qty} ${p.unit}</span>`;
+      tagHtml = `<span class="stock-tag safe">🟢 ${formatStockDisplay(p.stock_qty)} ${p.unit}</span>`;
     }
 
     const qtyInCart = cartQtyMap[p.id];
@@ -3617,7 +3633,7 @@ function openKarungQtyModal(idx) {
   if (el.karungModalItemName) el.karungModalItemName.textContent = `Isi Kuantitas Karung: ${p.name}`;
   if (el.karungModalSubtitle) el.karungModalSubtitle.textContent = `Tentukan total berat atau isi karung untuk ${p.name}.`;
   if (el.karungModalUnitPriceText) el.karungModalUnitPriceText.textContent = `${formatRupiah(p.reseller_price)} / ${p.unit}`;
-  if (el.karungModalStockText) el.karungModalStockText.textContent = `${p.stock_qty} ${p.unit}`;
+  if (el.karungModalStockText) el.karungModalStockText.textContent = `${formatStockDisplay(p.stock_qty)} ${p.unit}`;
 
   // Default weight logic:
   // If item.qty is still <= 1 (default when adding 1 item), default to standard 25 kg
@@ -3868,7 +3884,7 @@ async function handleProcessOrder() {
       for (const itm of state.cart) {
         await deductProductStockLocal(itm.product.id, itm.qty);
         const prod = state.products.find(p => p.id === itm.product.id);
-        if (prod) prod.stock_qty = Math.max(0, Number(prod.stock_qty) - Number(itm.qty));
+        if (prod) prod.stock_qty = Math.max(0, Math.round(((Number(prod.stock_qty) || 0) - Number(itm.qty)) * 100) / 100);
       }
 
       // Trigger silent background sync in case connection was restored
@@ -4085,7 +4101,7 @@ async function openWasteModal() {
     return;
   }
   el.wasteProductSelect.innerHTML = state.products.map(p => `
-    <option value="${p.id}">${p.name} (Stok: ${p.stock_qty} kg)</option>
+    <option value="${p.id}">${p.name} (Stok: ${formatStockDisplay(p.stock_qty)} kg)</option>
   `).join('');
   el.wasteQtyInput.value = '';
   el.wasteNotesInput.value = '';
@@ -5001,7 +5017,7 @@ async function openCashierProductRestockHistoryModal(productId) {
     el.cashierProdRestockModalSubtitle.textContent = `Kategori: ${(prod.category || 'umbi').toUpperCase()} • Satuan: ${prod.unit || 'kg'} • Modal Saat Ini: ${formatRupiah(prod.cost_price)}`;
   }
 
-  if (el.cashierStatCurrentStock) el.cashierStatCurrentStock.textContent = `${Number(prod.stock_qty || 0).toLocaleString('id-ID')} ${prod.unit || 'kg'}`;
+  if (el.cashierStatCurrentStock) el.cashierStatCurrentStock.textContent = `${formatStockDisplay(prod.stock_qty)} ${prod.unit || 'kg'}`;
   if (el.cashierStatTotalReceived) el.cashierStatTotalReceived.textContent = 'Memuat...';
   if (el.cashierStatEntriesCount) el.cashierStatEntriesCount.textContent = '...';
 
@@ -5577,7 +5593,7 @@ function updateRestockCurrentStock() {
   const prodId = Number(el.restockProductSelect.value);
   const prod = state.products.find(p => p.id === prodId);
   if (prod) {
-    el.restockCurrentStock.value = `${prod.stock_qty} ${prod.unit}`;
+    el.restockCurrentStock.value = `${formatStockDisplay(prod.stock_qty)} ${prod.unit}`;
     el.restockCostInput.placeholder = `Modal saat ini: Rp ${Number(prod.cost_price).toLocaleString('id-ID')}`;
   }
 }

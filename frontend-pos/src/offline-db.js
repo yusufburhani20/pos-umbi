@@ -108,6 +108,9 @@ export async function saveProductsLocal(products) {
       if (!prod.name && prod.product_name) {
         prod.name = prod.product_name;
       }
+      if (prod.stock_qty !== undefined && prod.stock_qty !== null) {
+        prod.stock_qty = Math.round((Number(prod.stock_qty) + Number.EPSILON) * 100) / 100;
+      }
       store.put(prod);
     }
   }
@@ -126,6 +129,9 @@ export async function getProductsLocal(category = null) {
       let items = request.result || [];
       items = items.map(p => {
         if (!p.name && p.product_name) p.name = p.product_name;
+        if (p.stock_qty !== undefined && p.stock_qty !== null) {
+          p.stock_qty = Math.round((Number(p.stock_qty) + Number.EPSILON) * 100) / 100;
+        }
         return p;
       }).filter(p => p && p.name);
 
@@ -148,7 +154,7 @@ export async function deductProductStockLocal(productId, qty) {
     req.onsuccess = () => {
       const prod = req.result;
       if (prod) {
-        prod.stock_qty = Math.max(0, (Number(prod.stock_qty) || 0) - Number(qty));
+        prod.stock_qty = Math.max(0, Math.round(((Number(prod.stock_qty) || 0) - Number(qty)) * 100) / 100);
         store.put(prod);
       }
       resolve(true);

@@ -502,7 +502,7 @@ router.post('/purchases', authenticateToken, async (req, res) => {
     }
 
     // 3. Update product physical stock and cost_price
-    const newStock = Number(product.stock_qty) + qty;
+    const newStock = Math.round((Number(product.stock_qty) + qty) * 100) / 100;
     await dbQuery.run(
       'UPDATE products SET stock_qty = ?, cost_price = ? WHERE id = ?',
       [newStock, unitCost, product_id]

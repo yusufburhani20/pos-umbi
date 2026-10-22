@@ -74,7 +74,7 @@ router.get('/pull', authenticateToken, async (req, res) => {
 
     const products = await dbQuery.all(`
       SELECT id, name, category, unit, cost_price, retail_price, reseller_price,
-             wholesale_min_qty, stock_qty, min_stock_alert, image_emoji, is_active
+             wholesale_min_qty, ROUND(stock_qty, 2) AS stock_qty, min_stock_alert, image_emoji, is_active
       FROM products
       ORDER BY category ASC, name ASC
     `);
@@ -229,7 +229,7 @@ router.post('/push', authenticateToken, async (req, res) => {
 
           // Deduct stock in DB
           await dbQuery.run(
-            'UPDATE products SET stock_qty = MAX(0, stock_qty - ?) WHERE id = ?',
+            'UPDATE products SET stock_qty = ROUND(MAX(0, stock_qty - ?), 2) WHERE id = ?',
             [item.qty, item.product_id]
           );
         }
@@ -284,7 +284,7 @@ router.post('/push', authenticateToken, async (req, res) => {
 
       // Deduct stock
       await dbQuery.run(
-        'UPDATE products SET stock_qty = MAX(0, stock_qty - ?) WHERE id = ?',
+        'UPDATE products SET stock_qty = ROUND(MAX(0, stock_qty - ?), 2) WHERE id = ?',
         [adj.qty_kg, adj.product_id]
       );
 

@@ -195,7 +195,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
         // Deduct inventory stock
         await dbQuery.run(
-          'UPDATE products SET stock_qty = stock_qty - ? WHERE id = ?',
+          'UPDATE products SET stock_qty = ROUND(MAX(0, stock_qty - ?), 2) WHERE id = ?',
           [pi.qty, pi.product_id]
         );
       }
@@ -384,7 +384,7 @@ router.post('/:id/void', authenticateToken, async (req, res) => {
       // Restore stock for each item
       for (const item of items) {
         await dbQuery.run(
-          'UPDATE products SET stock_qty = stock_qty + ? WHERE id = ?',
+          'UPDATE products SET stock_qty = ROUND(stock_qty + ?, 2) WHERE id = ?',
           [item.qty, item.product_id]
         );
       }

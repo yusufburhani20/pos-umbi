@@ -9,6 +9,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
   try {
     const sql = `
       SELECT *,
+        ROUND(stock_qty, 2) AS stock_qty,
         CASE 
           WHEN stock_qty <= 0 THEN 1 
           ELSE 0 
@@ -46,6 +47,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const { category, search, low_stock } = req.query;
     let sql = `
       SELECT p.*,
+        ROUND(p.stock_qty, 2) AS stock_qty,
         CASE 
           WHEN p.stock_qty <= 0 THEN 1 
           ELSE 0 
@@ -179,11 +181,13 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Data produk belum lengkap' });
     }
 
+    const sanitizedStock = Math.round(Number(stock_qty || 0) * 100) / 100;
+
     const result = await dbQuery.run(
       `INSERT INTO products 
        (name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, stock_qty, min_stock_alert, image_emoji)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, stock_qty, min_stock_alert, image_emoji]
+      [name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, sanitizedStock, min_stock_alert, image_emoji]
     );
 
     await logAudit(req.user.id, 'PRODUCT_CREATED', { product_id: result.lastID, name, retail_price, reseller_price });
@@ -217,6 +221,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Produk tidak ditemukan' });
     }
 
+    const sanitizedStock = stock_qty !== undefined ? Math.round(Number(stock_qty) * 100) / 100 : null;
+
     await dbQuery.run(
       `UPDATE products
        SET name = COALESCE(?, name),
@@ -230,7 +236,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
            min_stock_alert = COALESCE(?, min_stock_alert),
            image_emoji = COALESCE(?, image_emoji)
        WHERE id = ?`,
-      [name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, stock_qty, min_stock_alert, image_emoji, id]
+      [name, category, unit, cost_price, retail_price, reseller_price, wholesale_min_qty, sanitizedStock, min_stock_alert, image_emoji, id]
     );
 
     await logAudit(req.user.id, 'PRODUCT_UPDATED', {
@@ -265,7 +271,7 @@ router.post('/adjust-stock', authenticateToken, async (req, res) => {
     }
 
     // Deduct stock for waste/susut
-    const newStock = Math.max(0, product.stock_qty - Number(qty_kg));
+    const newStock = Math.round(Math.max(0, product.stock_qty - Number(qty_kg)) * 100) / 100;
     await dbQuery.run('UPDATE products SET stock_qty = ? WHERE id = ?', [newStock, product_id]);
 
     const result = await dbQuery.run(
@@ -308,8 +314,8 @@ router.post('/restock', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Produk tidak ditemukan' });
     }
 
-    const addedQty = Number(qty_kg);
-    const newStock = Number(product.stock_qty) + addedQty;
+    const addedQty = Math.round(Number(qty_kg) * 100) / 100;
+    const newStock = Math.round((Number(product.stock_qty) + addedQty) * 100) / 100;
     const finalCostPrice = (new_cost_price && Number(new_cost_price) > 0) ? Number(new_cost_price) : product.cost_price;
 
     await dbQuery.run(
@@ -416,9 +422,9 @@ router.post('/opname', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Komoditas produk tidak ditemukan' });
     }
 
-    const targetPhysical = Math.max(0, parseFloat(physical_qty));
-    const previousStock = parseFloat(product.stock_qty || 0);
-    const diff = targetPhysical - previousStock; // positif = kelebihan, negatif = susut/hilang
+    const targetPhysical = Math.round(Math.max(0, parseFloat(physical_qty)) * 100) / 100;
+    const previousStock = Math.round(parseFloat(product.stock_qty || 0) * 100) / 100;
+    const diff = Math.round((targetPhysical - previousStock) * 100) / 100; // positif = kelebihan, negatif = susut/hilang
 
     // Terapkan stok fisik nyata ke database
     await dbQuery.run('UPDATE products SET stock_qty = ? WHERE id = ?', [targetPhysical, product_id]);

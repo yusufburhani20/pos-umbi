@@ -566,6 +566,14 @@ function formatRupiahNumber(num) {
   return Number(num).toLocaleString('id-ID');
 }
 
+// Universal Clean Stock Formatter (eliminates IEEE-754 precision glitches like 750.5999999999999)
+function formatStockDisplay(qty) {
+  const num = Number(qty);
+  if (isNaN(num)) return '0';
+  const rounded = Math.round((num + Number.EPSILON) * 100) / 100;
+  return String(Number(rounded.toFixed(2)));
+}
+
 function attachCurrencyAutoFormat(input, onValueChange = null) {
   if (!input) return;
 
@@ -1671,7 +1679,12 @@ async function loadAllData() {
 
     state.dashboard = dashRes;
     state.shifts = shiftRes.shifts || [];
-    state.products = prodRes.products || [];
+    state.products = (prodRes.products || []).map(p => {
+      if (p.stock_qty !== undefined && p.stock_qty !== null) {
+        p.stock_qty = Math.round((Number(p.stock_qty) + Number.EPSILON) * 100) / 100;
+      }
+      return p;
+    });
     state.filteredProducts = [...state.products];
     state.auditLogs = auditRes.logs || [];
     state.users = usersRes.users || [];
@@ -2460,7 +2473,7 @@ function renderLowStockRadar() {
       const alertClass = isOut ? 'is-empty' : 'is-low';
       const statusTxt = isOut
         ? '<span class="status-txt-empty">🚨 STOK HABIS (0 ' + p.unit + ')</span>'
-        : '<span class="status-txt-low">⚠️ Sisa ' + p.stock_qty + ' ' + p.unit + '</span>';
+        : '<span class="status-txt-low">⚠️ Sisa ' + formatStockDisplay(p.stock_qty) + ' ' + p.unit + '</span>';
 
       return `
         <div class="low-stock-alert-item ${alertClass}">
@@ -2470,7 +2483,7 @@ function renderLowStockRadar() {
               <div class="item-alert-name">${p.name}</div>
               <div class="item-stock-status">
                 ${statusTxt}
-                <span class="status-txt-min">• Batas Min: ${minAlert} ${p.unit}</span>
+                <span class="status-txt-min">• Batas Min: ${formatStockDisplay(minAlert)} ${p.unit}</span>
               </div>
             </div>
           </div>
@@ -2524,7 +2537,7 @@ function renderProductsGrid() {
 
     let stockClass = 'healthy';
     let stockIcon = '🟢';
-    let stockLabel = `${p.stock_qty} ${p.unit}`;
+    let stockLabel = `${formatStockDisplay(p.stock_qty)} ${p.unit}`;
 
     if (isOut) {
       stockClass = 'empty';
@@ -2533,11 +2546,11 @@ function renderProductsGrid() {
     } else if (isLow) {
       stockClass = 'low';
       stockIcon = '⚠️ Menipis:';
-      stockLabel = `${p.stock_qty} ${p.unit}`;
+      stockLabel = `${formatStockDisplay(p.stock_qty)} ${p.unit}`;
     } else if (Number(p.stock_qty) <= 50) {
       stockClass = 'warning';
       stockIcon = '🟡 Normal:';
-      stockLabel = `${p.stock_qty} ${p.unit}`;
+      stockLabel = `${formatStockDisplay(p.stock_qty)} ${p.unit}`;
     }
 
     return `
@@ -2660,7 +2673,7 @@ async function openProductRestockHistoryModal(productId) {
   }
 
   // Set initial placeholders
-  if (el.statProdCurrentStock) el.statProdCurrentStock.textContent = `${Number(prod.stock_qty || 0).toLocaleString('id-ID')} ${prod.unit}`;
+  if (el.statProdCurrentStock) el.statProdCurrentStock.textContent = `${formatStockDisplay(prod.stock_qty)} ${prod.unit}`;
   if (el.statProdTotalReceived) el.statProdTotalReceived.textContent = 'Memuat...';
   if (el.statProdEntriesCount) el.statProdEntriesCount.textContent = '...';
   if (el.statProdTotalCost) el.statProdTotalCost.textContent = 'Memuat...';
@@ -3138,7 +3151,7 @@ function updateRestockCurrentStock() {
   const prodId = Number(el.inpRestockProductSelect.value);
   const prod = state.products.find(p => p.id === prodId);
   if (prod) {
-    el.inpRestockCurrentStock.value = `${prod.stock_qty} ${prod.unit}`;
+    el.inpRestockCurrentStock.value = `${formatStockDisplay(prod.stock_qty)} ${prod.unit}`;
     el.inpRestockCost.placeholder = `Modal saat ini: Rp ${Number(prod.cost_price).toLocaleString('id-ID')}`;
   }
 }
