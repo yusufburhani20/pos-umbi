@@ -3416,12 +3416,13 @@ function initHeaderDropdowns() {
     if (!menu) return;
     if (window.innerWidth <= 900) {
       const topBar = document.querySelector('.top-bar');
-      if (topBar) {
-        const rect = topBar.getBoundingClientRect();
-        menu.style.top = `${Math.round(rect.bottom + 6)}px`;
-      }
+      const topBarBottom = topBar ? topBar.getBoundingClientRect().bottom : 52;
+      const availableHeight = window.innerHeight - topBarBottom - 16;
+      menu.style.top = `${Math.round(topBarBottom + 6)}px`;
+      menu.style.maxHeight = `${Math.max(220, Math.round(availableHeight))}px`;
     } else {
       menu.style.top = '';
+      menu.style.maxHeight = '';
     }
   }
 
@@ -3433,13 +3434,19 @@ function initHeaderDropdowns() {
       storeDropdown.classList.remove('active');
       if (storeTrigger) storeTrigger.setAttribute('aria-expanded', 'false');
       const storeMenu = storeDropdown.querySelector('.header-dropdown-menu');
-      if (storeMenu && window.innerWidth <= 900) storeMenu.style.top = '';
+      if (storeMenu && window.innerWidth <= 900) {
+        storeMenu.style.top = '';
+        storeMenu.style.maxHeight = '';
+      }
     }
     if (userDropdown) {
       userDropdown.classList.remove('active');
       if (userTrigger) userTrigger.setAttribute('aria-expanded', 'false');
       const userMenu = userDropdown.querySelector('.header-dropdown-menu');
-      if (userMenu && window.innerWidth <= 900) userMenu.style.top = '';
+      if (userMenu && window.innerWidth <= 900) {
+        userMenu.style.top = '';
+        userMenu.style.maxHeight = '';
+      }
     }
     if (backdrop) {
       backdrop.classList.remove('active');
@@ -3514,6 +3521,16 @@ function initHeaderDropdowns() {
       closeAllDropdowns();
     }
   });
+
+  // Close button inside mobile user dropdown header
+  const btnCloseUserMobile = document.getElementById('btnCloseUserDropdownMobile');
+  if (btnCloseUserMobile) {
+    btnCloseUserMobile.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeAllDropdowns();
+    });
+  }
 
   // Reposition on window resize if open
   window.addEventListener('resize', () => {

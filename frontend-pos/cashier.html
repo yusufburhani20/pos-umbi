@@ -547,16 +547,24 @@
         width: auto !important;
         min-width: 0 !important;
         max-width: none !important;
-        max-height: calc(100dvh - 66px) !important;
-        max-height: calc(100vh - 66px) !important;
+        max-height: calc(100dvh - 68px) !important;
+        max-height: calc(100vh - 80px) !important;
         overflow-y: auto !important;
         overscroll-behavior: contain !important;
         -webkit-overflow-scrolling: touch !important;
+        touch-action: pan-y !important;
         border-radius: 16px !important;
-        box-shadow: 0 25px 60px -10px rgba(15, 23, 42, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 25px 60px -10px rgba(15, 23, 42, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.12) !important;
         background: #ffffff !important;
-        padding: 8px 8px 24px !important;
+        padding: 10px 10px calc(50px + env(safe-area-inset-bottom, 24px)) !important;
         z-index: 100050 !important;
+        box-sizing: border-box !important;
+      }
+
+      #userDropdownContent .dropdown-scroll-spacer {
+        height: 48px !important;
+        flex-shrink: 0 !important;
+        display: block !important;
       }
 
       #userDropdownContent .dropdown-user-header {
@@ -982,6 +990,9 @@
               <span class="item-desc">Ganti akun atau akhiri sesi bertugas</span>
             </div>
           </button>
+
+          <!-- Extra Mobile Bottom Scroll Clearance -->
+          <div class="dropdown-scroll-spacer" style="height: 48px; flex-shrink: 0;"></div>
         </div>
       </div>
     </div>

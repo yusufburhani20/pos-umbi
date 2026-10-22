@@ -142,14 +142,17 @@
             </div>
             <span class="dropdown-chevron">▾</span>
           </button>
-          <div class="header-dropdown-menu header-dropdown-menu-right" id="userDropdownContent" style="min-width: 350px; max-width: 410px; max-height: calc(100vh - 65px); overflow-y: auto;">
+          <div class="header-dropdown-menu header-dropdown-menu-right" id="userDropdownContent">
             <!-- Header Kartu User / Kasir Aktif -->
             <div class="dropdown-user-header">
-              <div class="dropdown-user-avatar">👤</div>
-              <div class="dropdown-user-details">
-                <span class="dropdown-user-name" id="dropdownUserDisplayName">Kasir (Admin)</span>
-                <span class="dropdown-user-role" id="dropdownUserRole">Kasir & Admin Kios</span>
+              <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                <div class="dropdown-user-avatar">👤</div>
+                <div class="dropdown-user-details" style="min-width: 0;">
+                  <span class="dropdown-user-name" id="dropdownUserDisplayName">Kasir (Admin)</span>
+                  <span class="dropdown-user-role" id="dropdownUserRole">Kasir & Admin Kios</span>
+                </div>
               </div>
+              <button type="button" class="btn-close-dropdown-mobile" id="btnCloseUserDropdownMobile" aria-label="Tutup Menu">✕</button>
             </div>
 
             <!-- BAGIAN 1: KASIR & TRANSAKSI -->
@@ -299,6 +302,9 @@
                 <span class="item-desc">Ganti akun atau akhiri sesi bertugas</span>
               </div>
             </button>
+
+            <!-- Extra Mobile Bottom Scroll Clearance -->
+            <div class="dropdown-scroll-spacer" style="height: 48px; flex-shrink: 0;"></div>
           </div>
         </div>
       </div>

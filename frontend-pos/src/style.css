@@ -701,6 +701,14 @@ input, select, textarea {
   color: #2563eb;
 }
 
+.btn-close-dropdown-mobile {
+  display: none;
+}
+
+.dropdown-scroll-spacer {
+  display: none;
+}
+
 /* Dropdown Item Rows */
 .header-dropdown-item {
   display: flex !important;
@@ -3399,6 +3407,311 @@ input, select, textarea {
     width: 94vw !important;
     max-width: 520px !important;
     border-radius: 16px;
+  }
+}
+
+/* 2.5 MOBILE PHONES (<= 768px) - SINGLE-ROW COMPACT HEADER & REACHABLE DROPDOWN */
+@media (max-width: 768px) {
+  /* Enforce single-row compact mobile header (50px height) */
+  .top-bar {
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    padding: 0 8px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    overflow: visible !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 9999 !important;
+  }
+
+  .top-bar-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+  }
+
+  .brand-section {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    flex-shrink: 1 !important;
+  }
+
+  .brand-icon {
+    width: 30px !important;
+    height: 30px !important;
+    padding: 1px !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .brand-logo-svg {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .brand-text {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .brand-title {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 110px !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+    color: #ffffff !important;
+  }
+
+  .brand-subtitle,
+  .header-divider,
+  .header-datetime-badge,
+  .btn-fullscreen-direct,
+  .nav-divider {
+    display: none !important;
+  }
+
+  /* Compact Status Group */
+  .header-status-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sync-status-pill,
+  .printer-status-pill {
+    height: 30px !important;
+    padding: 0 6px !important;
+    gap: 4px !important;
+    border-radius: 7px !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+  }
+
+  .sync-text-wrap,
+  .printer-text-wrap,
+  .btn-sync-trigger,
+  .btn-printer-trigger {
+    display: none !important;
+  }
+
+  .sync-icon-symbol,
+  .printer-icon-symbol {
+    font-size: 13px !important;
+    display: inline-block !important;
+  }
+
+  .sync-dot,
+  .printer-dot {
+    width: 7px !important;
+    height: 7px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Right Action Buttons */
+  .top-actions {
+    width: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Buka Laci: Compact Icon Only */
+  .btn-drawer-direct {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .btn-drawer-direct .nav-label {
+    display: none !important;
+  }
+
+  .btn-drawer-direct .icon {
+    font-size: 15px !important;
+    margin: 0 !important;
+  }
+
+  /* User Menu Trigger / Shift Indicator */
+  .shift-indicator {
+    height: 32px !important;
+    padding: 0 7px !important;
+    gap: 5px !important;
+    border-radius: 8px !important;
+    max-width: 125px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .shift-name {
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    max-width: 65px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .shift-meta {
+    display: none !important;
+  }
+
+  .dropdown-chevron {
+    font-size: 10px !important;
+  }
+
+  /* Mobile Dropdown Popover: Fixed overlay, fully reachable scroll down past Keluar Akun */
+  .header-dropdown {
+    position: static !important;
+  }
+
+  .header-dropdown-menu,
+  #userDropdownContent.header-dropdown-menu {
+    position: fixed !important;
+    top: 54px !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 68px) !important;
+    max-height: calc(100vh - 80px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    touch-action: pan-y !important;
+    border-radius: 16px !important;
+    box-shadow: 0 25px 60px -10px rgba(15, 23, 42, 0.65), 0 0 0 1px rgba(0, 0, 0, 0.12) !important;
+    background: #ffffff !important;
+    padding: 10px 10px calc(50px + env(safe-area-inset-bottom, 24px)) !important;
+    z-index: 100050 !important;
+    box-sizing: border-box !important;
+  }
+
+  .header-dropdown.active .header-dropdown-menu,
+  .header-dropdown.active #userDropdownContent.header-dropdown-menu {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) scale(1) !important;
+    pointer-events: auto !important;
+  }
+
+  .header-dropdown-menu-right {
+    left: 8px !important;
+    right: 8px !important;
+  }
+
+  /* User Header Inside Dropdown */
+  #userDropdownContent .dropdown-user-header {
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    background: #f8fafc !important;
+    margin-bottom: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  /* Mobile Close Button (✕) */
+  .btn-close-dropdown-mobile {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background: #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    color: #475569 !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    touch-action: manipulation !important;
+  }
+
+  .btn-close-dropdown-mobile:active {
+    background: #cbd5e1 !important;
+    transform: scale(0.95);
+  }
+
+  /* Menu Items inside Dropdown */
+  .header-dropdown-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+    padding: 9px 11px !important;
+    min-height: 48px !important;
+    border-radius: 10px !important;
+    gap: 10px !important;
+    margin: 2px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .header-dropdown-item:active {
+    background: #f1f5f9 !important;
+    transform: scale(0.99);
+  }
+
+  .header-dropdown-item .dropdown-item-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 17px !important;
+    border-radius: 9px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .header-dropdown-item .item-title {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+  }
+
+  .header-dropdown-item .item-desc {
+    font-size: 10.5px !important;
+    color: #64748b !important;
+    line-height: 1.3 !important;
+  }
+
+  .dropdown-section-header {
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+    padding: 6px 10px 2px !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* Bottom Clearance Spacer */
+  .dropdown-scroll-spacer {
+    height: 48px !important;
+    flex-shrink: 0 !important;
+    display: block !important;
   }
 }
 
