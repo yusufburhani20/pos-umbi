@@ -1238,6 +1238,30 @@ body.executive-body {
   background: #047857;
 }
 
+.btn-action-rose {
+  height: 42px;
+  padding: 0 20px;
+  background: #e11d48;
+  border: none;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-action-rose:hover {
+  background: #be123c;
+}
+
+.btn-action-rose:active {
+  transform: scale(0.98);
+}
+
 /* Products Fluid Grid across widescreen */
 .products-card-container {
   padding: 28px 30px;
@@ -3940,6 +3964,9 @@ body.executive-body {
   .settings-workspace-grid {
     grid-template-columns: 1fr;
   }
+  #tab-expenses .kpi-grid-modern {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
 
 .settings-card {
@@ -4679,6 +4706,376 @@ body.executive-body {
   #tab-settings .sim-receipt-footer {
     font-size: 10px !important;
   }
+
+  /* ========================================================================
+     TAB EXPENSES: BUKU BIAYA & KAS OPERASIONAL TOKO (MOBILE RESPONSIVE)
+     ======================================================================== */
+  #tab-expenses,
+  #tab-expenses .exec-card,
+  #tab-expenses .table-card,
+  #tab-expenses .report-filter-bar,
+  #tab-expenses .table-responsive-clean {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #tab-expenses .exec-card {
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Header & Action Buttons */
+  #tab-expenses .exec-card-head {
+    padding: 0 0 12px 0 !important;
+    gap: 12px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  #tab-expenses .exec-card-title {
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+    margin-bottom: 3px !important;
+  }
+
+  #tab-expenses .exec-card-subtitle {
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
+    color: #64748b !important;
+  }
+
+  #tab-expenses .header-action-buttons {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+
+  #tab-expenses .header-action-buttons .btn-action-primary,
+  #tab-expenses .header-action-buttons .btn-action-rose {
+    width: 100% !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* Preset Filter Chips (Horizontal Scroll Rail) */
+  #expensesFilterBar {
+    padding: 12px !important;
+    gap: 10px !important;
+    border-radius: 12px !important;
+    margin-top: 10px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  #expensesFilterBar .preset-filter-group {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+    gap: 6px !important;
+    scrollbar-width: none !important;
+  }
+
+  #expensesFilterBar .preset-filter-group::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  #expensesFilterBar .filter-group-lbl {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    margin-right: 2px !important;
+    flex-shrink: 0 !important;
+    align-self: center !important;
+  }
+
+  #expensesFilterBar .btn-period-chip {
+    flex-shrink: 0 !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    height: 34px !important;
+    border-radius: 20px !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Custom Date & Category Inputs (Clean 2-Column Fluid Grid) */
+  #expensesFilterBar .custom-date-inputs {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+
+  #expensesFilterBar .date-input-wrap {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 3px !important;
+  }
+
+  #expensesFilterBar .date-input-wrap label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+  }
+
+  #expensesFilterBar .input-date,
+  #expensesFilterBar .select-filter {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    height: 40px !important;
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+  }
+
+  #expensesFilterBar .btn-filter-apply {
+    grid-column: 1 / 2 !important;
+    width: 100% !important;
+    height: 42px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border: none !important;
+    cursor: pointer !important;
+  }
+
+  #expensesFilterBar #btnResetExpenseFilter {
+    grid-column: 2 / 3 !important;
+    width: 100% !important;
+    height: 42px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    border: 1.5px solid #cbd5e1 !important;
+    cursor: pointer !important;
+  }
+
+  /* 4 Executive KPI Cards (2x2 Grid) */
+  #tab-expenses .kpi-grid-modern {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+    width: 100% !important;
+  }
+
+  #tab-expenses .kpi-card-v2 {
+    padding: 11px 10px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  #tab-expenses .kpi-v2-top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  #tab-expenses .kpi-v2-label {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    font-weight: 700 !important;
+  }
+
+  #tab-expenses .kpi-badge-icon {
+    font-size: 16px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #tab-expenses .kpi-v2-main {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    margin: 5px 0 2px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  #tab-expenses .kpi-v2-sub {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: #64748b !important;
+  }
+
+  /* Category Breakdown Strip (Scrollable Rail) */
+  #tab-expenses .category-breakdown-card {
+    margin-top: 12px !important;
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  #ownerExpenseCategoryBars {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none !important;
+  }
+
+  #ownerExpenseCategoryBars::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  #ownerExpenseCategoryBars > div {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Table Controls Bar (Full width search + meta row) */
+  #tab-expenses .table-card {
+    margin-top: 12px !important;
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  #tab-expenses .table-controls-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 10px !important;
+  }
+
+  #tab-expenses .table-controls-bar .search-input-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+  }
+
+  #tab-expenses #ownerSearchExpenseInput {
+    height: 42px !important;
+    font-size: 13px !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  #tab-expenses .table-controls-meta {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+
+  #tab-expenses #btnRefreshOwnerExpenses {
+    height: 38px !important;
+    min-width: 44px !important;
+    padding: 0 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 15px !important;
+  }
+
+  /* Table Cell Paddings & Action Buttons */
+  #ownerExpensesTable th,
+  #ownerExpensesTable td {
+    padding: 8px 10px !important;
+  }
+
+  #tab-expenses .btn-print-owner-expense,
+  #tab-expenses .btn-delete-owner-expense {
+    min-height: 36px !important;
+    min-width: 36px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Expense & Income Modals: Fluid Dialog & Thumb Buttons */
+  #modalOwnerAddExpense .modal-dialog,
+  #modalOwnerAddIncome .modal-dialog {
+    width: 95vw !important;
+    max-width: 480px !important;
+    margin: auto !important;
+    border-radius: 16px !important;
+    max-height: 92vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  #modalOwnerAddExpense .modal-header,
+  #modalOwnerAddIncome .modal-header {
+    padding: 14px 16px !important;
+  }
+
+  #modalOwnerAddExpense .modal-body,
+  #modalOwnerAddIncome .modal-body {
+    padding: 14px 16px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #modalOwnerAddExpense .modal-footer,
+  #modalOwnerAddIncome .modal-footer {
+    padding: 12px 16px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  #modalOwnerAddExpense .modal-footer button,
+  #modalOwnerAddIncome .modal-footer button {
+    height: 44px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
 }
 
 @media (max-width: 360px) {
@@ -4696,6 +5093,20 @@ body.executive-body {
   }
   #tab-reports .btn-filter-apply {
     grid-column: span 1 !important;
+  }
+
+  #tab-expenses .header-action-buttons {
+    grid-template-columns: 1fr !important;
+  }
+  #tab-expenses .kpi-grid-modern {
+    grid-template-columns: 1fr !important;
+  }
+  #expensesFilterBar .custom-date-inputs {
+    grid-template-columns: 1fr !important;
+  }
+  #expensesFilterBar .btn-filter-apply,
+  #expensesFilterBar #btnResetExpenseFilter {
+    grid-column: 1 / -1 !important;
   }
 }
 

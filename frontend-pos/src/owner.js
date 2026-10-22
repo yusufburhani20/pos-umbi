@@ -5391,7 +5391,7 @@ function renderOwnerExpenseCategoryBars(breakdown = []) {
 
   el.ownerExpenseCategoryBars.innerHTML = breakdown.slice(0, 5).map(cat => {
     return `
-      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 12px; display: flex; align-items: center; gap: 8px;">
+      <div class="category-bar-pill" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 12px; display: flex; align-items: center; gap: 8px;">
         <span style="font-weight: 700; color: #0f172a;">${escapeHtml(cat.category_name)}:</span>
         <strong style="color: #e11d48; font-family: monospace;">${formatRupiah(cat.total_amount)}</strong>
         <span style="font-size: 11px; background: #fee2e2; color: #dc2626; padding: 1px 6px; border-radius: 4px; font-weight: 700;">${cat.percentage}%</span>
