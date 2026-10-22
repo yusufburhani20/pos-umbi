@@ -66,27 +66,61 @@ router.post('/', authenticateToken, requireStrictOwner, async (req, res) => {
 });
 
 // PUT /api/users/:id (Owner only)
-// Update cashier details, reset PIN, or toggle active status
+// Update cashier details, edit role, username, reset PIN, or toggle active status
 router.put('/:id', authenticateToken, requireStrictOwner, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, pin_code, is_active } = req.body;
+    const { name, username, role, pin_code, is_active } = req.body;
 
     const user = await dbQuery.get('SELECT * FROM users WHERE id = ?', [id]);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
 
-    // Protection: Owner cannot deactivate themselves
-    if (user.id === req.user.id && is_active === 0) {
+    // Protection 1: Owner cannot deactivate themselves
+    if (user.id === req.user.id && is_active !== undefined && Number(is_active) === 0) {
       return res.status(400).json({ success: false, message: 'Anda tidak dapat menonaktifkan akun Owner Anda sendiri' });
+    }
+
+    // Protection 2: Ensure at least one active owner remains if role or is_active changes
+    if (user.role === 'owner') {
+      const willDemote = role && role !== 'owner';
+      const willDeactivate = is_active !== undefined && Number(is_active) === 0;
+      if (willDemote || willDeactivate) {
+        const otherOwners = await dbQuery.get(
+          'SELECT COUNT(*) as count FROM users WHERE role = "owner" AND is_active = 1 AND id != ?',
+          [id]
+        );
+        if (!otherOwners || otherOwners.count === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Minimal harus ada satu akun Owner aktif di toko. Tidak dapat mengubah peran atau menonaktifkan akun ini.'
+          });
+        }
+      }
+    }
+
+    // Validate and check duplicate username if changed
+    let finalUsername = user.username;
+    if (username && username.trim() !== '') {
+      const cleanUsername = username.toLowerCase().trim();
+      if (!/^[a-z0-9_.-]+$/.test(cleanUsername)) {
+        return res.status(400).json({ success: false, message: 'Username hanya boleh berisi huruf kecil, angka, titik, atau garis bawah' });
+      }
+      if (cleanUsername !== user.username) {
+        const existing = await dbQuery.get('SELECT id FROM users WHERE username = ? AND id != ?', [cleanUsername, id]);
+        if (existing) {
+          return res.status(400).json({ success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain` });
+        }
+        finalUsername = cleanUsername;
+      }
     }
 
     let finalPinHash = user.pin_code;
     let pinChanged = false;
 
-    if (pin_code) {
-      if (String(pin_code).length < 4 || String(pin_code).length > 6) {
+    if (pin_code && String(pin_code).trim() !== '') {
+      if (String(pin_code).length < 4 || String(pin_code).length > 6 || isNaN(Number(pin_code))) {
         return res.status(400).json({ success: false, message: 'PIN baru harus 4 sampai 6 digit angka' });
       }
       finalPinHash = await bcrypt.hash(String(pin_code), 8);
@@ -94,16 +128,19 @@ router.put('/:id', authenticateToken, requireStrictOwner, async (req, res) => {
     }
 
     const finalName = name ? name.trim() : user.name;
+    const finalRole = (role === 'owner' || role === 'cashier') ? role : user.role;
     const finalActive = is_active !== undefined ? Number(is_active) : user.is_active;
 
     await dbQuery.run(
-      'UPDATE users SET name = ?, pin_code = ?, is_active = ? WHERE id = ?',
-      [finalName, finalPinHash, finalActive, id]
+      'UPDATE users SET name = ?, username = ?, role = ?, pin_code = ?, is_active = ? WHERE id = ?',
+      [finalName, finalUsername, finalRole, finalPinHash, finalActive, id]
     );
 
     await logAudit(req.user.id, 'CASHIER_UPDATED', {
       target_user_id: id,
       target_name: finalName,
+      target_username: finalUsername,
+      target_role: finalRole,
       pin_reset: pinChanged,
       is_active: finalActive
     });
@@ -115,9 +152,7 @@ router.put('/:id', authenticateToken, requireStrictOwner, async (req, res) => {
 
     return res.json({
       success: true,
-      message: pinChanged 
-        ? `PIN kasir "${finalName}" berhasil direset` 
-        : `Data kasir "${finalName}" berhasil diperbarui`,
+      message: `Data akun "${finalName}" berhasil diperbarui`,
       user: updatedUser
     });
   } catch (err) {

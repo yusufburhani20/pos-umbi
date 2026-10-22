@@ -336,6 +336,18 @@ const el = {
   inpCashierRole: document.getElementById('inpCashierRole'),
   inpCashierPin: document.getElementById('inpCashierPin'),
 
+  // Edit Cashier Modal
+  modalEditCashier: document.getElementById('modalEditCashier'),
+  btnCloseModalEditCashier: document.getElementById('btnCloseModalEditCashier'),
+  btnCancelModalEditCashier: document.getElementById('btnCancelModalEditCashier'),
+  btnSaveModalEditCashier: document.getElementById('btnSaveModalEditCashier'),
+  editCashierUserId: document.getElementById('editCashierUserId'),
+  editCashierName: document.getElementById('editCashierName'),
+  editCashierUsername: document.getElementById('editCashierUsername'),
+  editCashierRole: document.getElementById('editCashierRole'),
+  editCashierStatus: document.getElementById('editCashierStatus'),
+  editCashierPin: document.getElementById('editCashierPin'),
+
   modalResetPin: document.getElementById('modalResetPin'),
   btnCloseModalResetPin: document.getElementById('btnCloseModalResetPin'),
   btnCancelModalResetPin: document.getElementById('btnCancelModalResetPin'),
@@ -1268,6 +1280,10 @@ function switchTab(tabId) {
   if (el.btnCloseModalAddCashier) el.btnCloseModalAddCashier.addEventListener('click', () => el.modalAddCashier.style.display = 'none');
   if (el.btnCancelModalAddCashier) el.btnCancelModalAddCashier.addEventListener('click', () => el.modalAddCashier.style.display = 'none');
   if (el.btnSaveModalAddCashier) el.btnSaveModalAddCashier.addEventListener('click', handleSaveAddCashier);
+
+  if (el.btnCloseModalEditCashier) el.btnCloseModalEditCashier.addEventListener('click', () => el.modalEditCashier.style.display = 'none');
+  if (el.btnCancelModalEditCashier) el.btnCancelModalEditCashier.addEventListener('click', () => el.modalEditCashier.style.display = 'none');
+  if (el.btnSaveModalEditCashier) el.btnSaveModalEditCashier.addEventListener('click', handleSaveEditCashier);
 
   if (el.btnCloseModalResetPin) el.btnCloseModalResetPin.addEventListener('click', () => el.modalResetPin.style.display = 'none');
   if (el.btnCancelModalResetPin) el.btnCancelModalResetPin.addEventListener('click', () => el.modalResetPin.style.display = 'none');
@@ -3252,6 +3268,9 @@ function renderCashiers() {
         </div>
 
         <div class="cashier-card-actions">
+          <button class="btn-card-action btn-edit-cashier" data-user-id="${u.id}" title="Edit Profil, Username & Hak Akses">
+            <span class="btn-ico">✏️</span> Edit
+          </button>
           <button class="btn-card-action btn-reset-pin" data-user-id="${u.id}">
             <span class="btn-ico">🔑</span> Ganti PIN
           </button>
@@ -3272,6 +3291,15 @@ function renderCashiers() {
       </div>
     `;
   }).join('');
+
+  // Attach handlers to Edit Cashier buttons
+  el.cashierCardsGrid.querySelectorAll('.btn-edit-cashier').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const userId = Number(btn.dataset.userId);
+      const user = state.users.find(u => u.id === userId);
+      if (user) openEditCashierModal(user);
+    });
+  });
 
   // Attach handlers to Reset PIN buttons
   el.cashierCardsGrid.querySelectorAll('.btn-reset-pin').forEach(btn => {
@@ -3388,6 +3416,68 @@ async function handleSaveAddCashier() {
   } finally {
     el.btnSaveModalAddCashier.disabled = false;
     el.btnSaveModalAddCashier.textContent = 'Daftarkan Akun Kasir';
+  }
+}
+
+function openEditCashierModal(user) {
+  if (!el.modalEditCashier) return;
+  el.editCashierUserId.value = user.id;
+  el.editCashierName.value = user.name || '';
+  el.editCashierUsername.value = user.username || '';
+  el.editCashierRole.value = user.role || 'cashier';
+  el.editCashierStatus.value = user.is_active ? '1' : '0';
+  el.editCashierPin.value = '';
+  el.modalEditCashier.style.display = 'flex';
+  el.editCashierName.focus();
+}
+
+async function handleSaveEditCashier() {
+  const userId = Number(el.editCashierUserId.value);
+  if (!userId) return;
+
+  const name = el.editCashierName.value.trim();
+  const username = el.editCashierUsername.value.trim().toLowerCase();
+  const role = el.editCashierRole.value;
+  const isActive = Number(el.editCashierStatus.value);
+  const pin = el.editCashierPin.value.trim();
+
+  if (!name || !username) {
+    showToast('Nama kasir dan Username wajib diisi!', 'error');
+    return;
+  }
+
+  if (pin && (pin.length < 4 || pin.length > 6 || isNaN(Number(pin)))) {
+    showToast('PIN baru harus berupa 4 sampai 6 digit angka!', 'error');
+    return;
+  }
+
+  const btn = el.btnSaveModalEditCashier;
+  const originalText = btn.textContent;
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    const payload = {
+      name,
+      username,
+      role,
+      is_active: isActive
+    };
+
+    if (pin) {
+      payload.pin_code = pin;
+    }
+
+    const res = await api.updateUser(userId, payload);
+    el.modalEditCashier.style.display = 'none';
+    showToast(res.message || 'Data akun kasir berhasil diperbarui!', 'success');
+    await loadAllData();
+  } catch (err) {
+    showToast('Gagal memperbarui kasir: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
 }
 

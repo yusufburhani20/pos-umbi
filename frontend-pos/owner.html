@@ -98,6 +98,28 @@
       }
     }
 
+    /* Edit Cashier Action Button */
+    .btn-card-action.btn-edit-cashier {
+      background: #eff6ff !important;
+      border: 1px solid #bfdbfe !important;
+      color: #1d4ed8 !important;
+      border-radius: 8px !important;
+      padding: 6px 12px !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: all 0.16s ease !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 5px !important;
+    }
+    .btn-card-action.btn-edit-cashier:hover {
+      background: #dbeafe !important;
+      border-color: #93c5fd !important;
+      color: #1e40af !important;
+      transform: translateY(-1px) !important;
+    }
+
     /* Delete Cashier Action Button */
     .btn-card-action.btn-delete-cashier {
       background: #fff1f2 !important;
@@ -2036,6 +2058,74 @@
       <div class="modal-footer">
         <button class="btn-footer-secondary" id="btnCancelModalAddCashier">Batal</button>
         <button class="btn-footer-primary" id="btnSaveModalAddCashier">Daftarkan Akun Kasir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Edit Akun Kasir & Hak Akses -->
+  <div class="modal-backdrop" id="modalEditCashier" style="display:none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon-badge blue">✏️</span>
+          <div>
+            <h2>Edit Akun Kasir & Hak Akses</h2>
+            <p class="modal-subtitle">Perbarui profil kasir, username, hak akses peran, atau ganti PIN akses.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseModalEditCashier">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editCashierUserId">
+        
+        <div class="form-group">
+          <label class="field-label">Nama Lengkap Kasir:</label>
+          <input type="text" id="editCashierName" class="input-modern font-bold" placeholder="Contoh: Budi Santoso" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label class="field-label">Username (Untuk Login & Shift):</label>
+          <input type="text" id="editCashierUsername" class="input-modern font-mono" placeholder="Contoh: budi / kasir2" autocomplete="off">
+          <small class="field-hint">Hanya huruf kecil, angka, titik, atau garis bawah tanpa spasi.</small>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label class="field-label">Hak Akses / Peran:</label>
+            <select id="editCashierRole" class="input-modern">
+              <option value="cashier">👤 Kasir Toko (Otoritas Terbatas)</option>
+              <option value="owner">👑 Owner / Pemilik (Akses Penuh)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="field-label">Status Akun:</label>
+            <select id="editCashierStatus" class="input-modern">
+              <option value="1">🟢 Aktif (Bisa Login & Buka Shift)</option>
+              <option value="0">⛔ Nonaktif (Diblokir Sementara)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 4px;">
+          <label class="field-label">Ganti PIN Akses (Opsional):</label>
+          <input type="password" id="editCashierPin" class="input-modern font-mono" maxlength="6" placeholder="Kosongkan jika PIN tidak diganti" autocomplete="new-password">
+          <small class="field-hint">Masukkan 4-6 digit angka baru hanya jika ingin mengubah kode PIN.</small>
+        </div>
+
+        <div class="security-notice-box" style="margin-top: 10px;">
+          <div class="sec-notice-head">
+            <span class="sec-icon">🛡️</span>
+            <strong>Perlindungan Hak Akses Sistem</strong>
+          </div>
+          <ul class="sec-notice-list">
+            <li><strong>Kasir Toko:</strong> Hanya transaksi register kasir, blind shift close (saldo fisik disembunyikan), dilarang batalkan nota tanpa PIN owner.</li>
+            <li><strong>Owner Toko:</strong> Akses penuh laporan omzet, rekap laba kotor & bersih, mutasi kas toko, dan audit sistem.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-footer-secondary" id="btnCancelModalEditCashier">Batal</button>
+        <button class="btn-footer-primary" id="btnSaveModalEditCashier">Simpan Perubahan</button>
       </div>
     </div>
   </div>
