@@ -6459,42 +6459,28 @@ async function handleSaveCashierIdentity() {
 // HARDWARE SUPPORT (PANDA BLUETOOTH PRINTER & CASH DRAWER RJ-11)
 // -----------------------------------------------------------------------------
 function updateHardwareUI(hwState) {
+  const isRawBt = hwState && hwState.config && hwState.config.mode === 'rawbt';
   if (el.printerStatusPill) {
-    el.printerStatusPill.className = `printer-status-pill ${hwState.isConnected ? 'online' : 'offline'}`;
-    const pTitle = hwState.isConnected
-      ? `Printer Thermal: Terhubung (${hwState.deviceName || 'Bluetooth'}) • Siap Cetak & Buka Laci Kasir`
-      : 'Printer Thermal: Terputus • Bluetooth / Laci Kasir RJ-11 (Klik untuk Pengaturan)';
-    el.printerStatusPill.setAttribute('title', pTitle);
-  }
-  if (el.printerStatusLabel) {
-    if (hwState.isConnected) {
-      el.printerStatusLabel.textContent = `🖨️ ${hwState.deviceName || 'Printer Thermal'}`;
-    } else {
-      el.printerStatusLabel.textContent = '🖨️ Printer: Putus';
-    }
-  }
-  if (el.printerStatusPill) {
-    if (hwState.isConnected) {
+    if (isRawBt) {
+      el.printerStatusPill.className = 'printer-status-pill online';
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ RawBT: Siap';
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'RPP210A (Android)';
+      el.printerStatusPill.setAttribute('title', 'Printer: Menggunakan Aplikasi RawBT Android • Selalu Terhubung');
+    } else if (hwState.isConnected) {
       el.printerStatusPill.className = 'printer-status-pill online';
       if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hwState.deviceName || 'Printer OK'}`;
+      if (el.printerSubLabel) el.printerSubLabel.textContent = `Konek (${hwState.config.mode.toUpperCase()})`;
+      el.printerStatusPill.setAttribute('title', `Printer Thermal: Terhubung (${hwState.deviceName || 'Bluetooth'}) • Siap Cetak & Buka Laci Kasir`);
     } else if (hwState.isReconnecting) {
       el.printerStatusPill.className = 'printer-status-pill reconnecting';
-      if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ Mencari Printer...`;
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ Mencari Printer...';
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'Auto-Reconnect...';
+      el.printerStatusPill.setAttribute('title', `Mencari ${hwState.lockedDeviceName || 'Printer'} secara otomatis...`);
     } else {
       el.printerStatusPill.className = 'printer-status-pill offline';
-      if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ Printer: Putus`;
-    }
-  }
-
-  if (el.printerSubLabel) {
-    if (hwState.isConnected) {
-      el.printerSubLabel.textContent = `Konek (${hwState.config.mode.toUpperCase()})`;
-    } else if (hwState.isReconnecting) {
-      el.printerSubLabel.textContent = `Auto-Reconnect...`;
-    } else if (hwState.isLocked) {
-      el.printerSubLabel.textContent = `Terkunci: ${hwState.lockedDeviceName || 'Printer'}`;
-    } else {
-      el.printerSubLabel.textContent = `Bluetooth / RJ-11`;
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ Printer: Putus';
+      if (el.printerSubLabel) el.printerSubLabel.textContent = hwState.isLocked ? `Terkunci: ${hwState.lockedDeviceName || 'Printer'}` : 'Bluetooth / RJ-11';
+      el.printerStatusPill.setAttribute('title', 'Printer Thermal: Terputus • Bluetooth / Laci Kasir RJ-11 (Klik untuk Pengaturan)');
     }
   }
 

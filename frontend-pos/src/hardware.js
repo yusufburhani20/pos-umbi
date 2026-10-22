@@ -133,14 +133,15 @@ class HardwareManager {
   }
 
   getState() {
+    const isRawBt = this.config.mode === 'rawbt';
     return {
-      isSupported: typeof navigator !== 'undefined' && 'bluetooth' in navigator,
-      isConnected: this.isConnected,
-      isConnecting: this.isConnecting,
-      isReconnecting: this.isReconnecting,
-      deviceName: this.bluetoothDevice ? this.bluetoothDevice.name || 'Printer Thermal' : (this.config.lockedDeviceName || this.config.lastDeviceName),
-      lockedDeviceName: this.config.lockedDeviceName,
-      isLocked: Boolean(this.config.isLocked),
+      isSupported: typeof navigator !== 'undefined' && ('bluetooth' in navigator || isRawBt),
+      isConnected: isRawBt ? true : this.isConnected,
+      isConnecting: isRawBt ? false : this.isConnecting,
+      isReconnecting: isRawBt ? false : this.isReconnecting,
+      deviceName: isRawBt ? (this.config.lastDeviceName || 'RawBT (RPP210A)') : (this.bluetoothDevice ? this.bluetoothDevice.name || 'Printer Thermal' : (this.config.lockedDeviceName || this.config.lastDeviceName)),
+      lockedDeviceName: isRawBt ? 'RawBT Android Service' : this.config.lockedDeviceName,
+      isLocked: isRawBt ? true : Boolean(this.config.isLocked),
       config: { ...this.config }
     };
   }
@@ -483,7 +484,21 @@ class HardwareManager {
 
     // Intent URL scheme for RawBT Android Print Service
     const intentUrl = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
-    window.location.href = intentUrl;
+    
+    try {
+      const topDoc = (typeof window !== 'undefined' && window.top && window.top.document) ? window.top.document : document;
+      const a = topDoc.createElement('a');
+      a.href = intentUrl;
+      a.style.display = 'none';
+      topDoc.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try { topDoc.body.removeChild(a); } catch (e) {}
+      }, 600);
+    } catch (err) {
+      console.warn('[Hardware] Gagal click hidden anchor intent, fallback window.location:', err);
+      window.location.href = intentUrl;
+    }
   }
 
   // --- ESC/POS Receipt Formatter ---
@@ -519,6 +534,11 @@ class HardwareManager {
 
     // 1. Initialize
     append(COMMANDS.INIT);
+
+    // Auto-open cash drawer if enabled (Panda RJ-11 Drawer Kick via ESC/POS)
+    if (this.config.autoDrawer && (order.payment_method === 'cash' || order.payment_method === 'tempo')) {
+      append(COMMANDS.DRAWER_KICK);
+    }
 
     // 2. Header (Store Title Double Size, Centered)
     append(COMMANDS.ALIGN_CENTER);
@@ -659,15 +679,6 @@ class HardwareManager {
   // --- Main Print Method ---
   async printOrder(order, settings, isReprint = false) {
     const bytes = this.buildReceiptBytes(order, settings, isReprint);
-
-    // Auto-open cash drawer if payment method is cash
-    if (this.config.autoDrawer && (order.payment_method === 'cash' || order.payment_method === 'tempo')) {
-      try {
-        await this.kickCashDrawer();
-      } catch (err) {
-        console.warn('[Hardware] Gagal membuka laci otomatis:', err);
-      }
-    }
 
     if (this.config.mode === 'bluetooth') {
       await this.ensureConnection();

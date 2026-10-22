@@ -343,7 +343,13 @@ function updateHeaderStatusPills() {
 
   function updatePrinterPill(hwState = (hardwareManager ? hardwareManager.getState() : {})) {
     if (!el.printerStatusPill) return;
-    if (hwState && hwState.isConnected) {
+    const isRawBt = hwState && hwState.config && hwState.config.mode === 'rawbt';
+    if (isRawBt) {
+      el.printerStatusPill.className = 'printer-status-pill online';
+      if (el.printerStatusLabel) el.printerStatusLabel.textContent = '🖨️ RawBT: Siap Cetak';
+      if (el.printerSubLabel) el.printerSubLabel.textContent = 'RPP210A (Layanan Android)';
+      el.printerStatusPill.setAttribute('title', 'Printer: Menggunakan Aplikasi RawBT Android • Selalu Terhubung & Siap Cetak');
+    } else if (hwState && hwState.isConnected) {
       el.printerStatusPill.className = 'printer-status-pill online';
       if (el.printerStatusLabel) el.printerStatusLabel.textContent = `🖨️ ${hwState.deviceName || 'Printer OK'}`;
       if (el.printerSubLabel) el.printerSubLabel.textContent = 'Bluetooth / Laci RJ-11';
