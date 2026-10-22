@@ -535,8 +535,8 @@ class HardwareManager {
     // 1. Initialize
     append(COMMANDS.INIT);
 
-    // Auto-open cash drawer if enabled (Panda RJ-11 Drawer Kick via ESC/POS)
-    if (this.config.autoDrawer && (order.payment_method === 'cash' || order.payment_method === 'tempo')) {
+    // Auto-open cash drawer if enabled (Panda RJ-11 Drawer Kick via ESC/POS) - only on original print, not reprint
+    if (!isReprint && this.config.autoDrawer && (order.payment_method === 'cash' || order.payment_method === 'tempo')) {
       append(COMMANDS.DRAWER_KICK);
     }
 

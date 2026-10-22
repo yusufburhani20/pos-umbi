@@ -2322,12 +2322,12 @@ function bindEvents() {
     } else if (state.lastCompletedOrder) {
       const originalText = el.btnPrintReceipt.textContent;
       el.btnPrintReceipt.disabled = true;
-      el.btnPrintReceipt.textContent = '⏳ Mencetak ke Printer...';
+      el.btnPrintReceipt.textContent = '⏳ Mencetak Ulang...';
       try {
-        const res = await hardwareManager.printOrder(state.lastCompletedOrder, state.settings, state.lastOrderIsReprint);
-        showToast(`Struk dicetak (${res.mode.toUpperCase()})!`, 'success');
+        const res = await hardwareManager.printOrder(state.lastCompletedOrder, state.settings, true);
+        showToast(`Struk dicetak ulang (${res.mode.toUpperCase()})!`, 'success');
       } catch (err) {
-        showToast('Gagal cetak Bluetooth: ' + err.message + '. Membuka dialog cetak...', 'error');
+        showToast('Gagal cetak: ' + err.message + '. Membuka dialog cetak...', 'error');
         window.print();
       } finally {
         el.btnPrintReceipt.disabled = false;
@@ -3857,15 +3857,16 @@ async function handleProcessOrder() {
     // Show thermal receipt
     if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Transaksi Berhasil';
     if (el.btnNextOrder) el.btnNextOrder.textContent = 'Transaksi Baru Berikutnya';
+    if (el.btnPrintReceipt) el.btnPrintReceipt.textContent = '🖨️ Cetak Ulang Struk (Reprint)';
     state.lastCompletedOrder = orderResult;
     state.lastOrderIsReprint = false;
     renderThermalReceipt(orderResult, false);
     el.receiptModal.style.display = 'flex';
 
-    // Auto-open Panda cash drawer on Cash or Tempo payment
-    if (hardwareManager.config.autoDrawer && (orderResult.payment_method === 'cash' || orderResult.payment_method === 'tempo')) {
-      hardwareManager.kickCashDrawer().catch(e => console.warn('[Hardware] Auto drawer kick error:', e));
-    }
+    // Otomatis cetak struk lengkap + buka laci kasir seketika saat klik Konfirmasi & Cetak Struk!
+    hardwareManager.printOrder(orderResult, state.settings, false).catch(err => {
+      console.warn('[Hardware] Auto print order error:', err);
+    });
 
     // Reset Cart & refresh products
     state.cart = [];
