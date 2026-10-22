@@ -867,13 +867,16 @@ function openReceiptPreview(type, data) {
       el.btnCancelReceiptPreview.textContent = 'Tutup';
     }
   } else if (type === 'shift_z') {
-    titleText = 'Pratinjau Struk Laporan Harian (Tutup Shift Kasir)';
+    titleText = '✅ Shift Kasir Berhasil Ditutup (Laporan Z)';
     htmlReceipt = renderThermalShiftReceipt(data, 'Z');
     if (el.btnConfirmPrintReceipt) {
-      el.btnConfirmPrintReceipt.innerHTML = '<span>🖨️</span> Cetak & Keluar ke PIN Kasir';
+      el.btnConfirmPrintReceipt.innerHTML = '<span>🖨️</span> Cetak Ulang Laporan Z (Reprint)';
     }
     if (el.btnCancelReceiptPreview) {
-      el.btnCancelReceiptPreview.textContent = 'Selesai & Keluar ke PIN';
+      el.btnCancelReceiptPreview.innerHTML = '<span>🚪</span> Selesai & Keluar ke PIN Kasir';
+      el.btnCancelReceiptPreview.style.background = '#0f172a';
+      el.btnCancelReceiptPreview.style.color = '#ffffff';
+      el.btnCancelReceiptPreview.style.fontWeight = '800';
     }
   } else if (type === 'expense') {
     titleText = 'Pratinjau Struk Biaya Operasional';
@@ -947,14 +950,10 @@ async function handleConfirmPrintReceipt() {
     if (type === 'shift_x' || type === 'shift_z') {
       const modeType = type === 'shift_z' ? 'Z' : 'X';
       await hardwareManager.printShiftReport(data, modeType, settings);
-      const repLabel = 'Laporan Harian';
+      const repLabel = type === 'shift_z' ? 'Laporan Harian (Report Z)' : 'Cek Kas Berjalan (Report X)';
       showToast(`🖨️ Struk ${repLabel} berhasil dicetak!`, 'success');
-      if (type === 'shift_z') {
-        setTimeout(() => {
-          closeReceiptPreview();
-        }, 1200);
-        return;
-      }
+      // Tidak ada auto-logout paksa! Biarkan kasir menekan tombol "Selesai & Keluar ke PIN Kasir" saat sudah siap.
+      return;
     } else if (type === 'expense' || type === 'income') {
       await hardwareManager.printExpense(data, settings, false);
       showToast('🖨️ Bukti kas berhasil dicetak ke printer!', 'success');
@@ -965,12 +964,6 @@ async function handleConfirmPrintReceipt() {
     console.warn('[Print] Gagal cetak thermal, fallback ke system print:', err);
     showToast('Printer belum terhubung (' + err.message + '). Membuka cetak browser...', 'warning');
     window.print();
-    if (state.activePreviewType === 'shift_z') {
-      setTimeout(() => {
-        closeReceiptPreview();
-      }, 1500);
-      return;
-    }
   } finally {
     if (el.btnConfirmPrintReceipt) {
       el.btnConfirmPrintReceipt.disabled = false;
@@ -1071,8 +1064,16 @@ async function handleCloseShiftZ() {
 
     const sum = res.summary;
 
-    // Buka pratinjau struk Laporan Harian
+    // 1. Buka pratinjau struk Laporan Harian
     openReceiptPreview('shift_z', sum);
+
+    // 2. Otomatis kirim cetak Laporan Harian (Report Z) ke printer thermal seketika!
+    hardwareManager.printShiftReport(sum, 'Z', state.settings || {}).then(() => {
+      showToast('🖨️ Struk Laporan Harian (Report Z) otomatis dicetak ke printer!', 'success');
+    }).catch(printErr => {
+      console.warn('[Hardware] Gagal cetak otomatis laporan shift:', printErr);
+      showToast('Gagal kirim ke printer: ' + printErr.message, 'warning');
+    });
 
     let alertMsg = `Shift Kasir #${sum.shift_id} Berhasil Ditutup!\nTotal Fisik: ${formatRupiah(sum.actual_cash_input)}`;
     if (sum.is_balanced) {

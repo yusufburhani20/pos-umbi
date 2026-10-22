@@ -4017,16 +4017,25 @@ async function handleSubmitBlindClose() {
     const isBalanced = sum.is_balanced;
     const diff = sum.cash_difference;
 
-    let alertMsg = `Shift Kasir Berhasil Ditutup!\nTotal Fisik: ${formatRupiah(sum.actual_cash_input)}`;
-    if (isBalanced) {
-      alertMsg += '\nStatus: KAS BALANCE (Sesuai Sistem)';
-    } else if (diff < 0) {
-      alertMsg += `\n⚠️ PERHATIAN: Selisih KURANG ${formatRupiah(Math.abs(diff))} (Tercatat ke Log Owner)`;
-    } else {
-      alertMsg += `\nStatus: Selisih LEBIH ${formatRupiah(diff)}`;
+    // 1. OTOMATIS CETAK STRUK LAPORAN HARIAN (REPORT Z) KE PRINTER THERMAL!
+    try {
+      await hardwareManager.printShiftReport(sum, 'Z', state.settings || {});
+      showToast('🖨️ Struk Laporan Harian (Report Z) otomatis dicetak ke printer!', 'success');
+    } catch (printErr) {
+      console.warn('[Hardware] Gagal cetak otomatis laporan shift:', printErr);
+      showToast('Gagal kirim ke printer: ' + printErr.message, 'warning');
     }
 
-    alert(alertMsg + '\n\nSesi shift kasir telah berakhir. Layar akan beralih ke input PIN untuk kasir berikutnya.');
+    let alertMsg = `Shift Kasir Berhasil Ditutup!\nTotal Fisik Dihitung: ${formatRupiah(sum.actual_cash_input)}`;
+    if (isBalanced) {
+      alertMsg += '\n\nStatus: [ OK KAS BALANCE / SESUAI ]';
+    } else if (diff < 0) {
+      alertMsg += `\n\n⚠️ PERHATIAN: Selisih KURANG ${formatRupiah(Math.abs(diff))} (Tercatat ke Log Owner)`;
+    } else {
+      alertMsg += `\n\nStatus: Selisih LEBIH ${formatRupiah(diff)}`;
+    }
+
+    alert(alertMsg + '\n\n🖨️ Struk Laporan Harian (Report Z) telah dikirim ke printer.\n\nKlik OK untuk menyelesaikan sesi dan keluar ke layar login PIN kasir.');
     performCashierLogout('Shift kasir berhasil ditutup. Silakan masukkan PIN untuk bertugas.');
   } catch (err) {
     showToast('Gagal menutup shift: ' + err.message, 'error');
