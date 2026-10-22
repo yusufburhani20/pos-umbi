@@ -1075,7 +1075,7 @@ async function handleCloseShiftZ() {
   } else {
     confirmMsg += `\n\nℹ️ Status: SELISIH LEBIH ${formatRupiah(diff)}`;
   }
-  confirmMsg += '\n\nSistem akan menutup shift, membuka laci kasir otomatis, dan menampilkan pratinjau Laporan Harian untuk dicetak.';
+  confirmMsg += '\n\nSistem akan menutup shift dan menampilkan pratinjau Laporan Harian untuk dicetak.';
 
   if (!confirm(confirmMsg)) return;
 

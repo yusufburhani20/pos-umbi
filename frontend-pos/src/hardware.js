@@ -1128,14 +1128,8 @@ class HardwareManager {
   async printShiftReport(shiftData, type = 'X', settings = {}) {
     const bytes = this.buildShiftReportBytes(shiftData, type, settings);
 
-    // Auto-open cash drawer if closing shift
-    if (this.config.autoDrawer && type === 'Z') {
-      try {
-        await this.kickCashDrawer();
-      } catch (err) {
-        console.warn('[Hardware] Gagal membuka laci otomatis:', err);
-      }
-    }
+    // Catatan: Laci kasir tidak dibuka otomatis saat cetak Laporan Harian (Report Z)
+    // karena kasir sudah membuka laci terlebih dahulu saat menghitung rekonsiliasi uang fisik.
 
     if (this.config.mode === 'bluetooth') {
       await this.ensureConnection();
