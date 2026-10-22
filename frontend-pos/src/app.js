@@ -850,6 +850,14 @@ async function applyPwaUpdate() {
   isUpdateReloading = true;
   showToast('Memperbarui aplikasi ke versi terbaru...', 'success');
 
+  const banner = document.getElementById('pwaUpdateFloatingBanner');
+  if (banner) banner.style.display = 'none';
+
+  try {
+    pwaDismissedThisSession = true;
+    sessionStorage.setItem('pwa_dismissed_ver', 'updated');
+  } catch (e) {}
+
   try {
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -868,16 +876,14 @@ async function applyPwaUpdate() {
     try {
       const cacheNames = await caches.keys();
       for (const name of cacheNames) {
-        if (!name.includes('v36')) {
-          await caches.delete(name);
-        }
+        await caches.delete(name);
       }
     } catch (e) {}
   }
 
   setTimeout(() => {
     window.location.reload();
-  }, 400);
+  }, 350);
 }
 
 function initPwaUpdateManager() {

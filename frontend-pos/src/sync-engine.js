@@ -137,8 +137,10 @@ class SyncEngine {
       }
       this.isOnline = true;
 
-      // Smart Version Detection: Bandingkan versi server dengan versi aplikasi lokal
-      if (statusRes.app_version && statusRes.app_version !== APP_CURRENT_VERSION) {
+      // Smart Version Detection: Bandingkan versi server dengan versi aplikasi lokal (hanya update jika server lebih baru)
+      const serverVer = parseInt(String(statusRes.app_version || '').replace(/\D/g, ''), 10) || 0;
+      const localVer = parseInt(String(APP_CURRENT_VERSION || '').replace(/\D/g, ''), 10) || 0;
+      if (serverVer > localVer) {
         console.log(`[SyncEngine] 🚀 Versi baru terdeteksi di server: ${statusRes.app_version} (Lokal: ${APP_CURRENT_VERSION})`);
         this.hasUpdate = true;
         this.latestServerVersion = statusRes.app_version;
@@ -147,6 +149,8 @@ class SyncEngine {
             if (reg) reg.update();
           }).catch(() => {});
         }
+      } else {
+        this.hasUpdate = false;
       }
 
       // 2. Gather pending outbox records from tablet's IndexedDB

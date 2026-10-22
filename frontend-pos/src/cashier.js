@@ -279,6 +279,14 @@ async function applyPwaUpdateInCashier() {
   isCashierUpdateReloading = true;
   showToast('Memperbarui aplikasi ke versi terbaru...', 'success');
 
+  const banner = document.getElementById('pwaUpdateFloatingBanner');
+  if (banner) banner.style.display = 'none';
+
+  try {
+    pwaDismissedInCashier = true;
+    sessionStorage.setItem('pwa_dismissed_ver_cashier', 'updated');
+  } catch (e) {}
+
   try {
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -297,16 +305,14 @@ async function applyPwaUpdateInCashier() {
     try {
       const cacheNames = await caches.keys();
       for (const name of cacheNames) {
-        if (!name.includes('v36')) {
-          await caches.delete(name);
-        }
+        await caches.delete(name);
       }
     } catch (e) {}
   }
 
   setTimeout(() => {
     window.location.reload();
-  }, 400);
+  }, 350);
 }
 
 function updateHeaderStatusPills() {
@@ -501,6 +507,14 @@ function initHeaderDropdowns() {
       e.preventDefault();
       closeAllDropdowns();
     }, { passive: false });
+  }
+
+  const btnCloseMobile = document.getElementById('btnCloseUserDropdownMobile');
+  if (btnCloseMobile) {
+    btnCloseMobile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllDropdowns();
+    });
   }
 
   // Close dropdown when clicking any item inside menu
