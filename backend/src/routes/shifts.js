@@ -308,16 +308,26 @@ router.post('/close', authenticateToken, async (req, res) => {
 });
 
 // GET /api/shifts/history
-// List shift history (Accessible to Owner or Cashier for their records)
+// List shift history (Default: 7 hari terakhir, atau 30 hari / semua)
 router.get('/history', authenticateToken, async (req, res) => {
   try {
-    const { limit = 20 } = req.query;
+    const { limit = 100, period = '7days' } = req.query;
+    let filterClause = "";
+    if (period === '7days') {
+      filterClause = "WHERE date(s.start_time) >= date('now', 'localtime', '-6 days')";
+    } else if (period === '30days') {
+      filterClause = "WHERE date(s.start_time) >= date('now', 'localtime', '-29 days')";
+    } else if (period === 'today') {
+      filterClause = "WHERE date(s.start_time) = date('now', 'localtime')";
+    }
+
     const shifts = await dbQuery.all(
       `SELECT s.*, u.name as cashier_name
        FROM shifts s
        JOIN users u ON s.cashier_id = u.id
+       ${filterClause}
        ORDER BY s.id DESC LIMIT ?`,
-      [Number(limit)]
+      [Number(limit) || 100]
     );
     const formattedShifts = (shifts || []).map(s => {
       let bObj = null;

@@ -70,8 +70,9 @@ class ApiClient {
   }
 
   // Owner specific methods
-  getDashboardReport() {
-    return this.request('/reports/dashboard');
+  getDashboardReport(params = {}) {
+    const qs = typeof params === 'object' ? new URLSearchParams(params).toString() : '';
+    return this.request(`/reports/dashboard${qs ? '?' + qs : ''}`);
   }
 
   getSalesReport(params = {}) {
@@ -254,8 +255,9 @@ class ApiClient {
     });
   }
 
-  getShiftHistory() {
-    return this.request('/shifts/history');
+  getShiftHistory(params = {}) {
+    const qs = typeof params === 'object' ? new URLSearchParams(params).toString() : '';
+    return this.request(`/shifts/history${qs ? '?' + qs : ''}`);
   }
 
   // Products

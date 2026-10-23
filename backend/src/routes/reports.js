@@ -7,6 +7,7 @@ const { authenticateToken, requireOwner, requireStrictOwner } = require('../midd
 // Primary endpoint for Owner's smartphone dashboard
 router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
   try {
+    const { anti_fraud_period = '7days' } = req.query;
     const today = new Date().toISOString().split('T')[0];
 
     // 1. Today's sales by payment method
@@ -174,14 +175,23 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        WHERE remaining_amount > 0`
     );
 
-    // 4h. Detailed void transactions today
+    // 4h. Detailed void transactions (Default: 7 hari terakhir, dapat diubah ke 30 hari atau semua)
+    let voidDateFilter = "date(o.created_at) >= date('now', 'localtime', '-6 days')";
+    if (anti_fraud_period === '30days') {
+      voidDateFilter = "date(o.created_at) >= date('now', 'localtime', '-29 days')";
+    } else if (anti_fraud_period === 'all') {
+      voidDateFilter = "1=1";
+    } else if (anti_fraud_period === 'today') {
+      voidDateFilter = "date(o.created_at) = date('now', 'localtime')";
+    }
+
     const voidOrdersList = await dbQuery.all(
       `SELECT o.id, o.order_no, o.total_amount, o.created_at, o.void_reason, u.name as cashier_name
        FROM orders o
        LEFT JOIN shifts sh ON o.shift_id = sh.id
        LEFT JOIN users u ON sh.cashier_id = u.id
-       WHERE date(o.created_at) = date('now', 'localtime') AND o.status = 'void'
-       ORDER BY o.id DESC LIMIT 5`
+       WHERE ${voidDateFilter} AND o.status = 'void'
+       ORDER BY o.id DESC LIMIT 50`
     );
 
     // 5. Recent Shift Discrepancies (Shortages in the last 7 days)
@@ -190,17 +200,26 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        FROM shifts s
        JOIN users u ON s.cashier_id = u.id
        WHERE s.status = 'closed' AND s.cash_difference != 0
-       ORDER BY s.id DESC LIMIT 5`
+       ORDER BY s.id DESC LIMIT 10`
     );
 
-    // 6. Today's Susut / Busuk Log
+    // 6. Susut / Busuk Log (Default: 7 hari terakhir, dapat diubah ke 30 hari atau semua)
+    let wasteDateFilter = "date(sa.created_at) >= date('now', 'localtime', '-6 days')";
+    if (anti_fraud_period === '30days') {
+      wasteDateFilter = "date(sa.created_at) >= date('now', 'localtime', '-29 days')";
+    } else if (anti_fraud_period === 'all') {
+      wasteDateFilter = "1=1";
+    } else if (anti_fraud_period === 'today') {
+      wasteDateFilter = "date(sa.created_at) = date('now', 'localtime')";
+    }
+
     const wasteToday = await dbQuery.all(
       `SELECT sa.*, p.name as product_name, u.name as reported_by
        FROM stock_adjustments sa
        JOIN products p ON sa.product_id = p.id
        JOIN users u ON sa.user_id = u.id
-       WHERE date(sa.created_at) = date('now', 'localtime')
-       ORDER BY sa.id DESC`
+       WHERE ${wasteDateFilter}
+       ORDER BY sa.id DESC LIMIT 50`
     );
 
     // 7. Last 7 Days Daily Revenue Trend

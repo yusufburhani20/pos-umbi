@@ -5618,4 +5618,150 @@ body.executive-body {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* ==============================================================================
+   ANTI-FRAUD & OPERATIONAL MONITORING PERIOD TABS (REKONSILIASI, VOID, SUSUT)
+   ============================================================================== */
+.anti-fraud-period-tabs-bar {
+  margin-top: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
+  transition: all 0.2s ease;
+}
+
+.fraud-tabs-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fraud-tabs-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fraud-tabs-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.fraud-tabs-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.fraud-tabs-caption {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.fraud-tabs-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-fraud-period-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.btn-fraud-period-tab:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.btn-fraud-period-tab.active {
+  background: #064e3b;
+  border-color: #064e3b;
+  color: #ffffff;
+  box-shadow: 0 4px 12px -2px rgba(6, 78, 59, 0.35);
+}
+
+.tab-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+  transition: all 0.18s ease;
+}
+
+.btn-fraud-period-tab.active .tab-indicator-dot {
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+}
+
+.period-count-badge {
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+}
+
+.scrollable-card-list {
+  max-height: 420px;
+  overflow-y: auto !important;
+  padding-right: 6px;
+}
+
+.scrollable-card-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scrollable-card-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+
+.scrollable-card-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+.scrollable-card-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (max-width: 768px) {
+  .fraud-tabs-nav-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .fraud-tabs-buttons {
+    width: 100%;
+  }
+  .btn-fraud-period-tab {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+}
+
+
 

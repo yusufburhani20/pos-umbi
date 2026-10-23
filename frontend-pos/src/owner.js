@@ -30,6 +30,20 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function formatShortDateWithTime(dateInput) {
+  if (!dateInput) return '-';
+  const d = parseSafeDate(dateInput);
+  if (isNaN(d.getTime())) return '-';
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `Hari ini, ${timeStr}`;
+  const dayName = d.toLocaleDateString('id-ID', { weekday: 'short' });
+  const day = d.getDate();
+  const month = d.toLocaleDateString('id-ID', { month: 'short' });
+  return `${dayName}, ${day} ${month} • ${timeStr}`;
+}
+
 const state = {
   user: null,
   products: [],
@@ -38,6 +52,7 @@ const state = {
   searchKeyword: '',
   dashboard: null,
   shifts: [],
+  antiFraudPeriod: '7days',
   auditLogs: [],
   filteredLogs: [],
   activeAuditFilter: 'ALL',
@@ -130,6 +145,9 @@ const el = {
   // Anti-fraud Void & Waste
   kpiVoidCountBadge: document.getElementById('kpiVoidCountBadge'),
   voidListContainer: document.getElementById('voidListContainer'),
+  kpiShiftCountBadge: document.getElementById('kpiShiftCountBadge'),
+  kpiWasteCountBadge: document.getElementById('kpiWasteCountBadge'),
+  fraudPeriodCaption: document.getElementById('fraudPeriodCaption'),
 
   // Recent Activity Feeds
   badgeRecentOrdersCount: document.getElementById('badgeRecentOrdersCount'),
@@ -951,6 +969,14 @@ function bindEvents() {
     });
   });
 
+  // Anti-Fraud & Operational Monitoring Period Tabs (7 Days, 30 Days, All)
+  document.querySelectorAll('.btn-fraud-period-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const period = btn.dataset.period;
+      switchAntiFraudPeriod(period);
+    });
+  });
+
   // Debts Tab Events
   document.querySelectorAll('[data-debt-status]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1697,9 +1723,10 @@ function setRefreshButtonState(isLoading) {
 async function loadAllData() {
   try {
     setRefreshButtonState(true);
+    const curPeriod = state.antiFraudPeriod || '7days';
     const [dashRes, shiftRes, prodRes, auditRes, usersRes, settingsRes] = await Promise.all([
-      api.getDashboardReport(),
-      api.getShiftHistory(),
+      api.getDashboardReport({ anti_fraud_period: curPeriod }),
+      api.getShiftHistory({ period: curPeriod, limit: 100 }),
       api.getProducts(),
       api.getAuditLogs(40),
       api.getUsers(),
@@ -2154,12 +2181,12 @@ function renderRecentFeeds() {
 }
 
 function renderVoidDetails() {
-  const voidDetails = state.dashboard.void_today_details || [];
-  const s = state.dashboard.summary || {};
-  const count = s.void_count !== undefined ? s.void_count : voidDetails.length;
+  const voidDetails = (state.dashboard && (state.dashboard.void_today_details || state.dashboard.void_details)) || [];
+  const count = voidDetails.length;
 
   if (el.kpiVoidCountBadge) {
-    el.kpiVoidCountBadge.textContent = `${count} Void`;
+    const periodLabel = state.antiFraudPeriod === '7days' ? '7 Hari' : (state.antiFraudPeriod === '30days' ? '30 Hari' : 'Semua');
+    el.kpiVoidCountBadge.textContent = `${count} Void (${periodLabel})`;
     el.kpiVoidCountBadge.style.background = count > 0 ? '#fee2e2' : '#f1f5f9';
     el.kpiVoidCountBadge.style.color = count > 0 ? '#dc2626' : '#64748b';
   }
@@ -2169,20 +2196,20 @@ function renderVoidDetails() {
   if (voidDetails.length === 0) {
     el.voidListContainer.innerHTML = `
       <div style="color: #64748b; font-size: 12.5px; padding: 18px 12px; text-align: center; background: #f8fafc; border-radius: 8px;">
-        ✅ Tidak ada nota dibatalkan hari ini (Integritas Aman).
+        ✅ Tidak ada nota dibatalkan pada periode ini (Integritas Aman).
       </div>
     `;
     return;
   }
 
   el.voidListContainer.innerHTML = voidDetails.map(v => {
-    const time = parseSafeDate(v.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const timeFormatted = formatShortDateWithTime(v.created_at);
     return `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #fee2e2; background: #fff5f5; border-radius: 8px; margin-bottom: 6px;">
         <div>
           <div style="font-weight: 700; font-size: 13px; color: #991b1b; display: flex; align-items: center; gap: 6px;">
-            <span>🚫 #${v.order_no}</span>
-            <span style="font-size: 11px; background: #fee2e2; color: #dc2626; padding: 1px 6px; border-radius: 4px; font-weight: 600;">${time}</span>
+            <span>🚫 #${escapeHtml(v.order_no)}</span>
+            <span style="font-size: 11px; background: #fee2e2; color: #dc2626; padding: 1px 6px; border-radius: 4px; font-weight: 600;">${timeFormatted}</span>
           </div>
           <div style="font-size: 11.5px; color: #475569; margin-top: 3px;">
             Kasir: <strong>${escapeHtml(v.cashier_name || 'Kasir')}</strong>
@@ -2394,8 +2421,13 @@ function renderAnomalyRadar() {
 }
 
 function renderShifts() {
+  if (el.kpiShiftCountBadge) {
+    const periodLabel = state.antiFraudPeriod === '7days' ? '7 Hari' : (state.antiFraudPeriod === '30days' ? '30 Hari' : 'Semua');
+    el.kpiShiftCountBadge.textContent = `${state.shifts.length} Shift (${periodLabel})`;
+  }
+
   if (state.shifts.length === 0) {
-    el.shiftListContainer.innerHTML = '<div class="loading-placeholder">Belum ada riwayat shift kasir.</div>';
+    el.shiftListContainer.innerHTML = '<div class="loading-placeholder">Belum ada riwayat shift kasir pada periode ini.</div>';
     return;
   }
 
@@ -2415,13 +2447,13 @@ function renderShifts() {
     }
 
     const timeStr = s.end_time 
-      ? `Tutup: ${parseSafeDate(s.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
-      : `Buka: ${parseSafeDate(s.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+      ? `Tutup: ${formatShortDateWithTime(s.end_time)}`
+      : `Buka: ${formatShortDateWithTime(s.start_time)}`;
 
     return `
       <div class="shift-item-card">
         <div class="shift-info-left">
-          <span class="shift-user-title">Shift #${s.id} - ${s.cashier_name}</span>
+          <span class="shift-user-title">Shift #${s.id} - ${escapeHtml(s.cashier_name || 'Kasir')}</span>
           <span class="shift-time-meta">${timeStr} | Modal: ${formatRupiah(s.starting_cash)}</span>
         </div>
         <div class="shift-amounts-right">
@@ -2434,22 +2466,27 @@ function renderShifts() {
 }
 
 function renderWaste() {
-  const wastes = state.dashboard.waste_today || [];
+  const wastes = (state.dashboard && (state.dashboard.waste_list || state.dashboard.waste_today)) || [];
+  if (el.kpiWasteCountBadge) {
+    const periodLabel = state.antiFraudPeriod === '7days' ? '7 Hari' : (state.antiFraudPeriod === '30days' ? '30 Hari' : 'Semua');
+    el.kpiWasteCountBadge.textContent = `${wastes.length} Catatan (${periodLabel})`;
+  }
+
   if (wastes.length === 0) {
-    el.wasteListContainer.innerHTML = '<div class="loading-placeholder">Belum ada catatan barang susut atau busuk hari ini.</div>';
+    el.wasteListContainer.innerHTML = '<div class="loading-placeholder">Belum ada catatan barang susut atau busuk pada periode ini.</div>';
     return;
   }
 
   el.wasteListContainer.innerHTML = wastes.map(w => {
-    const time = parseSafeDate(w.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const timeFormatted = formatShortDateWithTime(w.created_at);
     return `
       <div class="waste-item-card">
         <div class="waste-left">
-          <span class="waste-tag">${w.type.toUpperCase()}</span>
+          <span class="waste-tag">${escapeHtml(w.type.toUpperCase())}</span>
           <div>
-            <strong style="color:var(--text-title); font-size:13px;">${w.product_name}</strong>
+            <strong style="color:var(--text-title); font-size:13px;">${escapeHtml(w.product_name)}</strong>
             <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">
-              ${time} | Pelapor: ${w.reported_by} ${w.notes ? '• ' + w.notes : ''}
+              ${timeFormatted} | Pelapor: ${escapeHtml(w.reported_by || 'Staff')} ${w.notes ? '• ' + escapeHtml(w.notes) : ''}
             </div>
           </div>
         </div>
@@ -2459,6 +2496,52 @@ function renderWaste() {
       </div>
     `;
   }).join('');
+}
+
+async function switchAntiFraudPeriod(period) {
+  state.antiFraudPeriod = period;
+
+  // Update button visual states
+  document.querySelectorAll('.btn-fraud-period-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.period === period);
+  });
+
+  // Update explanatory caption
+  if (el.fraudPeriodCaption) {
+    if (period === '7days') {
+      el.fraudPeriodCaption.innerHTML = 'Menampilkan data <strong>7 hari terakhir</strong> (default).';
+    } else if (period === '30days') {
+      el.fraudPeriodCaption.innerHTML = 'Menampilkan data <strong>30 hari terakhir</strong>.';
+    } else {
+      el.fraudPeriodCaption.innerHTML = 'Menampilkan <strong>semua riwayat</strong> data operasional &amp; kasir.';
+    }
+  }
+
+  // Loading state in containers
+  if (el.shiftListContainer) el.shiftListContainer.innerHTML = '<div class="loading-placeholder">Memuat data shift...</div>';
+  if (el.voidListContainer) el.voidListContainer.innerHTML = '<div class="loading-placeholder">Memuat data pembatalan nota...</div>';
+  if (el.wasteListContainer) el.wasteListContainer.innerHTML = '<div class="loading-placeholder">Memuat data barang susut...</div>';
+
+  try {
+    const [shiftRes, dashRes] = await Promise.all([
+      api.getShiftHistory({ period, limit: 100 }),
+      api.getDashboardReport({ anti_fraud_period: period })
+    ]);
+
+    state.shifts = shiftRes.shifts || [];
+    if (dashRes) {
+      if (dashRes.void_today_details) state.dashboard.void_today_details = dashRes.void_today_details;
+      if (dashRes.void_details) state.dashboard.void_details = dashRes.void_details;
+      if (dashRes.waste_today) state.dashboard.waste_today = dashRes.waste_today;
+      if (dashRes.waste_list) state.dashboard.waste_list = dashRes.waste_list;
+    }
+
+    renderShifts();
+    renderVoidDetails();
+    renderWaste();
+  } catch (err) {
+    console.error('Error switching anti-fraud period:', err);
+  }
 }
 
 // -----------------------------------------------------------------------------
