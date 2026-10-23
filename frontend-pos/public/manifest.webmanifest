@@ -1,13 +1,13 @@
 {
   "id": "kassa-pos-pasar",
-  "name": "Kassa POS - Kasir Pasar",
-  "short_name": "Kassa POS",
+  "name": "PD. HASIL BUMI RAYA 1 - Kasir Pasar",
+  "short_name": "PD. HASIL BUMI RAYA 1",
   "description": "Sistem Kasir Pintar & Anti-Kecolongan Toko Pasar",
   "start_url": "/?pwa=kassa",
   "scope": "/",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],
-  "background_color": "#0b1120",
+  "background_color": "#ffffff",
   "theme_color": "#064e3b",
   "orientation": "any",
   "icons": [
