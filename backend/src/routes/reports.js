@@ -98,8 +98,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
       const supRow = await dbQuery.get(
         `SELECT COALESCE(SUM(amount_paid), 0) as cash_supplier
          FROM supplier_payments
-         WHERE payment_method = 'cash' AND payment_date >= ?`,
-        [activeShift.start_time]
+         WHERE payment_method = 'cash' AND (shift_id = ? OR (shift_id IS NULL AND payment_date >= ?))`,
+        [activeShift.id, activeShift.start_time]
       );
       activeShiftCashSupplier = supRow ? supRow.cash_supplier : 0;
 

@@ -162,7 +162,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const orderNo = generateOrderNo();
 
     // 5. Database Transaction (Insert Order, Order Items, Deduct Stock)
-    await dbQuery.exec('BEGIN TRANSACTION;');
+    await dbQuery.exec('BEGIN IMMEDIATE;');
 
     try {
       const orderResult = await dbQuery.run(
@@ -376,7 +376,7 @@ router.post('/:id/void', authenticateToken, async (req, res) => {
     }
 
     // Begin Transaction to Void and Restore Stock
-    await dbQuery.exec('BEGIN TRANSACTION;');
+    await dbQuery.exec('BEGIN IMMEDIATE;');
 
     try {
       const items = await dbQuery.all('SELECT * FROM order_items WHERE order_id = ?', [id]);

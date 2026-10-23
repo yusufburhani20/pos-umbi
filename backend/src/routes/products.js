@@ -465,10 +465,16 @@ router.post('/restock', authenticateToken, async (req, res) => {
       );
 
       if (paidAmt > 0 && req.body.supplier_id) {
+        let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
+        if (!targetShiftId) {
+          const actShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
+          if (actShift) targetShiftId = actShift.id;
+        }
+
         await dbQuery.run(
-          `INSERT INTO supplier_payments (purchase_id, supplier_id, amount_paid, payment_method, payment_date, notes, recorded_by)
-           VALUES (?, ?, ?, 'cash', datetime('now', 'localtime'), ?, ?)`,
-          [pResult.lastID, Number(req.body.supplier_id), paidAmt, pStatus === 'lunas' ? 'Lunas saat kulakan' : 'DP Kulakan', req.user.id]
+          `INSERT INTO supplier_payments (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
+           VALUES (?, ?, ?, ?, 'cash', datetime('now', 'localtime'), ?, ?)`,
+          [pResult.lastID, Number(req.body.supplier_id), targetShiftId, paidAmt, pStatus === 'lunas' ? 'Lunas saat kulakan' : 'DP Kulakan', req.user.id]
         );
       }
     } catch (pErr) {

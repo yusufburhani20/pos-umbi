@@ -45,8 +45,8 @@ router.get('/current', authenticateToken, async (req, res) => {
     const supplierCashRow = await dbQuery.get(
       `SELECT COALESCE(SUM(amount_paid), 0) as cash_supplier_payments
        FROM supplier_payments
-       WHERE payment_method = 'cash' AND payment_date >= ?`,
-      [shift.start_time]
+       WHERE payment_method = 'cash' AND (shift_id = ? OR (shift_id IS NULL AND payment_date >= ?))`,
+      [shift.id, shift.start_time]
     );
 
     const debtCashRow = await dbQuery.get(
@@ -198,8 +198,8 @@ router.post('/close', authenticateToken, async (req, res) => {
     const cashSupplierPaymentsRow = await dbQuery.get(
       `SELECT COALESCE(SUM(amount_paid), 0) as total_cash_supplier
        FROM supplier_payments
-       WHERE payment_method = 'cash' AND payment_date >= ?`,
-      [shift.start_time]
+       WHERE payment_method = 'cash' AND (shift_id = ? OR (shift_id IS NULL AND payment_date >= ?))`,
+      [shift_id, shift.start_time]
     );
 
     const debtCashRow = await dbQuery.get(

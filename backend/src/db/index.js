@@ -273,6 +273,7 @@ async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       purchase_id INTEGER NOT NULL,
       supplier_id INTEGER NOT NULL,
+      shift_id INTEGER,
       amount_paid REAL NOT NULL,
       payment_method TEXT NOT NULL CHECK(payment_method IN ('cash', 'transfer')),
       payment_date DATETIME DEFAULT (datetime('now', 'localtime')),
@@ -280,6 +281,7 @@ async function initDatabase() {
       recorded_by INTEGER,
       FOREIGN KEY(purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
       FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
+      FOREIGN KEY(shift_id) REFERENCES shifts(id),
       FOREIGN KEY(recorded_by) REFERENCES users(id)
     );
   `);
@@ -312,6 +314,17 @@ async function initDatabase() {
     }
   } catch (mErr) {
     console.warn('[DB] Migration error on shifts breakdown:', mErr.message);
+  }
+
+  // Migration: Add shift_id column to supplier_payments if not present
+  try {
+    const spCols = await dbQuery.all("PRAGMA table_info(supplier_payments)");
+    if (!spCols.some(c => c.name === 'shift_id')) {
+      await dbQuery.exec("ALTER TABLE supplier_payments ADD COLUMN shift_id INTEGER;");
+      console.log('[DB] Migrated: Added shift_id column to supplier_payments table');
+    }
+  } catch (spErr) {
+    console.warn('[DB] Migration error on supplier_payments shift_id:', spErr.message);
   }
 
   // Seed default data if empty
@@ -528,8 +541,8 @@ async function getCurrentDrawerCash(targetShiftId = null) {
   const supplierCashRow = await dbQuery.get(
     `SELECT COALESCE(SUM(amount_paid), 0) as cash_supplier_payments
      FROM supplier_payments
-     WHERE payment_method = 'cash' AND payment_date >= ?`,
-    [shift.start_time]
+     WHERE payment_method = 'cash' AND (shift_id = ? OR (shift_id IS NULL AND payment_date >= ?))`,
+    [shift.id, shift.start_time]
   );
 
   const debtCashRow = await dbQuery.get(

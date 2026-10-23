@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "postinstall": "npm rebuild sqlite3 --build-from-source",
+    "postinstall": "node -e \"if(process.platform==='linux'){try{require('child_process').execSync('npm rebuild sqlite3 --build-from-source',{stdio:'inherit'})}catch(e){console.warn('[postinstall] Rebuild skipped:',e.message)}}\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

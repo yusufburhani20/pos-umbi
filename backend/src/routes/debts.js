@@ -196,7 +196,7 @@ router.post('/:id/pay', authenticateToken, async (req, res) => {
       activeShiftId = activeShift.id;
     }
 
-    await dbQuery.exec('BEGIN TRANSACTION;');
+    await dbQuery.exec('BEGIN IMMEDIATE;');
 
     try {
       // 1. Insert payment record

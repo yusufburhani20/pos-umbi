@@ -486,13 +486,20 @@ router.post('/purchases', authenticateToken, async (req, res) => {
 
     // 2. If DP or full payment made, record to supplier_payments
     if (paidAmount > 0 && supplier_id) {
+      let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
+      if (!targetShiftId) {
+        const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
+        if (activeShift) targetShiftId = activeShift.id;
+      }
+
       await dbQuery.run(
         `INSERT INTO supplier_payments 
-         (purchase_id, supplier_id, amount_paid, payment_method, payment_date, notes, recorded_by)
-         VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
+         (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
+         VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
         [
           purchaseId,
           supplier_id,
+          targetShiftId,
           paidAmount,
           payment_method,
           finalPaymentStatus === 'lunas' ? 'Pembayaran Lunas Saat Kulakan' : 'Uang Muka / DP Kulakan',
@@ -626,13 +633,20 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
     );
 
     // 2. Insert into supplier_payments
+    let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : (drawerState && drawerState.has_active_shift ? drawerState.shift.id : null);
+    if (!targetShiftId) {
+      const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
+      if (activeShift) targetShiftId = activeShift.id;
+    }
+
     const payResult = await dbQuery.run(
       `INSERT INTO supplier_payments 
-       (purchase_id, supplier_id, amount_paid, payment_method, payment_date, notes, recorded_by)
-       VALUES (?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
+       (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
+       VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
       [
         id,
         purchase.supplier_id,
+        targetShiftId,
         payAmount,
         payment_method,
         notes || (newRemaining === 0 ? 'Pelunasan Hutang Kulakan' : 'Cicilan Hutang Kulakan'),
