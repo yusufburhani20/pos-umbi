@@ -158,6 +158,44 @@ const el = {
   shiftPrevPage: document.getElementById('shiftPrevPage'),
   shiftNextPage: document.getElementById('shiftNextPage'),
 
+  // Modal Detail Rekonsiliasi Shift
+  modalShiftDetail: document.getElementById('modalShiftDetail'),
+  btnCloseModalShiftDetail: document.getElementById('btnCloseModalShiftDetail'),
+  btnCloseModalShiftDetailFooter: document.getElementById('btnCloseModalShiftDetailFooter'),
+  sdModalTitle: document.getElementById('sdModalTitle'),
+  sdModalStatusBadge: document.getElementById('sdModalStatusBadge'),
+  sdModalCashierSub: document.getElementById('sdModalCashierSub'),
+  sdModalStartTime: document.getElementById('sdModalStartTime'),
+  sdModalEndTime: document.getElementById('sdModalEndTime'),
+  sdModalDuration: document.getElementById('sdModalDuration'),
+  sdModalCashierName: document.getElementById('sdModalCashierName'),
+  sdModalStartingCash: document.getElementById('sdModalStartingCash'),
+  sdModalSystemCash: document.getElementById('sdModalSystemCash'),
+  sdModalActualCash: document.getElementById('sdModalActualCash'),
+  sdModalVarianceCard: document.getElementById('sdModalVarianceCard'),
+  sdModalVarianceIcon: document.getElementById('sdModalVarianceIcon'),
+  sdModalVarianceTitle: document.getElementById('sdModalVarianceTitle'),
+  sdModalVarianceDesc: document.getElementById('sdModalVarianceDesc'),
+  sdModalVarianceDiff: document.getElementById('sdModalVarianceDiff'),
+  sdModalBreakdownWrap: document.getElementById('sdModalBreakdownWrap'),
+  sdModalBreakdownBadge: document.getElementById('sdModalBreakdownBadge'),
+  sdModalBreakdownGrid: document.getElementById('sdModalBreakdownGrid'),
+  sdModalCashSales: document.getElementById('sdModalCashSales'),
+  sdModalCashIncome: document.getElementById('sdModalCashIncome'),
+  sdModalDebtCollected: document.getElementById('sdModalDebtCollected'),
+  sdModalCashExpenses: document.getElementById('sdModalCashExpenses'),
+  sdModalSupplierPaid: document.getElementById('sdModalSupplierPaid'),
+  sdModalOrdersCount: document.getElementById('sdModalOrdersCount'),
+  sdModalQrisSales: document.getElementById('sdModalQrisSales'),
+  sdModalTransferSales: document.getElementById('sdModalTransferSales'),
+  sdModalTempoSales: document.getElementById('sdModalTempoSales'),
+  sdModalVoidInfo: document.getElementById('sdModalVoidInfo'),
+  sdModalTotalOmset: document.getElementById('sdModalTotalOmset'),
+  sdModalClosingNotes: document.getElementById('sdModalClosingNotes'),
+  sdModalExpensesWrap: document.getElementById('sdModalExpensesWrap'),
+  sdModalExpensesList: document.getElementById('sdModalExpensesList'),
+  btnPrintShiftDetailSummary: document.getElementById('btnPrintShiftDetailSummary'),
+
   kpiVoidCountBadge: document.getElementById('kpiVoidCountBadge'),
   voidListContainer: document.getElementById('voidListContainer'),
   selectPeriodVoid: document.getElementById('selectPeriodVoid'),
@@ -1269,6 +1307,26 @@ function switchTab(tabId) {
     el.btnModalGoToExpenses.addEventListener('click', () => {
       if (el.modalProfitBreakdown) el.modalProfitBreakdown.style.display = 'none';
       switchTab('tab-expenses');
+    });
+  }
+
+  // Shift Detail Modal Events
+  if (el.btnCloseModalShiftDetail) {
+    el.btnCloseModalShiftDetail.addEventListener('click', closeShiftDetailModal);
+  }
+  if (el.btnCloseModalShiftDetailFooter) {
+    el.btnCloseModalShiftDetailFooter.addEventListener('click', closeShiftDetailModal);
+  }
+  if (el.modalShiftDetail) {
+    el.modalShiftDetail.addEventListener('click', (e) => {
+      if (e.target === el.modalShiftDetail) {
+        closeShiftDetailModal();
+      }
+    });
+  }
+  if (el.btnPrintShiftDetailSummary) {
+    el.btnPrintShiftDetailSummary.addEventListener('click', () => {
+      window.print();
     });
   }
 
@@ -2585,10 +2643,11 @@ function renderShifts() {
       : `Buka: ${formatShortDateWithTime(s.start_time)}`;
 
     return `
-      <div class="shift-item-card">
+      <div class="shift-item-card" data-shift-id="${s.id}" role="button" tabindex="0" title="Klik untuk melihat detail rekonsiliasi shift #${s.id}">
         <div class="shift-info-left">
           <span class="shift-user-title">Shift #${s.id} - ${escapeHtml(s.cashier_name || 'Kasir')}</span>
           <span class="shift-time-meta">${timeStr} | Modal: ${formatRupiah(s.starting_cash)}</span>
+          <span class="shift-card-action-cue">🔍 Klik untuk Rincian Rekonsiliasi &raquo;</span>
         </div>
         <div class="shift-amounts-right">
           ${badgeHtml}
@@ -2597,6 +2656,265 @@ function renderShifts() {
       </div>
     `;
   }).join('');
+
+  el.shiftListContainer.querySelectorAll('.shift-item-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const sId = card.dataset.shiftId;
+      if (sId) openShiftDetailModal(sId);
+    });
+  });
+}
+
+async function openShiftDetailModal(shiftId) {
+  const idNum = Number(shiftId);
+  const shift = (state.shifts || []).find(s => Number(s.id) === idNum);
+  if (!shift) {
+    showToast('Data shift tidak ditemukan', 'warning');
+    return;
+  }
+
+  // 1. Instant population from state
+  const isClosed = shift.status === 'closed';
+  const diff = Number(shift.cash_difference) || 0;
+  const cashierName = shift.cashier_name || 'Kasir Bertugas';
+
+  if (el.sdModalTitle) el.sdModalTitle.textContent = `Rekonsiliasi Shift #${shift.id}`;
+  if (el.sdModalCashierSub) el.sdModalCashierSub.textContent = `Kasir: ${cashierName}`;
+  if (el.sdModalCashierName) el.sdModalCashierName.textContent = cashierName;
+
+  if (el.sdModalStartTime) el.sdModalStartTime.textContent = formatShortDateWithTime(shift.start_time);
+  if (el.sdModalEndTime) el.sdModalEndTime.textContent = shift.end_time ? formatShortDateWithTime(shift.end_time) : 'Shift Masih Aktif';
+
+  // Duration
+  if (el.sdModalDuration) {
+    if (shift.start_time && shift.end_time) {
+      const startMs = parseSafeDate(shift.start_time).getTime();
+      const endMs = parseSafeDate(shift.end_time).getTime();
+      if (!isNaN(startMs) && !isNaN(endMs) && endMs > startMs) {
+        const diffMins = Math.round((endMs - startMs) / 60000);
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        el.sdModalDuration.textContent = `${hours} Jam ${mins} Menit`;
+      } else {
+        el.sdModalDuration.textContent = '-';
+      }
+    } else {
+      el.sdModalDuration.textContent = 'Sedang Berjalan';
+    }
+  }
+
+  // Status Badge
+  if (el.sdModalStatusBadge) {
+    if (!isClosed) {
+      el.sdModalStatusBadge.className = 'status-pill-badge active';
+      el.sdModalStatusBadge.textContent = '🟢 SEDANG AKTIF';
+    } else if (diff === 0) {
+      el.sdModalStatusBadge.className = 'status-pill-badge balanced';
+      el.sdModalStatusBadge.textContent = '✅ KAS BALANCE';
+    } else if (diff < 0) {
+      el.sdModalStatusBadge.className = 'status-pill-badge shortage';
+      el.sdModalStatusBadge.textContent = `⚠️ KURANG ${formatRupiah(Math.abs(diff))}`;
+    } else {
+      el.sdModalStatusBadge.className = 'status-pill-badge balanced';
+      el.sdModalStatusBadge.textContent = `+ LEBIH ${formatRupiah(diff)}`;
+    }
+  }
+
+  // 3 Comparison Boxes
+  if (el.sdModalStartingCash) el.sdModalStartingCash.textContent = formatRupiah(shift.starting_cash || 0);
+  if (el.sdModalSystemCash) el.sdModalSystemCash.textContent = formatRupiah(shift.system_cash || 0);
+  if (el.sdModalActualCash) el.sdModalActualCash.textContent = isClosed ? formatRupiah(shift.actual_cash || 0) : 'Shift Aktif';
+
+  // Variance Banner
+  if (el.sdModalVarianceCard) {
+    if (!isClosed) {
+      el.sdModalVarianceCard.style.background = '#f0f9ff';
+      el.sdModalVarianceCard.style.borderColor = '#38bdf8';
+      if (el.sdModalVarianceIcon) el.sdModalVarianceIcon.textContent = '🟢';
+      if (el.sdModalVarianceTitle) {
+        el.sdModalVarianceTitle.textContent = 'SHIFT SEDANG AKTIF';
+        el.sdModalVarianceTitle.style.color = '#0284c7';
+      }
+      if (el.sdModalVarianceDesc) {
+        el.sdModalVarianceDesc.textContent = 'Kasir sedang bertugas di toko. Total saldo laci dihitung real-time.';
+        el.sdModalVarianceDesc.style.color = '#0369a1';
+      }
+      if (el.sdModalVarianceDiff) {
+        el.sdModalVarianceDiff.textContent = 'Status: Aktif';
+        el.sdModalVarianceDiff.style.color = '#0284c7';
+      }
+    } else if (diff === 0) {
+      el.sdModalVarianceCard.style.background = '#ecfdf5';
+      el.sdModalVarianceCard.style.borderColor = '#10b981';
+      if (el.sdModalVarianceIcon) el.sdModalVarianceIcon.textContent = '✅';
+      if (el.sdModalVarianceTitle) {
+        el.sdModalVarianceTitle.textContent = 'KAS BALANCE (TEPAT SESUAI)';
+        el.sdModalVarianceTitle.style.color = '#065f46';
+      }
+      if (el.sdModalVarianceDesc) {
+        el.sdModalVarianceDesc.textContent = 'Uang fisik yang diserahkan kasir tepat cocok dengan kalkulasi sistem.';
+        el.sdModalVarianceDesc.style.color = '#047857';
+      }
+      if (el.sdModalVarianceDiff) {
+        el.sdModalVarianceDiff.textContent = 'Selisih: Rp 0';
+        el.sdModalVarianceDiff.style.color = '#047857';
+      }
+    } else if (diff < 0) {
+      el.sdModalVarianceCard.style.background = '#fef2f2';
+      el.sdModalVarianceCard.style.borderColor = '#f87171';
+      if (el.sdModalVarianceIcon) el.sdModalVarianceIcon.textContent = '⚠️';
+      if (el.sdModalVarianceTitle) {
+        el.sdModalVarianceTitle.textContent = 'SELISIH KURANG (SHORTAGE)';
+        el.sdModalVarianceTitle.style.color = '#991b1b';
+      }
+      if (el.sdModalVarianceDesc) {
+        el.sdModalVarianceDesc.textContent = `Uang fisik kasir kurang ${formatRupiah(Math.abs(diff))} dibanding total transaksi di sistem.`;
+        el.sdModalVarianceDesc.style.color = '#b91c1c';
+      }
+      if (el.sdModalVarianceDiff) {
+        el.sdModalVarianceDiff.textContent = `- ${formatRupiah(Math.abs(diff))}`;
+        el.sdModalVarianceDiff.style.color = '#b91c1c';
+      }
+    } else {
+      el.sdModalVarianceCard.style.background = '#f0fdf4';
+      el.sdModalVarianceCard.style.borderColor = '#4ade80';
+      if (el.sdModalVarianceIcon) el.sdModalVarianceIcon.textContent = 'ℹ️';
+      if (el.sdModalVarianceTitle) {
+        el.sdModalVarianceTitle.textContent = 'SELISIH LEBIH (SURPLUS)';
+        el.sdModalVarianceTitle.style.color = '#166534';
+      }
+      if (el.sdModalVarianceDesc) {
+        el.sdModalVarianceDesc.textContent = `Uang fisik kasir lebih banyak ${formatRupiah(diff)} dibanding catatan sistem.`;
+        el.sdModalVarianceDesc.style.color = '#15803d';
+      }
+      if (el.sdModalVarianceDiff) {
+        el.sdModalVarianceDiff.textContent = `+ ${formatRupiah(diff)}`;
+        el.sdModalVarianceDiff.style.color = '#15803d';
+      }
+    }
+  }
+
+  // Denominations breakdown (Blind drop paper)
+  const breakdown = shift.breakdown;
+  if (el.sdModalBreakdownWrap && el.sdModalBreakdownGrid) {
+    if (breakdown && typeof breakdown === 'object' && Object.keys(breakdown).length > 0) {
+      el.sdModalBreakdownWrap.style.display = 'block';
+      if (el.sdModalBreakdownBadge) el.sdModalBreakdownBadge.textContent = 'Tercatat Lengkap';
+      
+      const denomOrder = ['100000', '50000', '20000', '10000', '5000', '2000', '1000', 'coin'];
+      const allKeys = Object.keys(breakdown);
+      const sortedKeys = [...new Set([...denomOrder.filter(k => allKeys.includes(k)), ...allKeys])];
+
+      el.sdModalBreakdownGrid.innerHTML = sortedKeys.map(key => {
+        const qty = Number(breakdown[key]) || 0;
+        const nominal = key === 'coin' ? 1 : Number(key);
+        const subtotal = key === 'coin' ? qty : qty * nominal;
+        const label = key === 'coin' ? 'Koin / Logam' : `Rp ${formatRupiah(nominal).replace('Rp ', '')}`;
+        const qtyLabel = key === 'coin' ? `${formatRupiah(qty)}` : `${qty} Lembar`;
+
+        return `
+          <div class="sd-breakdown-chip" style="${qty > 0 ? 'background: #ffffff; border-color: #cbd5e1;' : 'opacity: 0.55;'}">
+            <span class="chip-label">${label}</span>
+            <span class="chip-qty">${qtyLabel}</span>
+            <span class="chip-subtotal">${formatRupiah(subtotal)}</span>
+          </div>
+        `;
+      }).join('');
+    } else {
+      el.sdModalBreakdownWrap.style.display = 'block';
+      if (el.sdModalBreakdownBadge) el.sdModalBreakdownBadge.textContent = 'Fisik Langsung';
+      el.sdModalBreakdownGrid.innerHTML = `
+        <div style="grid-column: 1 / -1; color: #64748b; font-size: 11.5px; padding: 6px; text-align: center;">
+          Kasir menginput total fisik laci secara langsung (${formatRupiah(shift.actual_cash || 0)}) tanpa memasukkan rincian lembaran pecahan uang.
+        </div>
+      `;
+    }
+  }
+
+  // Closing notes
+  if (el.sdModalClosingNotes) {
+    const notes = shift.closing_notes && String(shift.closing_notes).trim();
+    el.sdModalClosingNotes.textContent = notes ? `"${notes}"` : '(Tidak ada catatan tambahan dari kasir saat tutup shift)';
+  }
+
+  // Reset async sections initially
+  if (el.sdModalCashSales) el.sdModalCashSales.textContent = 'Memuat...';
+  if (el.sdModalCashIncome) el.sdModalCashIncome.textContent = 'Memuat...';
+  if (el.sdModalDebtCollected) el.sdModalDebtCollected.textContent = 'Memuat...';
+  if (el.sdModalCashExpenses) el.sdModalCashExpenses.textContent = 'Memuat...';
+  if (el.sdModalSupplierPaid) el.sdModalSupplierPaid.textContent = 'Memuat...';
+  if (el.sdModalOrdersCount) el.sdModalOrdersCount.textContent = '... Nota';
+  if (el.sdModalQrisSales) el.sdModalQrisSales.textContent = '...';
+  if (el.sdModalTransferSales) el.sdModalTransferSales.textContent = '...';
+  if (el.sdModalTempoSales) el.sdModalTempoSales.textContent = '...';
+  if (el.sdModalVoidInfo) el.sdModalVoidInfo.textContent = '...';
+  if (el.sdModalTotalOmset) el.sdModalTotalOmset.textContent = '...';
+  if (el.sdModalExpensesWrap) el.sdModalExpensesWrap.style.display = 'none';
+
+  // Display modal
+  if (el.modalShiftDetail) el.modalShiftDetail.style.display = 'flex';
+
+  // 2. Async fetch detail from backend
+  try {
+    const res = await api.getShiftDetail(shiftId);
+    if (res && res.success && res.shift) {
+      const sd = res.shift;
+      const stats = sd.stats || {};
+
+      if (el.sdModalCashSales) el.sdModalCashSales.textContent = `+ ${formatRupiah(stats.cash_sales || 0)}`;
+      if (el.sdModalCashIncome) {
+        const cashIncome = (sd.expenses || []).filter(e => e.type === 'income' && e.source === 'cash').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        el.sdModalCashIncome.textContent = `+ ${formatRupiah(cashIncome)}`;
+      }
+      if (el.sdModalDebtCollected) {
+        const debtCol = (sd.debt_payments || []).filter(dp => dp.payment_method === 'cash').reduce((sum, dp) => sum + (Number(dp.amount_paid) || 0), 0);
+        el.sdModalDebtCollected.textContent = `+ ${formatRupiah(debtCol)}`;
+      }
+      if (el.sdModalCashExpenses) {
+        const cashExp = (sd.expenses || []).filter(e => e.type === 'expense' && e.source === 'cash').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        el.sdModalCashExpenses.textContent = `- ${formatRupiah(cashExp)}`;
+      }
+      if (el.sdModalSupplierPaid) {
+        const supPaid = (sd.supplier_payments || []).filter(sp => sp.payment_method === 'cash').reduce((sum, sp) => sum + (Number(sp.amount_paid) || 0), 0);
+        el.sdModalSupplierPaid.textContent = `- ${formatRupiah(supPaid)}`;
+      }
+
+      // Sales metrics
+      if (el.sdModalOrdersCount) el.sdModalOrdersCount.textContent = `${stats.total_orders || 0} Nota`;
+      if (el.sdModalQrisSales) el.sdModalQrisSales.textContent = formatRupiah(stats.qris_sales || 0);
+      if (el.sdModalTransferSales) el.sdModalTransferSales.textContent = formatRupiah(stats.transfer_sales || 0);
+      if (el.sdModalTempoSales) el.sdModalTempoSales.textContent = formatRupiah(stats.tempo_sales || 0);
+      if (el.sdModalVoidInfo) el.sdModalVoidInfo.textContent = `${stats.void_count || 0} Void (${formatRupiah(stats.void_total || 0)})`;
+      if (el.sdModalTotalOmset) el.sdModalTotalOmset.textContent = formatRupiah(stats.total_omset || 0);
+
+      // Expenses list
+      const expenses = sd.expenses || [];
+      if (expenses.length > 0 && el.sdModalExpensesWrap && el.sdModalExpensesList) {
+        el.sdModalExpensesWrap.style.display = 'block';
+        el.sdModalExpensesList.innerHTML = expenses.map(e => {
+          const isExp = e.type === 'expense';
+          const sign = isExp ? '-' : '+';
+          const color = isExp ? '#b91c1c' : '#15803d';
+          const cat = escapeHtml(e.category_name || e.category || 'Biaya');
+          const notes = e.notes ? ` • <em>"${escapeHtml(e.notes)}"</em>` : '';
+          return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; background: #fff5f5; border-radius: 6px;">
+              <span>${cat}${notes} <small style="color: #64748b;">(${e.source === 'cash' ? 'Tunai Laci' : 'Transfer'})</small></span>
+              <strong style="font-family: var(--font-mono); color: ${color};">${sign} ${formatRupiah(e.amount)}</strong>
+            </div>
+          `;
+        }).join('');
+      } else if (el.sdModalExpensesWrap) {
+        el.sdModalExpensesWrap.style.display = 'none';
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching shift full detail:', err);
+  }
+}
+
+function closeShiftDetailModal() {
+  if (el.modalShiftDetail) el.modalShiftDetail.style.display = 'none';
 }
 
 function renderWaste() {

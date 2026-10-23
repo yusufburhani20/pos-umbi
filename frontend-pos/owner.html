@@ -3357,6 +3357,188 @@
     </div>
   </div>
 
+  <!-- MODAL: Detail Rekonsiliasi Tutup Kasir (Blind Drop) -->
+  <div class="modal-backdrop" id="modalShiftDetail" style="display: none; z-index: 100050;">
+    <div class="modal-dialog modal-md" style="max-width: 580px; width: 95vw; background: #ffffff; border-radius: 18px; border: 1.5px solid #e2e8f0; box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.35); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header" style="padding: 16px 20px; background: linear-gradient(135deg, #064e3b 0%, #047857 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #059669; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 22px; background: rgba(255,255,255,0.15); width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;">⚖️</span>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <h3 id="sdModalTitle" style="margin: 0; font-size: 15.5px; font-weight: 800; color: #ffffff;">Rekonsiliasi Shift #--</h3>
+              <span id="sdModalStatusBadge" class="status-pill-badge balanced" style="font-size: 10.5px; padding: 2px 7px;">--</span>
+            </div>
+            <p id="sdModalCashierSub" style="margin: 2px 0 0 0; font-size: 12px; color: #a7f3d0;">Kasir: -</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="btnCloseModalShiftDetail" style="background: rgba(255, 255, 255, 0.15); border: none; color: #ffffff; font-size: 16px; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;">✕</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="modal-body" style="padding: 18px 20px; overflow-y: auto; background: #f8fafc; flex: 1 1 auto; display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- Waktu & Kasir Banner -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+          <div>
+            <span style="color: #64748b; display: block; font-size: 11px;">WAKTU BUKA SHIFT</span>
+            <strong id="sdModalStartTime" style="color: #0f172a; font-size: 12.5px;">-</strong>
+          </div>
+          <div>
+            <span style="color: #64748b; display: block; font-size: 11px;">WAKTU TUTUP SHIFT</span>
+            <strong id="sdModalEndTime" style="color: #0f172a; font-size: 12.5px;">-</strong>
+          </div>
+          <div>
+            <span style="color: #64748b; display: block; font-size: 11px;">DURASI TUGAS</span>
+            <strong id="sdModalDuration" style="color: #047857; font-size: 12.5px;">-</strong>
+          </div>
+          <div>
+            <span style="color: #64748b; display: block; font-size: 11px;">PETUGAS KASIR</span>
+            <strong id="sdModalCashierName" style="color: #0f172a; font-size: 12.5px;">-</strong>
+          </div>
+        </div>
+
+        <!-- 3 Kartu Komparasi: Modal, Sistem, Fisik -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+            <span style="font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase;">Modal Awal</span>
+            <div id="sdModalStartingCash" style="font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: #334155; margin-top: 4px;">Rp 0</div>
+            <small style="font-size: 10px; color: #94a3b8;">Float Kas Laci</small>
+          </div>
+          <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 10px 12px; text-align: center;">
+            <span style="font-size: 10.5px; font-weight: 700; color: #1e40af; text-transform: uppercase;">Kas Sistem</span>
+            <div id="sdModalSystemCash" style="font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: #1d4ed8; margin-top: 4px;">Rp 0</div>
+            <small style="font-size: 10px; color: #3b82f6;">Kalkulasi Sistem</small>
+          </div>
+          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 10px 12px; text-align: center;">
+            <span style="font-size: 10.5px; font-weight: 700; color: #166534; text-transform: uppercase;">Fisik Kasir</span>
+            <div id="sdModalActualCash" style="font-family: var(--font-mono); font-size: 14px; font-weight: 800; color: #15803d; margin-top: 4px;">Rp 0</div>
+            <small style="font-size: 10px; color: #22c55e;">Hitungan Kasir</small>
+          </div>
+        </div>
+
+        <!-- Variance / Selisih Banner -->
+        <div id="sdModalVarianceCard" style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="sdModalVarianceIcon" style="font-size: 24px;">✅</span>
+            <div>
+              <strong id="sdModalVarianceTitle" style="font-size: 13.5px; color: #065f46; display: block;">KAS BALANCE (SESUAI)</strong>
+              <span id="sdModalVarianceDesc" style="font-size: 11.5px; color: #047857;">Uang fisik tepat sesuai dengan kalkulasi sistem.</span>
+            </div>
+          </div>
+          <strong id="sdModalVarianceDiff" style="font-family: var(--font-mono); font-size: 15px; font-weight: 800; color: #047857; white-space: nowrap;">Selisih: Rp 0</strong>
+        </div>
+
+        <!-- Breakdown Pecahan Lembaran & Koin (Jika ada) -->
+        <div id="sdModalBreakdownWrap" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="font-size: 12.5px; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <span>💵</span> Rincian Hitungan Uang Lembaran &amp; Koin (Blind Drop)
+            </strong>
+            <span id="sdModalBreakdownBadge" style="font-size: 10.5px; font-weight: 700; background: #f1f5f9; color: #475569; padding: 2px 7px; border-radius: 4px;">Tersedia</span>
+          </div>
+          <div id="sdModalBreakdownGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 6px; font-size: 11.5px;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Rincian Arus Kas Shift (Penjualan, Biaya, Hutang) -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+          <strong style="font-size: 12.5px; color: #0f172a; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+            <span>📊</span> Mutasi Arus Kas Laci Kasir (Shift Ini)
+          </strong>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+              <span style="color: #64748b;">(+) Penjualan Tunai Laci:</span>
+              <strong id="sdModalCashSales" style="color: #15803d; font-family: var(--font-mono);">+ Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+              <span style="color: #64748b;">(+) Kas Masuk Lainnya:</span>
+              <strong id="sdModalCashIncome" style="color: #15803d; font-family: var(--font-mono);">+ Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+              <span style="color: #64748b;">(+) Pelunasan Piutang Kas:</span>
+              <strong id="sdModalDebtCollected" style="color: #15803d; font-family: var(--font-mono);">+ Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+              <span style="color: #64748b;">(-) Pengeluaran Kasir / Operasional:</span>
+              <strong id="sdModalCashExpenses" style="color: #b91c1c; font-family: var(--font-mono);">- Rp 0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f1f5f9;">
+              <span style="color: #64748b;">(-) Pembayaran Supplier Kas:</span>
+              <strong id="sdModalSupplierPaid" style="color: #b91c1c; font-family: var(--font-mono);">- Rp 0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ringkasan Penjualan Semua Metode (QRIS, Transfer, Tempo) -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <strong style="font-size: 12.5px; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <span>🛒</span> Performa Penjualan Kasir (Semua Metode)
+            </strong>
+            <span id="sdModalOrdersCount" style="font-size: 11px; font-weight: 700; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 10px;">0 Nota</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11.5px;">
+            <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between;">
+              <span style="color: #64748b;">📱 QRIS:</span>
+              <strong id="sdModalQrisSales" style="color: #0284c7; font-family: var(--font-mono);">Rp 0</strong>
+            </div>
+            <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between;">
+              <span style="color: #64748b;">🏦 Transfer:</span>
+              <strong id="sdModalTransferSales" style="color: #4f46e5; font-family: var(--font-mono);">Rp 0</strong>
+            </div>
+            <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between;">
+              <span style="color: #64748b;">📒 Bon Tempo:</span>
+              <strong id="sdModalTempoSales" style="color: #d97706; font-family: var(--font-mono);">Rp 0</strong>
+            </div>
+            <div style="background: #f8fafc; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between;">
+              <span style="color: #64748b;">🚫 Nota Void:</span>
+              <strong id="sdModalVoidInfo" style="color: #dc2626; font-family: var(--font-mono);">0 Nota</strong>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0; font-size: 12.5px;">
+            <span style="font-weight: 700; color: #0f172a;">TOTAL OMSET SHIFT:</span>
+            <strong id="sdModalTotalOmset" style="font-size: 14.5px; font-weight: 800; color: #0f172a; font-family: var(--font-mono);">Rp 0</strong>
+          </div>
+        </div>
+
+        <!-- Catatan Kasir -->
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 12px 14px;">
+          <strong style="font-size: 12px; color: #92400e; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <span>📝</span> Catatan / Keterangan Kasir Saat Tutup:
+          </strong>
+          <p id="sdModalClosingNotes" style="margin: 0; font-size: 12.5px; color: #78350f; font-style: italic;">
+            -
+          </p>
+        </div>
+
+        <!-- Rincian Beban Biaya Kasir (Jika ada) -->
+        <div id="sdModalExpensesWrap" style="display: none; background: #ffffff; border: 1px solid #fee2e2; border-radius: 12px; padding: 12px 14px;">
+          <strong style="font-size: 12px; color: #991b1b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+            <span>💸</span> Rincian Pengeluaran Kasir (Shift Ini):
+          </strong>
+          <div id="sdModalExpensesList" style="display: flex; flex-direction: column; gap: 4px; font-size: 11.5px;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="padding: 12px 20px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <span style="font-size: 11px; color: #94a3b8;">Data terekam otomatis di sistem audit</span>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-primary" id="btnCloseModalShiftDetailFooter" style="background: #059669; border: 1px solid #047857; color: #ffffff; padding: 7px 20px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer;">
+            Tutup
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- MODAL: Konfirmasi Logout Owner -->
   <div class="modal-backdrop" id="modalConfirmLogoutOwner" style="display:none; z-index: 10050;">
     <div class="modal-dialog modal-sm" style="max-width: 420px; width: 95vw; background: #ffffff; border-radius: 16px; border: 1.5px solid #e2e8f0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">

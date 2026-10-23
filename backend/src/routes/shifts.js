@@ -354,4 +354,108 @@ router.get('/history', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/shifts/:id
+// Get comprehensive shift detail for reconciliation audit
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const shiftId = Number(req.params.id);
+    const shift = await dbQuery.get(
+      `SELECT s.*, u.name as cashier_name, u.username as cashier_username
+       FROM shifts s
+       JOIN users u ON s.cashier_id = u.id
+       WHERE s.id = ?`,
+      [shiftId]
+    );
+
+    if (!shift) {
+      return res.status(404).json({ success: false, message: 'Data shift tidak ditemukan' });
+    }
+
+    // Orders summary in this shift
+    const ordersStats = await dbQuery.get(
+      `SELECT 
+         COUNT(id) as total_orders,
+         COALESCE(SUM(CASE WHEN payment_method = 'cash' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as cash_sales,
+         COALESCE(SUM(CASE WHEN payment_method = 'qris' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as qris_sales,
+         COALESCE(SUM(CASE WHEN payment_method = 'transfer' AND status = 'completed' THEN total_amount ELSE 0 END), 0) as transfer_sales,
+         COALESCE(SUM(CASE WHEN (payment_method = 'tempo' OR status = 'tempo') THEN total_amount ELSE 0 END), 0) as tempo_sales,
+         COALESCE(SUM(CASE WHEN status = 'void' THEN total_amount ELSE 0 END), 0) as void_total,
+         COALESCE(SUM(CASE WHEN status = 'void' THEN 1 ELSE 0 END), 0) as void_count,
+         COALESCE(SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END), 0) as total_omset
+       FROM orders
+       WHERE shift_id = ?`,
+      [shiftId]
+    );
+
+    // Cash expenses during shift
+    const expenses = await dbQuery.all(
+      `SELECT id, expense_no, category, category_name, amount, notes, created_at, type, source
+       FROM store_expenses
+       WHERE shift_id = ?
+       ORDER BY id DESC`,
+      [shiftId]
+    );
+
+    // Supplier payments during shift
+    const supplierPayments = await dbQuery.all(
+      `SELECT sp.*, s.name as supplier_name
+       FROM supplier_payments sp
+       LEFT JOIN suppliers s ON sp.supplier_id = s.id
+       WHERE sp.shift_id = ?
+       ORDER BY sp.id DESC`,
+      [shiftId]
+    );
+
+    // Debt payments collected during shift
+    const debtPayments = await dbQuery.all(
+      `SELECT dp.*, c.name as customer_name
+       FROM debt_payments dp
+       LEFT JOIN customers c ON dp.customer_id = c.id
+       WHERE dp.shift_id = ?
+       ORDER BY dp.id DESC`,
+      [shiftId]
+    );
+
+    // Recent orders in this shift (top 15)
+    const recentOrders = await dbQuery.all(
+      `SELECT id, order_no, total_amount, payment_method, status, created_at
+       FROM orders
+       WHERE shift_id = ?
+       ORDER BY id DESC LIMIT 15`,
+      [shiftId]
+    );
+
+    // Parse breakdown
+    let bObj = null;
+    if (shift.breakdown) {
+      try { bObj = JSON.parse(shift.breakdown); } catch (e) { bObj = null; }
+    }
+    let cNotes = shift.closing_notes ? String(shift.closing_notes).trim() : '';
+    if (!bObj && cNotes.startsWith('Breakdown:')) {
+      const match = cNotes.match(/^Breakdown\s*:\s*(\{[\s\S]*?\})/i);
+      if (match) {
+        try { bObj = JSON.parse(match[1]); } catch (e) {}
+      }
+    }
+    cNotes = cNotes.replace(/^Breakdown\s*:\s*\{[\s\S]*?\}\s*(\.|\;)?\s*/i, '').trim();
+
+    return res.json({
+      success: true,
+      shift: {
+        ...shift,
+        breakdown: bObj,
+        closing_notes: cNotes,
+        stats: ordersStats || {},
+        expenses: expenses || [],
+        supplier_payments: supplierPayments || [],
+        debt_payments: debtPayments || [],
+        recent_orders: recentOrders || []
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching shift detail:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

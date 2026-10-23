@@ -260,6 +260,10 @@ class ApiClient {
     return this.request(`/shifts/history${qs ? '?' + qs : ''}`);
   }
 
+  getShiftDetail(id) {
+    return this.request(`/shifts/${id}`);
+  }
+
   // Products
   getProducts(params = '') {
     if (typeof params === 'string') {
