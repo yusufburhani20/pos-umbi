@@ -41,12 +41,36 @@
     html.is-embedded .pos-container,
     html.is-embedded .header-dropdown-backdrop,
     html.is-embedded #loginModal,
-    html.is-embedded #openShiftModal {
+    html.is-embedded #openShiftModal,
+    html.is-embedded #inAppSplashScreen {
       display: none !important;
     }
   </style>
 </head>
 <body>
+  <!-- IN-APP ANIMATED SPLASH SCREEN (PD. HASIL BUMI RAYA 1) -->
+  <div id="inAppSplashScreen" class="in-app-splash-screen" role="dialog" aria-modal="true" aria-label="Memuat Aplikasi Kasir">
+    <div class="splash-card">
+      <div class="splash-logo-wrap">
+        <div class="splash-logo-glow"></div>
+        <img src="/icon-kassa-512.png?v=2" alt="Logo PD. HASIL BUMI RAYA 1" class="splash-logo-img" width="104" height="104">
+      </div>
+      <div class="splash-brand-wrap">
+        <h1 class="splash-brand-title">PD. HASIL BUMI RAYA 1</h1>
+        <p class="splash-brand-subtitle">Sistem Kasir Pintar Toko Pasar</p>
+      </div>
+      <div class="splash-loading-wrap">
+        <div class="splash-progress-track">
+          <div class="splash-progress-bar" id="splashProgressBar"></div>
+        </div>
+        <span class="splash-status-text" id="splashStatusText">Menyiapkan sistem kasir...</span>
+      </div>
+      <div class="splash-footer-badge">
+        <span>⚡ Kassa POS • Komoditas &amp; Hasil Bumi</span>
+      </div>
+    </div>
+  </div>
+
   <div id="app">
     <!-- Top Navigation Bar (Modern Blue Theme with Clean Sub-Menus) -->
     <header class="top-bar">

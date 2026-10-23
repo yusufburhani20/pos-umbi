@@ -1009,9 +1009,48 @@ function initFullscreenAndViewportSupport() {
 }
 
 // -----------------------------------------------------------------------------
+// IN-APP ANIMATED SPLASH SCREEN (PD. HASIL BUMI RAYA 1)
+// -----------------------------------------------------------------------------
+function updateSplashProgress(percent, message) {
+  try {
+    const bar = document.getElementById('splashProgressBar');
+    const txt = document.getElementById('splashStatusText');
+    if (bar && percent !== undefined) bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    if (txt && message) txt.textContent = message;
+  } catch (e) {}
+}
+
+let splashDismissed = false;
+function dismissSplashScreen() {
+  if (splashDismissed) return;
+  splashDismissed = true;
+  updateSplashProgress(100, 'Sistem siap!');
+  const splash = document.getElementById('inAppSplashScreen');
+  if (!splash) return;
+  setTimeout(() => {
+    splash.classList.add('splash-fade-out');
+    setTimeout(() => {
+      splash.style.display = 'none';
+    }, 550);
+  }, 350);
+}
+
+// -----------------------------------------------------------------------------
 // INITIALIZATION
 // -----------------------------------------------------------------------------
 async function initApp() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const isEmbedMode = urlParams.get('embed') === '1';
+
+  if (isEmbedMode) {
+    const splash = document.getElementById('inAppSplashScreen');
+    if (splash) splash.style.display = 'none';
+  } else {
+    // Safety auto-dismiss fallback so splash screen never blocks indefinitely
+    setTimeout(dismissSplashScreen, 2800);
+    updateSplashProgress(25, 'Menghubungkan ke sistem kios...');
+  }
+
   initFullscreenAndViewportSupport();
   bindEvents();
   updateLiveDateTime();
@@ -1022,6 +1061,7 @@ async function initApp() {
 
   // Initialize Offline Storage & Sync Engine
   try {
+    updateSplashProgress(45, 'Inisialisasi database offline...');
     await syncEngine.init();
     syncEngine.onStateChange(updateSyncStatusUI);
     initPwaUpdateManager();
@@ -1031,15 +1071,14 @@ async function initApp() {
 
   // Initialize Hardware (Panda Bluetooth Printer & Cash Drawer RJ-11)
   try {
+    updateSplashProgress(60, 'Memeriksa perangkat kasir...');
     initHardwareSupport();
   } catch (e) {
     console.warn('[Hardware] Inisialisasi hardware tertunda:', e);
   }
 
   // Check if session exists in memory/storage
-  const urlParams = new URLSearchParams(window.location.search);
   const isPosMode = urlParams.get('mode') === 'pos';
-  const isEmbedMode = urlParams.get('embed') === '1';
 
   if (isEmbedMode) {
     document.documentElement.classList.add('is-embedded');
@@ -1055,12 +1094,14 @@ async function initApp() {
     el.activeCashierName.textContent = state.user.name;
     updateRoleUI();
   } else if (!api.token) {
+    dismissSplashScreen();
     if (!isEmbedMode) showLoginModal();
     return;
   }
 
   if (!isEmbedMode) {
     try {
+      updateSplashProgress(75, 'Memeriksa status shift aktif...');
       if (navigator.onLine) {
         const meRes = await api.getMe().catch(() => null);
         if (meRes && meRes.user) {
@@ -1075,10 +1116,13 @@ async function initApp() {
       }
 
       await syncShift();
+      updateSplashProgress(90, 'Memuat katalog komoditas...');
       await loadInitialData();
+      dismissSplashScreen();
     } catch (err) {
       console.error('Session error, fallback to offline:', err);
       await loadInitialData();
+      dismissSplashScreen();
     }
   } else {
     // Non-blocking background local data load for embedded mode so modals have products ready instantly
