@@ -7,7 +7,9 @@ const { authenticateToken, requireOwner, requireStrictOwner } = require('../midd
 // Primary endpoint for Owner's smartphone dashboard
 router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
   try {
-    const { anti_fraud_period = '7days' } = req.query;
+    const { anti_fraud_period = '7days', void_period, waste_period } = req.query;
+    const activeVoidPeriod = void_period || anti_fraud_period;
+    const activeWastePeriod = waste_period || anti_fraud_period;
     const today = new Date().toISOString().split('T')[0];
 
     // 1. Today's sales by payment method
@@ -177,11 +179,11 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
 
     // 4h. Detailed void transactions (Default: 7 hari terakhir, dapat diubah ke 30 hari atau semua)
     let voidDateFilter = "date(o.created_at) >= date('now', 'localtime', '-6 days')";
-    if (anti_fraud_period === '30days') {
+    if (activeVoidPeriod === '30days') {
       voidDateFilter = "date(o.created_at) >= date('now', 'localtime', '-29 days')";
-    } else if (anti_fraud_period === 'all') {
+    } else if (activeVoidPeriod === 'all') {
       voidDateFilter = "1=1";
-    } else if (anti_fraud_period === 'today') {
+    } else if (activeVoidPeriod === 'today') {
       voidDateFilter = "date(o.created_at) = date('now', 'localtime')";
     }
 
@@ -191,7 +193,7 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        LEFT JOIN shifts sh ON o.shift_id = sh.id
        LEFT JOIN users u ON sh.cashier_id = u.id
        WHERE ${voidDateFilter} AND o.status = 'void'
-       ORDER BY o.id DESC LIMIT 50`
+       ORDER BY o.id DESC LIMIT 200`
     );
 
     // 5. Recent Shift Discrepancies (Shortages in the last 7 days)
@@ -205,11 +207,11 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
 
     // 6. Susut / Busuk Log (Default: 7 hari terakhir, dapat diubah ke 30 hari atau semua)
     let wasteDateFilter = "date(sa.created_at) >= date('now', 'localtime', '-6 days')";
-    if (anti_fraud_period === '30days') {
+    if (activeWastePeriod === '30days') {
       wasteDateFilter = "date(sa.created_at) >= date('now', 'localtime', '-29 days')";
-    } else if (anti_fraud_period === 'all') {
+    } else if (activeWastePeriod === 'all') {
       wasteDateFilter = "1=1";
-    } else if (anti_fraud_period === 'today') {
+    } else if (activeWastePeriod === 'today') {
       wasteDateFilter = "date(sa.created_at) = date('now', 'localtime')";
     }
 
@@ -219,7 +221,7 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        JOIN products p ON sa.product_id = p.id
        JOIN users u ON sa.user_id = u.id
        WHERE ${wasteDateFilter}
-       ORDER BY sa.id DESC LIMIT 50`
+       ORDER BY sa.id DESC LIMIT 200`
     );
 
     // 7. Last 7 Days Daily Revenue Trend

@@ -737,68 +737,95 @@
         <!-- 3 Columns: Shift Reconciliation, Void Control & Waste Log -->
         <div class="exec-two-columns" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px;">
           <!-- Col 1: Shift History & Cash Shortages -->
-          <div class="exec-card">
-            <div class="exec-card-head compact" style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
+          <div class="exec-card" id="cardShiftReconciliation">
+            <div class="exec-card-head compact" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 170px;">
                 <h3 class="exec-card-title">Rekonsiliasi Tutup Kasir (Blind Drop)</h3>
                 <p class="exec-card-subtitle">Mencocokkan uang fisik kasir dengan saldo sistem.</p>
               </div>
-              <span id="kpiShiftCountBadge" class="period-count-badge">0 Shift</span>
+              <div class="card-header-actions">
+                <span id="kpiShiftCountBadge" class="period-count-badge">0 Shift</span>
+                <div class="card-filter-select-wrap">
+                  <span class="card-filter-emoji">🗓️</span>
+                  <select class="card-period-select" id="selectPeriodShift" aria-label="Rentang Waktu Rekonsiliasi Kasir">
+                    <option value="7days" selected>7 Hari (Default)</option>
+                    <option value="30days">30 Hari Terakhir</option>
+                    <option value="all">Semua Riwayat</option>
+                  </select>
+                </div>
+              </div>
             </div>
             <div class="exec-list-group scrollable-card-list" id="shiftListContainer">
               <div class="loading-placeholder">Memuat data shift...</div>
             </div>
+            <div class="card-pagination-bar" id="shiftPaginationBar">
+              <span class="pagination-info" id="shiftPageInfo">Hal 1 dari 1 (0 data)</span>
+              <div class="pagination-buttons">
+                <button type="button" class="btn-page-nav" id="shiftPrevPage" disabled>◀ Prev</button>
+                <button type="button" class="btn-page-nav" id="shiftNextPage" disabled>Next ▶</button>
+              </div>
+            </div>
           </div>
 
           <!-- Col 2: Void / Pembatalan Nota -->
-          <div class="exec-card">
-            <div class="exec-card-head compact" style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
+          <div class="exec-card" id="cardVoidControl">
+            <div class="exec-card-head compact" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 170px;">
                 <h3 class="exec-card-title">Pembatalan Nota (Void)</h3>
                 <p class="exec-card-subtitle">Pengawasan integritas pembatalan nota kasir.</p>
               </div>
-              <span id="kpiVoidCountBadge" style="font-size: 11px; font-weight: 700; background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 6px;">0 Void</span>
+              <div class="card-header-actions">
+                <span id="kpiVoidCountBadge" style="font-size: 11px; font-weight: 700; background: #fee2e2; color: #dc2626; padding: 3px 8px; border-radius: 6px;">0 Void</span>
+                <div class="card-filter-select-wrap">
+                  <span class="card-filter-emoji">🗓️</span>
+                  <select class="card-period-select" id="selectPeriodVoid" aria-label="Rentang Waktu Pembatalan Nota">
+                    <option value="7days" selected>7 Hari (Default)</option>
+                    <option value="30days">30 Hari Terakhir</option>
+                    <option value="all">Semua Riwayat</option>
+                  </select>
+                </div>
+              </div>
             </div>
             <div class="exec-list-group scrollable-card-list" id="voidListContainer">
               <div class="loading-placeholder" style="color: #64748b; font-size: 12.5px; padding: 14px; text-align: center;">✅ Tidak ada nota dibatalkan (Integritas Aman).</div>
             </div>
+            <div class="card-pagination-bar" id="voidPaginationBar">
+              <span class="pagination-info" id="voidPageInfo">Hal 1 dari 1 (0 data)</span>
+              <div class="pagination-buttons">
+                <button type="button" class="btn-page-nav" id="voidPrevPage" disabled>◀ Prev</button>
+                <button type="button" class="btn-page-nav" id="voidNextPage" disabled>Next ▶</button>
+              </div>
+            </div>
           </div>
 
           <!-- Col 3: Waste & Spoilage Log -->
-          <div class="exec-card">
-            <div class="exec-card-head compact" style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
+          <div class="exec-card" id="cardWasteControl">
+            <div class="exec-card-head compact" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 170px;">
                 <h3 class="exec-card-title">Barang Susut &amp; Busuk</h3>
                 <p class="exec-card-subtitle">Catatan pemotongan stok umbi yang rusak/berjamur.</p>
               </div>
-              <span id="kpiWasteCountBadge" class="period-count-badge">0 Catatan</span>
+              <div class="card-header-actions">
+                <span id="kpiWasteCountBadge" class="period-count-badge">0 Catatan</span>
+                <div class="card-filter-select-wrap">
+                  <span class="card-filter-emoji">🗓️</span>
+                  <select class="card-period-select" id="selectPeriodWaste" aria-label="Rentang Waktu Barang Susut">
+                    <option value="7days" selected>7 Hari (Default)</option>
+                    <option value="30days">30 Hari Terakhir</option>
+                    <option value="all">Semua Riwayat</option>
+                  </select>
+                </div>
+              </div>
             </div>
             <div class="exec-list-group scrollable-card-list" id="wasteListContainer">
               <div class="loading-placeholder">Belum ada catatan barang susut pada periode ini.</div>
             </div>
-          </div>
-        </div>
-
-        <!-- TAB KONTROL PERIODE PENGAWASAN (DI BAWAH KARTU REKONSILIASI, VOID & SUSUT) -->
-        <div class="anti-fraud-period-tabs-bar" id="antiFraudPeriodTabsBar">
-          <div class="fraud-tabs-nav-header">
-            <div class="fraud-tabs-label-wrap">
-              <span class="fraud-tabs-icon">🗓️</span>
-              <div>
-                <div class="fraud-tabs-title">Rentang Waktu Pengawasan Kasir &amp; Stok:</div>
-                <div class="fraud-tabs-caption" id="fraudPeriodCaption">Menampilkan data <strong>7 hari terakhir</strong> (default). Klik tab di bawah untuk melihat rentang lebih lama.</div>
+            <div class="card-pagination-bar" id="wastePaginationBar">
+              <span class="pagination-info" id="wastePageInfo">Hal 1 dari 1 (0 data)</span>
+              <div class="pagination-buttons">
+                <button type="button" class="btn-page-nav" id="wastePrevPage" disabled>◀ Prev</button>
+                <button type="button" class="btn-page-nav" id="wasteNextPage" disabled>Next ▶</button>
               </div>
-            </div>
-            <div class="fraud-tabs-buttons" id="fraudPeriodButtons">
-              <button type="button" class="btn-fraud-period-tab active" data-period="7days" id="tabFraud7Days">
-                <span class="tab-indicator-dot"></span> 7 Hari Terakhir (Default)
-              </button>
-              <button type="button" class="btn-fraud-period-tab" data-period="30days" id="tabFraud30Days">
-                <span class="tab-indicator-dot"></span> 30 Hari Terakhir
-              </button>
-              <button type="button" class="btn-fraud-period-tab" data-period="all" id="tabFraudAll">
-                <span class="tab-indicator-dot"></span> Semua Riwayat
-              </button>
             </div>
           </div>
         </div>

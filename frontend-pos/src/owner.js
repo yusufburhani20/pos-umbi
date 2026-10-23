@@ -52,7 +52,15 @@ const state = {
   searchKeyword: '',
   dashboard: null,
   shifts: [],
-  antiFraudPeriod: '7days',
+  shiftPeriod: '7days',
+  shiftPage: 1,
+  shiftPageSize: 5,
+  voidPeriod: '7days',
+  voidPage: 1,
+  voidPageSize: 5,
+  wastePeriod: '7days',
+  wastePage: 1,
+  wastePageSize: 5,
   auditLogs: [],
   filteredLogs: [],
   activeAuditFilter: 'ALL',
@@ -142,12 +150,27 @@ const el = {
   cfOutflowSupplierTransfer: document.getElementById('cfOutflowSupplierTransfer'),
   cfTotalOutflow: document.getElementById('cfTotalOutflow'),
 
-  // Anti-fraud Void & Waste
+  // Anti-fraud Shift, Void & Waste (Header Period Select & Pagination)
+  kpiShiftCountBadge: document.getElementById('kpiShiftCountBadge'),
+  shiftListContainer: document.getElementById('shiftListContainer'),
+  selectPeriodShift: document.getElementById('selectPeriodShift'),
+  shiftPageInfo: document.getElementById('shiftPageInfo'),
+  shiftPrevPage: document.getElementById('shiftPrevPage'),
+  shiftNextPage: document.getElementById('shiftNextPage'),
+
   kpiVoidCountBadge: document.getElementById('kpiVoidCountBadge'),
   voidListContainer: document.getElementById('voidListContainer'),
-  kpiShiftCountBadge: document.getElementById('kpiShiftCountBadge'),
+  selectPeriodVoid: document.getElementById('selectPeriodVoid'),
+  voidPageInfo: document.getElementById('voidPageInfo'),
+  voidPrevPage: document.getElementById('voidPrevPage'),
+  voidNextPage: document.getElementById('voidNextPage'),
+
   kpiWasteCountBadge: document.getElementById('kpiWasteCountBadge'),
-  fraudPeriodCaption: document.getElementById('fraudPeriodCaption'),
+  wasteListContainer: document.getElementById('wasteListContainer'),
+  selectPeriodWaste: document.getElementById('selectPeriodWaste'),
+  wastePageInfo: document.getElementById('wastePageInfo'),
+  wastePrevPage: document.getElementById('wastePrevPage'),
+  wasteNextPage: document.getElementById('wasteNextPage'),
 
   // Recent Activity Feeds
   badgeRecentOrdersCount: document.getElementById('badgeRecentOrdersCount'),
@@ -177,8 +200,6 @@ const el = {
   anomalyExplanation: document.getElementById('anomalyExplanation'),
 
   // Lists & Containers
-  shiftListContainer: document.getElementById('shiftListContainer'),
-  wasteListContainer: document.getElementById('wasteListContainer'),
   productsCardsGrid: document.getElementById('productsCardsGrid'),
   auditTimelineContainer: document.getElementById('auditTimelineContainer'),
 
@@ -969,13 +990,80 @@ function bindEvents() {
     });
   });
 
-  // Anti-Fraud & Operational Monitoring Period Tabs (7 Days, 30 Days, All)
-  document.querySelectorAll('.btn-fraud-period-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const period = btn.dataset.period;
-      switchAntiFraudPeriod(period);
+  // Anti-Fraud & Operational Monitoring Header Selects & Pagination
+  // 1. Shift Reconciliation
+  if (el.selectPeriodShift) {
+    el.selectPeriodShift.addEventListener('change', (e) => {
+      changeShiftPeriod(e.target.value);
     });
-  });
+  }
+  if (el.shiftPrevPage) {
+    el.shiftPrevPage.addEventListener('click', () => {
+      if (state.shiftPage > 1) {
+        state.shiftPage--;
+        renderShifts();
+      }
+    });
+  }
+  if (el.shiftNextPage) {
+    el.shiftNextPage.addEventListener('click', () => {
+      const totalPages = Math.ceil(state.shifts.length / state.shiftPageSize) || 1;
+      if (state.shiftPage < totalPages) {
+        state.shiftPage++;
+        renderShifts();
+      }
+    });
+  }
+
+  // 2. Void Control
+  if (el.selectPeriodVoid) {
+    el.selectPeriodVoid.addEventListener('change', (e) => {
+      changeVoidPeriod(e.target.value);
+    });
+  }
+  if (el.voidPrevPage) {
+    el.voidPrevPage.addEventListener('click', () => {
+      if (state.voidPage > 1) {
+        state.voidPage--;
+        renderVoidDetails();
+      }
+    });
+  }
+  if (el.voidNextPage) {
+    el.voidNextPage.addEventListener('click', () => {
+      const voidDetails = (state.dashboard && (state.dashboard.void_today_details || state.dashboard.void_details)) || [];
+      const totalPages = Math.ceil(voidDetails.length / state.voidPageSize) || 1;
+      if (state.voidPage < totalPages) {
+        state.voidPage++;
+        renderVoidDetails();
+      }
+    });
+  }
+
+  // 3. Waste Log
+  if (el.selectPeriodWaste) {
+    el.selectPeriodWaste.addEventListener('change', (e) => {
+      changeWastePeriod(e.target.value);
+    });
+  }
+  if (el.wastePrevPage) {
+    el.wastePrevPage.addEventListener('click', () => {
+      if (state.wastePage > 1) {
+        state.wastePage--;
+        renderWaste();
+      }
+    });
+  }
+  if (el.wasteNextPage) {
+    el.wasteNextPage.addEventListener('click', () => {
+      const wastes = (state.dashboard && (state.dashboard.waste_list || state.dashboard.waste_today)) || [];
+      const totalPages = Math.ceil(wastes.length / state.wastePageSize) || 1;
+      if (state.wastePage < totalPages) {
+        state.wastePage++;
+        renderWaste();
+      }
+    });
+  }
 
   // Debts Tab Events
   document.querySelectorAll('[data-debt-status]').forEach(btn => {
@@ -1723,10 +1811,17 @@ function setRefreshButtonState(isLoading) {
 async function loadAllData() {
   try {
     setRefreshButtonState(true);
-    const curPeriod = state.antiFraudPeriod || '7days';
+    const curShiftPeriod = state.shiftPeriod || '7days';
+    const curVoidPeriod = state.voidPeriod || '7days';
+    const curWastePeriod = state.wastePeriod || '7days';
+
+    if (el.selectPeriodShift) el.selectPeriodShift.value = curShiftPeriod;
+    if (el.selectPeriodVoid) el.selectPeriodVoid.value = curVoidPeriod;
+    if (el.selectPeriodWaste) el.selectPeriodWaste.value = curWastePeriod;
+
     const [dashRes, shiftRes, prodRes, auditRes, usersRes, settingsRes] = await Promise.all([
-      api.getDashboardReport({ anti_fraud_period: curPeriod }),
-      api.getShiftHistory({ period: curPeriod, limit: 100 }),
+      api.getDashboardReport({ void_period: curVoidPeriod, waste_period: curWastePeriod }),
+      api.getShiftHistory({ period: curShiftPeriod, limit: 200 }),
       api.getProducts(),
       api.getAuditLogs(40),
       api.getUsers(),
@@ -2182,18 +2277,32 @@ function renderRecentFeeds() {
 
 function renderVoidDetails() {
   const voidDetails = (state.dashboard && (state.dashboard.void_today_details || state.dashboard.void_details)) || [];
-  const count = voidDetails.length;
+  const total = voidDetails.length;
+  const pageSize = state.voidPageSize || 5;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  if (state.voidPage > totalPages) state.voidPage = totalPages;
+  if (state.voidPage < 1) state.voidPage = 1;
 
   if (el.kpiVoidCountBadge) {
-    const periodLabel = state.antiFraudPeriod === '7days' ? '7 Hari' : (state.antiFraudPeriod === '30days' ? '30 Hari' : 'Semua');
-    el.kpiVoidCountBadge.textContent = `${count} Void (${periodLabel})`;
-    el.kpiVoidCountBadge.style.background = count > 0 ? '#fee2e2' : '#f1f5f9';
-    el.kpiVoidCountBadge.style.color = count > 0 ? '#dc2626' : '#64748b';
+    el.kpiVoidCountBadge.textContent = `${total} Void`;
+    el.kpiVoidCountBadge.style.background = total > 0 ? '#fee2e2' : '#f1f5f9';
+    el.kpiVoidCountBadge.style.color = total > 0 ? '#dc2626' : '#64748b';
+  }
+
+  if (el.voidPageInfo) {
+    el.voidPageInfo.textContent = `Hal ${state.voidPage} dari ${totalPages} (${total} data)`;
+  }
+  if (el.voidPrevPage) {
+    el.voidPrevPage.disabled = state.voidPage <= 1;
+  }
+  if (el.voidNextPage) {
+    el.voidNextPage.disabled = state.voidPage >= totalPages;
   }
 
   if (!el.voidListContainer) return;
 
-  if (voidDetails.length === 0) {
+  if (total === 0) {
     el.voidListContainer.innerHTML = `
       <div style="color: #64748b; font-size: 12.5px; padding: 18px 12px; text-align: center; background: #f8fafc; border-radius: 8px;">
         ✅ Tidak ada nota dibatalkan pada periode ini (Integritas Aman).
@@ -2202,7 +2311,10 @@ function renderVoidDetails() {
     return;
   }
 
-  el.voidListContainer.innerHTML = voidDetails.map(v => {
+  const startIndex = (state.voidPage - 1) * pageSize;
+  const pagedVoid = voidDetails.slice(startIndex, startIndex + pageSize);
+
+  el.voidListContainer.innerHTML = pagedVoid.map(v => {
     const timeFormatted = formatShortDateWithTime(v.created_at);
     return `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #fee2e2; background: #fff5f5; border-radius: 8px; margin-bottom: 6px;">
@@ -2421,17 +2533,39 @@ function renderAnomalyRadar() {
 }
 
 function renderShifts() {
+  const shifts = state.shifts || [];
+  const total = shifts.length;
+  const pageSize = state.shiftPageSize || 5;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  if (state.shiftPage > totalPages) state.shiftPage = totalPages;
+  if (state.shiftPage < 1) state.shiftPage = 1;
+
   if (el.kpiShiftCountBadge) {
-    const periodLabel = state.antiFraudPeriod === '7days' ? '7 Hari' : (state.antiFraudPeriod === '30days' ? '30 Hari' : 'Semua');
-    el.kpiShiftCountBadge.textContent = `${state.shifts.length} Shift (${periodLabel})`;
+    el.kpiShiftCountBadge.textContent = `${total} Shift`;
   }
 
-  if (state.shifts.length === 0) {
+  if (el.shiftPageInfo) {
+    el.shiftPageInfo.textContent = `Hal ${state.shiftPage} dari ${totalPages} (${total} data)`;
+  }
+  if (el.shiftPrevPage) {
+    el.shiftPrevPage.disabled = state.shiftPage <= 1;
+  }
+  if (el.shiftNextPage) {
+    el.shiftNextPage.disabled = state.shiftPage >= totalPages;
+  }
+
+  if (!el.shiftListContainer) return;
+
+  if (total === 0) {
     el.shiftListContainer.innerHTML = '<div class="loading-placeholder">Belum ada riwayat shift kasir pada periode ini.</div>';
     return;
   }
 
-  el.shiftListContainer.innerHTML = state.shifts.map(s => {
+  const startIndex = (state.shiftPage - 1) * pageSize;
+  const pagedShifts = shifts.slice(startIndex, startIndex + pageSize);
+
+  el.shiftListContainer.innerHTML = pagedShifts.map(s => {
     const isClosed = s.status === 'closed';
     const diff = Number(s.cash_difference) || 0;
     let badgeHtml = '';
@@ -2467,17 +2601,38 @@ function renderShifts() {
 
 function renderWaste() {
   const wastes = (state.dashboard && (state.dashboard.waste_list || state.dashboard.waste_today)) || [];
+  const total = wastes.length;
+  const pageSize = state.wastePageSize || 5;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  if (state.wastePage > totalPages) state.wastePage = totalPages;
+  if (state.wastePage < 1) state.wastePage = 1;
+
   if (el.kpiWasteCountBadge) {
-    const periodLabel = state.antiFraudPeriod === '7days' ? '7 Hari' : (state.antiFraudPeriod === '30days' ? '30 Hari' : 'Semua');
-    el.kpiWasteCountBadge.textContent = `${wastes.length} Catatan (${periodLabel})`;
+    el.kpiWasteCountBadge.textContent = `${total} Catatan`;
   }
 
-  if (wastes.length === 0) {
+  if (el.wastePageInfo) {
+    el.wastePageInfo.textContent = `Hal ${state.wastePage} dari ${totalPages} (${total} data)`;
+  }
+  if (el.wastePrevPage) {
+    el.wastePrevPage.disabled = state.wastePage <= 1;
+  }
+  if (el.wasteNextPage) {
+    el.wasteNextPage.disabled = state.wastePage >= totalPages;
+  }
+
+  if (!el.wasteListContainer) return;
+
+  if (total === 0) {
     el.wasteListContainer.innerHTML = '<div class="loading-placeholder">Belum ada catatan barang susut atau busuk pada periode ini.</div>';
     return;
   }
 
-  el.wasteListContainer.innerHTML = wastes.map(w => {
+  const startIndex = (state.wastePage - 1) * pageSize;
+  const pagedWaste = wastes.slice(startIndex, startIndex + pageSize);
+
+  el.wasteListContainer.innerHTML = pagedWaste.map(w => {
     const timeFormatted = formatShortDateWithTime(w.created_at);
     return `
       <div class="waste-item-card">
@@ -2498,49 +2653,63 @@ function renderWaste() {
   }).join('');
 }
 
-async function switchAntiFraudPeriod(period) {
-  state.antiFraudPeriod = period;
-
-  // Update button visual states
-  document.querySelectorAll('.btn-fraud-period-tab').forEach(b => {
-    b.classList.toggle('active', b.dataset.period === period);
-  });
-
-  // Update explanatory caption
-  if (el.fraudPeriodCaption) {
-    if (period === '7days') {
-      el.fraudPeriodCaption.innerHTML = 'Menampilkan data <strong>7 hari terakhir</strong> (default).';
-    } else if (period === '30days') {
-      el.fraudPeriodCaption.innerHTML = 'Menampilkan data <strong>30 hari terakhir</strong>.';
-    } else {
-      el.fraudPeriodCaption.innerHTML = 'Menampilkan <strong>semua riwayat</strong> data operasional &amp; kasir.';
+async function changeShiftPeriod(period) {
+  state.shiftPeriod = period;
+  state.shiftPage = 1;
+  if (el.shiftListContainer) {
+    el.shiftListContainer.innerHTML = '<div class="loading-placeholder">Memuat data shift...</div>';
+  }
+  try {
+    const shiftRes = await api.getShiftHistory({ period, limit: 200 });
+    state.shifts = shiftRes.shifts || [];
+    renderShifts();
+  } catch (err) {
+    console.error('Error fetching shifts for period:', err);
+    if (el.shiftListContainer) {
+      el.shiftListContainer.innerHTML = '<div class="loading-placeholder" style="color:#ef4444;">Gagal memuat riwayat shift.</div>';
     }
   }
+}
 
-  // Loading state in containers
-  if (el.shiftListContainer) el.shiftListContainer.innerHTML = '<div class="loading-placeholder">Memuat data shift...</div>';
-  if (el.voidListContainer) el.voidListContainer.innerHTML = '<div class="loading-placeholder">Memuat data pembatalan nota...</div>';
-  if (el.wasteListContainer) el.wasteListContainer.innerHTML = '<div class="loading-placeholder">Memuat data barang susut...</div>';
-
+async function changeVoidPeriod(period) {
+  state.voidPeriod = period;
+  state.voidPage = 1;
+  if (el.voidListContainer) {
+    el.voidListContainer.innerHTML = '<div class="loading-placeholder">Memuat data pembatalan nota...</div>';
+  }
   try {
-    const [shiftRes, dashRes] = await Promise.all([
-      api.getShiftHistory({ period, limit: 100 }),
-      api.getDashboardReport({ anti_fraud_period: period })
-    ]);
-
-    state.shifts = shiftRes.shifts || [];
+    const dashRes = await api.getDashboardReport({ void_period: period, waste_period: state.wastePeriod || '7days' });
     if (dashRes) {
       if (dashRes.void_today_details) state.dashboard.void_today_details = dashRes.void_today_details;
       if (dashRes.void_details) state.dashboard.void_details = dashRes.void_details;
+    }
+    renderVoidDetails();
+  } catch (err) {
+    console.error('Error fetching void data for period:', err);
+    if (el.voidListContainer) {
+      el.voidListContainer.innerHTML = '<div class="loading-placeholder" style="color:#ef4444;">Gagal memuat data void.</div>';
+    }
+  }
+}
+
+async function changeWastePeriod(period) {
+  state.wastePeriod = period;
+  state.wastePage = 1;
+  if (el.wasteListContainer) {
+    el.wasteListContainer.innerHTML = '<div class="loading-placeholder">Memuat data barang susut...</div>';
+  }
+  try {
+    const dashRes = await api.getDashboardReport({ void_period: state.voidPeriod || '7days', waste_period: period });
+    if (dashRes) {
       if (dashRes.waste_today) state.dashboard.waste_today = dashRes.waste_today;
       if (dashRes.waste_list) state.dashboard.waste_list = dashRes.waste_list;
     }
-
-    renderShifts();
-    renderVoidDetails();
     renderWaste();
   } catch (err) {
-    console.error('Error switching anti-fraud period:', err);
+    console.error('Error fetching waste data for period:', err);
+    if (el.wasteListContainer) {
+      el.wasteListContainer.innerHTML = '<div class="loading-placeholder" style="color:#ef4444;">Gagal memuat data susut/busuk.</div>';
+    }
   }
 }
 
