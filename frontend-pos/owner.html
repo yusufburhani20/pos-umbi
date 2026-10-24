@@ -884,16 +884,17 @@
                   <option value="cash">💵 Tunai (Cash)</option>
                   <option value="qris">📱 QRIS</option>
                   <option value="transfer">🏦 Transfer Bank</option>
+                  <option value="tempo">📒 Tempo (Kasbon)</option>
                 </select>
               </div>
               <button class="btn-filter-apply" id="btnApplyReportFilter">🔍 Tampilkan</button>
             </div>
           </div>
 
-          <!-- 4 Executive KPI Cards -->
+          <!-- 6 Executive KPI Cards -->
           <div class="kpi-grid-modern" style="margin-top: 18px;">
             <!-- Card 1: Total Revenue -->
-            <div class="kpi-card-v2 kpi-emerald">
+            <div class="kpi-card-v2 kpi-indigo">
               <div class="kpi-v2-top">
                 <span class="kpi-v2-label">Total Omzet Penjualan</span>
                 <span class="kpi-badge-icon">💰</span>
@@ -904,19 +905,7 @@
               </div>
             </div>
 
-            <!-- Card 2: Gross Profit -->
-            <div class="kpi-card-v2 kpi-blue">
-              <div class="kpi-v2-top">
-                <span class="kpi-v2-label">Estimasi Keuntungan (Laba Kotor)</span>
-                <span class="kpi-badge-icon">📈</span>
-              </div>
-              <div class="kpi-v2-main" id="repKpiProfit">Rp 0</div>
-              <div class="kpi-v2-sub text-success font-bold">
-                <span id="repKpiMargin">Margin 0% dari Omzet</span>
-              </div>
-            </div>
-
-            <!-- Card 3: Total COGS (HPP / Modal) -->
+            <!-- Card 2: Total COGS (HPP / Modal) -->
             <div class="kpi-card-v2 kpi-amber">
               <div class="kpi-v2-top">
                 <span class="kpi-v2-label">Total Modal Kulakan (HPP)</span>
@@ -928,7 +917,44 @@
               </div>
             </div>
 
-            <!-- Card 4: Susut & Pembatalan -->
+            <!-- Card 3: Gross Profit -->
+            <div class="kpi-card-v2 kpi-blue">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Laba Kotor Penjualan</span>
+                <span class="kpi-badge-icon">📈</span>
+              </div>
+              <div class="kpi-v2-main" id="repKpiProfit">Rp 0</div>
+              <div class="kpi-v2-sub text-success font-bold">
+                <span id="repKpiMargin">Margin Kotor 0%</span>
+              </div>
+            </div>
+
+            <!-- Card 4: Operating Expenses -->
+            <div class="kpi-card-v2 kpi-rose">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Beban Biaya Operasional Toko</span>
+                <span class="kpi-badge-icon">💸</span>
+              </div>
+              <div class="kpi-v2-main text-danger" id="repKpiExpenses">Rp 0</div>
+              <div class="kpi-v2-sub text-danger" id="repKpiExpensesSub">
+                Biaya Kios & Beban Kas Periode Ini
+              </div>
+            </div>
+
+            <!-- Card 5: Net Profit (Laba Bersih Riil Toko) -->
+            <div class="kpi-card-v2 kpi-emerald" id="cardRepNetProfitWrap">
+              <div class="kpi-v2-top">
+                <span class="kpi-v2-label">Laba Bersih Riil Toko</span>
+                <span class="kpi-badge-icon">🎯</span>
+              </div>
+              <div class="kpi-v2-main" id="repKpiNetProfit">Rp 0</div>
+              <div class="kpi-v2-sub text-success font-bold" id="repKpiNetMargin">
+                <span class="sub-dot green" id="repKpiNetProfitDot"></span>
+                <span id="repKpiNetProfitSubText">Margin Bersih 0% (Net Profit)</span>
+              </div>
+            </div>
+
+            <!-- Card 6: Susut & Pembatalan -->
             <div class="kpi-card-v2 kpi-rose">
               <div class="kpi-v2-top">
                 <span class="kpi-v2-label">Barang Susut & Dibatalkan</span>
@@ -1010,6 +1036,13 @@
                     <span class="pay-stat-name">Transfer Bank</span>
                   </div>
                   <strong class="pay-stat-val" id="repPayTransfer">Rp 0</strong>
+                </div>
+                <div class="pay-stat-row">
+                  <div class="pay-stat-info">
+                    <span class="pay-stat-icon">📒</span>
+                    <span class="pay-stat-name">Tempo (Piutang Kasbon)</span>
+                  </div>
+                  <strong class="pay-stat-val text-amber" id="repPayTempo">Rp 0</strong>
                 </div>
                 <div class="pay-stat-divider"></div>
                 <div class="pay-stat-row total-highlight">
@@ -2472,7 +2505,7 @@
             <h1 class="print-store-name">PD. HASIL BUMI RAYA 1</h1>
             <p class="print-store-tag">Pusat Grosir & Eceran Umbi, Bawang, Sayur & Komoditas Hasil Bumi</p>
             <div class="print-divider"></div>
-            <h2 class="print-doc-title">LAPORAN REKAPITULASI PENJUALAN & LABA KOTOR</h2>
+            <h2 class="print-doc-title">LAPORAN REKAPITULASI PENJUALAN & LABA BERSIH</h2>
             <p class="print-period-text" id="printPeriodText">Periode: 15/10/2026 s/d 15/10/2026</p>
           </div>
 
@@ -2481,26 +2514,38 @@
             <tr>
               <td class="lbl">Total Omzet Penjualan:</td>
               <td class="val highlight" id="printTotalRevenue">Rp 0</td>
-              <td class="lbl">Total Modal (HPP):</td>
+              <td class="lbl">Total Modal Kulakan (HPP):</td>
               <td class="val" id="printTotalCogs">Rp 0</td>
             </tr>
             <tr>
-              <td class="lbl">Total Laba Kotor (Profit):</td>
-              <td class="val highlight-green" id="printGrossProfit">Rp 0</td>
-              <td class="lbl">Margin Keuntungan:</td>
+              <td class="lbl">Total Laba Kotor:</td>
+              <td class="val" id="printGrossProfit">Rp 0</td>
+              <td class="lbl">Margin Laba Kotor:</td>
               <td class="val" id="printMargin">0%</td>
             </tr>
             <tr>
-              <td class="lbl">Jumlah Nota Transaksi:</td>
-              <td class="val" id="printTotalOrders">0 Nota</td>
-              <td class="lbl">Total Komoditas Terjual:</td>
-              <td class="val" id="printTotalKg">0.00 kg</td>
+              <td class="lbl">Beban Biaya Operasional Toko:</td>
+              <td class="val text-danger" id="printTotalExpenses">- Rp 0</td>
+              <td class="lbl font-bold" style="background: #f0fdf4;">LABA BERSIH RIIL TOKO:</td>
+              <td class="val highlight-green font-bold" id="printNetProfit" style="font-size: 13.5px; background: #ecfdf5;">Rp 0</td>
             </tr>
             <tr>
-              <td class="lbl">Tunai (Cash):</td>
+              <td class="lbl">Margin Laba Bersih Riil:</td>
+              <td class="val font-bold text-success" id="printNetMargin">0%</td>
+              <td class="lbl">Jumlah Nota Transaksi:</td>
+              <td class="val" id="printTotalOrders">0 Nota</td>
+            </tr>
+            <tr>
+              <td class="lbl">Total Komoditas Terjual:</td>
+              <td class="val" id="printTotalKg">0.00 kg</td>
+              <td class="lbl">Arus Pembayaran Tunai (Laci):</td>
               <td class="val" id="printCash">Rp 0</td>
-              <td class="lbl">QRIS & Transfer:</td>
+            </tr>
+            <tr>
+              <td class="lbl">Pembayaran Digital (QRIS/Bank):</td>
               <td class="val" id="printNonCash">Rp 0</td>
+              <td class="lbl">Penjualan Tempo (Kasbon):</td>
+              <td class="val text-amber" id="printTempo">Rp 0</td>
             </tr>
             <tr>
               <td class="lbl">Nota Dibatalkan (Void):</td>

@@ -254,6 +254,11 @@ const el = {
   repKpiMargin: document.getElementById('repKpiMargin'),
   repKpiCogs: document.getElementById('repKpiCogs'),
   repKpiKgSold: document.getElementById('repKpiKgSold'),
+  repKpiExpenses: document.getElementById('repKpiExpenses'),
+  repKpiExpensesSub: document.getElementById('repKpiExpensesSub'),
+  repKpiNetProfit: document.getElementById('repKpiNetProfit'),
+  repKpiNetMargin: document.getElementById('repKpiNetMargin'),
+  cardRepNetProfitWrap: document.getElementById('cardRepNetProfitWrap'),
   repKpiLoss: document.getElementById('repKpiLoss'),
   repKpiLossDetail: document.getElementById('repKpiLossDetail'),
   repKpiOrdersCount: document.getElementById('repKpiOrdersCount'),
@@ -261,6 +266,7 @@ const el = {
   repPayCash: document.getElementById('repPayCash'),
   repPayQris: document.getElementById('repPayQris'),
   repPayTransfer: document.getElementById('repPayTransfer'),
+  repPayTempo: document.getElementById('repPayTempo'),
   repAvgBasket: document.getElementById('repAvgBasket'),
   repOrdersTableBody: document.getElementById('repOrdersTableBody'),
   repOrdersCountBadge: document.getElementById('repOrdersCountBadge'),
@@ -275,10 +281,14 @@ const el = {
   printTotalCogs: document.getElementById('printTotalCogs'),
   printGrossProfit: document.getElementById('printGrossProfit'),
   printMargin: document.getElementById('printMargin'),
+  printTotalExpenses: document.getElementById('printTotalExpenses'),
+  printNetProfit: document.getElementById('printNetProfit'),
+  printNetMargin: document.getElementById('printNetMargin'),
   printTotalOrders: document.getElementById('printTotalOrders'),
   printTotalKg: document.getElementById('printTotalKg'),
   printCash: document.getElementById('printCash'),
   printNonCash: document.getElementById('printNonCash'),
+  printTempo: document.getElementById('printTempo'),
   printVoid: document.getElementById('printVoid'),
   printWaste: document.getElementById('printWaste'),
   printTopProductsBody: document.getElementById('printTopProductsBody'),
@@ -4371,11 +4381,39 @@ async function loadSalesReport() {
       }
     }
 
-    if (el.repKpiProfit) el.repKpiProfit.textContent = formatRupiah(s.gross_profit);
-    if (el.repKpiMargin) el.repKpiMargin.textContent = `Margin Laba: ${s.margin_percentage}% dari Omzet`;
-
     if (el.repKpiCogs) el.repKpiCogs.textContent = formatRupiah(s.total_cogs);
     if (el.repKpiKgSold) el.repKpiKgSold.textContent = `${s.total_kg_sold} kg Total Komoditas Terjual`;
+
+    if (el.repKpiProfit) el.repKpiProfit.textContent = formatRupiah(s.gross_profit);
+    if (el.repKpiMargin) el.repKpiMargin.textContent = `Margin Kotor: ${s.margin_percentage}% dari Omzet`;
+
+    // Beban Biaya Operasional Toko
+    const totalExp = s.total_expenses || 0;
+    if (el.repKpiExpenses) el.repKpiExpenses.textContent = totalExp > 0 ? `- ${formatRupiah(totalExp)}` : 'Rp 0';
+    if (el.repKpiExpensesSub) {
+      const cashExp = s.cash_expenses || 0;
+      const tfExp = s.transfer_expenses || 0;
+      el.repKpiExpensesSub.textContent = totalExp > 0 
+        ? `Laci: ${formatRupiah(cashExp)} • Bank: ${formatRupiah(tfExp)}`
+        : 'Tidak ada beban operasional di periode ini';
+    }
+
+    // Laba Bersih Riil Toko
+    const netProfit = s.net_profit !== undefined ? s.net_profit : ((s.gross_profit || 0) - totalExp + (s.total_other_income || 0));
+    const totalRev = s.total_revenue || 0;
+    const netMarginPct = s.net_margin_percentage !== undefined ? s.net_margin_percentage : (totalRev > 0 ? Math.round((netProfit / totalRev) * 1000) / 10 : 0);
+
+    if (el.repKpiNetProfit) el.repKpiNetProfit.textContent = formatRupiah(netProfit);
+    if (el.cardRepNetProfitWrap) {
+      el.cardRepNetProfitWrap.className = netProfit >= 0 ? 'kpi-card-v2 kpi-emerald' : 'kpi-card-v2 kpi-rose';
+    }
+    if (el.repKpiNetMargin) {
+      if (netProfit >= 0) {
+        el.repKpiNetMargin.innerHTML = `<span class="sub-dot green" id="repKpiNetProfitDot"></span><span id="repKpiNetProfitSubText">Margin Bersih: ${netMarginPct}% (Net Profit Riil)</span>`;
+      } else {
+        el.repKpiNetMargin.innerHTML = `<span class="sub-dot red" id="repKpiNetProfitDot"></span><span style="color:#e11d48; font-weight:700;" id="repKpiNetProfitSubText">Defisit Operasional (${netMarginPct}%)</span>`;
+      }
+    }
 
     const totalLoss = (s.void_total_amount || 0) + (s.waste_loss_cost || 0);
     if (el.repKpiLoss) el.repKpiLoss.textContent = formatRupiah(totalLoss);
@@ -4385,6 +4423,7 @@ async function loadSalesReport() {
     if (el.repPayCash) el.repPayCash.textContent = formatRupiah(s.by_payment.cash);
     if (el.repPayQris) el.repPayQris.textContent = formatRupiah(s.by_payment.qris);
     if (el.repPayTransfer) el.repPayTransfer.textContent = formatRupiah(s.by_payment.transfer);
+    if (el.repPayTempo) el.repPayTempo.textContent = formatRupiah(s.by_payment.tempo || 0);
     if (el.repAvgBasket) el.repAvgBasket.textContent = formatRupiah(s.avg_basket);
 
     // 3. Render Top Selling Products
@@ -4421,6 +4460,7 @@ async function loadSalesReport() {
           const isVoid = o.status === 'void';
           const statusLabel = isVoid ? 'Batal' : 'Selesai';
           const badgeClass = isVoid ? 'status-badge void' : 'status-badge completed';
+          const payMethod = (o.payment_method || 'tunai').toLowerCase();
 
           return `
             <tr>
@@ -4428,7 +4468,7 @@ async function loadSalesReport() {
               <td>${timeFormatted}</td>
               <td>${o.cashier_name || 'Kasir'}</td>
               <td>${o.customer_name || 'Umum'}</td>
-              <td><span class="badge-mini-payment ${o.payment_method}">${o.payment_method.toUpperCase()}</span></td>
+              <td><span class="badge-mini-payment ${payMethod}">${payMethod.toUpperCase()}</span></td>
               <td class="text-right font-mono font-bold">${formatRupiah(o.total_amount)}</td>
               <td class="text-right font-mono text-muted">${formatRupiah(o.total_cogs)}</td>
               <td class="text-right font-mono font-bold ${isVoid ? 'text-muted' : 'text-success'}">
@@ -4575,12 +4615,13 @@ function exportSalesReportToCSV() {
   const rows = orders.map(o => {
     const timeFormatted = parseSafeDate(o.created_at).toLocaleString('id-ID');
     const statusLabel = o.status === 'void' ? 'Dibatalkan' : 'Selesai';
+    const methodStr = (o.payment_method || 'TUNAI').toUpperCase();
     return [
       `"${o.order_no}"`,
       `"${timeFormatted}"`,
       `"${o.cashier_name || 'Kasir'}"`,
       `"${o.customer_name || 'Umum'}"`,
-      `"${o.payment_method.toUpperCase()}"`,
+      `"${methodStr}"`,
       o.total_amount,
       o.total_cogs,
       o.gross_profit,
@@ -4588,21 +4629,62 @@ function exportSalesReportToCSV() {
     ].join(',');
   });
 
-  // Summary Row
+  const totalExp = s.total_expenses || 0;
+  const netProfit = s.net_profit !== undefined ? s.net_profit : ((s.gross_profit || 0) - totalExp + (s.total_other_income || 0));
+  const totalRev = s.total_revenue || 0;
+  const netMarginPct = s.net_margin_percentage !== undefined ? s.net_margin_percentage : (totalRev > 0 ? Math.round((netProfit / totalRev) * 1000) / 10 : 0);
+
+  // Summary Rows
   const summaryRow = [
-    '"TOTAL KESELURUHAN"',
+    '"TOTAL OMZET PENJUALAN"',
     `"Periode: ${start_date} s/d ${end_date}"`,
-    `"${s.total_orders} Nota Selesai"`,
+    `"${s.total_orders} Nota Selesai (${s.total_kg_sold || 0} kg)"`,
     '""',
     '""',
     s.total_revenue,
     s.total_cogs,
     s.gross_profit,
-    `"Margin ${s.margin_percentage}%"`
+    `"Margin Kotor ${s.margin_percentage}%"`
   ].join(',');
 
-  // Add UTF-8 BOM (﻿) so Microsoft Excel opens indonesian characters properly
-  const csvContent = '\uFEFF' + [headers.join(','), ...rows, '', summaryRow].join('\r\n');
+  const expSummaryRow = [
+    '"TOTAL BEBAN OPERASIONAL TOKO"',
+    '"Biaya Operasional Rutin & Kas Kios"',
+    '""',
+    '""',
+    '""',
+    `"-${totalExp}"`,
+    '""',
+    '""',
+    `"Kas Laci: ${s.cash_expenses || 0} | Bank: ${s.transfer_expenses || 0}"`
+  ].join(',');
+
+  const netSummaryRow = [
+    '"LABA BERSIH RIIL TOKO"',
+    '"Keuntungan Bersih Riil Toko"',
+    '""',
+    '""',
+    '""',
+    `"${netProfit}"`,
+    '""',
+    '""',
+    `"Margin Bersih ${netMarginPct}%"`
+  ].join(',');
+
+  const paymentBreakdownRow = [
+    '"METODE BAYAR"',
+    `"Tunai: ${s.by_payment.cash || 0}"`,
+    `"QRIS: ${s.by_payment.qris || 0}"`,
+    `"Transfer: ${s.by_payment.transfer || 0}"`,
+    `"Tempo/Kasbon: ${s.by_payment.tempo || 0}"`,
+    `"Rata-rata Nota: ${s.avg_basket || 0}"`,
+    '""',
+    '""',
+    '""'
+  ].join(',');
+
+  // Add UTF-8 BOM so Microsoft Excel opens indonesian characters properly
+  const csvContent = '\uFEFF' + [headers.join(','), ...rows, '', summaryRow, expSummaryRow, netSummaryRow, paymentBreakdownRow].join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -4635,10 +4717,21 @@ function openPrintReportModal() {
   if (el.printTotalCogs) el.printTotalCogs.textContent = formatRupiah(s.total_cogs);
   if (el.printGrossProfit) el.printGrossProfit.textContent = formatRupiah(s.gross_profit);
   if (el.printMargin) el.printMargin.textContent = `${s.margin_percentage}% dari Omzet`;
+
+  const totalExp = s.total_expenses || 0;
+  const netProf = s.net_profit !== undefined ? s.net_profit : ((s.gross_profit || 0) - totalExp + (s.total_other_income || 0));
+  const totalRev = s.total_revenue || 0;
+  const netMargPct = s.net_margin_percentage !== undefined ? s.net_margin_percentage : (totalRev > 0 ? Math.round((netProf / totalRev) * 1000) / 10 : 0);
+
+  if (el.printTotalExpenses) el.printTotalExpenses.textContent = totalExp > 0 ? `- ${formatRupiah(totalExp)}` : 'Rp 0';
+  if (el.printNetProfit) el.printNetProfit.textContent = formatRupiah(netProf);
+  if (el.printNetMargin) el.printNetMargin.textContent = `${netMargPct}% dari Omzet`;
+
   if (el.printTotalOrders) el.printTotalOrders.textContent = `${s.total_orders} Nota Selesai`;
   if (el.printTotalKg) el.printTotalKg.textContent = `${s.total_kg_sold} kg`;
   if (el.printCash) el.printCash.textContent = formatRupiah(s.by_payment.cash);
   if (el.printNonCash) el.printNonCash.textContent = formatRupiah((s.by_payment.qris || 0) + (s.by_payment.transfer || 0));
+  if (el.printTempo) el.printTempo.textContent = formatRupiah(s.by_payment.tempo || 0);
   if (el.printVoid) el.printVoid.textContent = `${s.void_count} Nota (${formatRupiah(s.void_total_amount)})`;
   if (el.printWaste) el.printWaste.textContent = `${s.waste_kg} kg (${formatRupiah(s.waste_loss_cost)})`;
 
@@ -4663,13 +4756,14 @@ function openPrintReportModal() {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
       });
       const statusLabel = o.status === 'void' ? 'Batal' : 'Selesai';
+      const payMethod = (o.payment_method || 'tunai').toUpperCase();
       return `
         <tr>
           <td><strong>${o.order_no}</strong></td>
           <td>${timeFormatted}</td>
           <td>${o.cashier_name || 'Kasir'}</td>
           <td>${o.customer_name || 'Umum'}</td>
-          <td class="text-center">${o.payment_method.toUpperCase()}</td>
+          <td class="text-center">${payMethod}</td>
           <td class="text-right font-bold">${formatRupiah(o.total_amount)}</td>
           <td class="text-right">${o.status === 'void' ? '-' : formatRupiah(o.gross_profit)}</td>
           <td class="text-center">${statusLabel}</td>

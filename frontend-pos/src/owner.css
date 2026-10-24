@@ -529,6 +529,11 @@ body.executive-body {
   width: 100%;
 }
 
+#tab-reports .kpi-grid-modern {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
 .kpi-card-v2 {
   background: #ffffff;
   border: 1px solid #e2e8f0;

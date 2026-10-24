@@ -770,7 +770,8 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
         total_other_income: totalOtherIncome,
         cash_expenses: Number(expenseSummary.cash_expenses) || 0,
         transfer_expenses: Number(expenseSummary.transfer_expenses) || 0,
-        net_profit: netProfit
+        net_profit: netProfit,
+        net_margin_percentage: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 1000) / 10 : 0
       },
       top_products: topProducts,
       orders: ordersList,
