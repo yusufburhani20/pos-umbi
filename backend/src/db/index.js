@@ -519,7 +519,7 @@ async function initDatabase() {
   await seedInitialData();
   await seedStoreSettings();
   await seedInitialSuppliers();
-  await seedInitialExpenses();
+  // Do NOT seed fake expenses - real store operational expenses should only come from actual cashier/owner input
 }
 
 async function seedInitialData() {
@@ -654,35 +654,7 @@ async function seedInitialSuppliers() {
 }
 
 async function seedInitialExpenses() {
-  try {
-    const count = await dbQuery.get('SELECT COUNT(*) as count FROM store_expenses');
-    if (count && count.count === 0) {
-      // Check if shift 1 exists before seeding with shift_id: 1
-      const shift1 = await dbQuery.get('SELECT id FROM shifts WHERE id = 1');
-      if (!shift1) {
-        // No shifts exist, skip sample expenses seeding to avoid foreign key violation
-        return;
-      }
-      console.log('[DB] Seeding sample store operational expenses...');
-      const defaultExpenses = [
-        ['EXP-20261018-0001', 1, 2, 'makan_rokok', 'Makan, Minum & Rokok', 'expense', 35000, 'cash', 'Nasi bungkus siang 2 porsi + es teh kru kasir'],
-        ['EXP-20261018-0002', 1, 2, 'parkir_retribusi', 'Parkir & Retribusi Pasar', 'expense', 15000, 'cash', 'Salar kebersihan & keamanan pasar harian'],
-        ['EXP-20261018-0003', 1, 2, 'kuli_bongkar', 'Kuli Panggul & Bongkar Muat', 'expense', 50000, 'cash', 'Upah panggul turun 25 karung ubi cilembu'],
-        ['EXP-20261018-0004', 1, 1, 'listrik_token', 'Listrik & Token PLN', 'expense', 100000, 'transfer', 'Isi token listrik kios 1300VA'],
-        ['EXP-20261018-0005', 1, 1, 'wifi_pulsa', 'WiFi, Internet & Pulsa', 'expense', 150000, 'transfer', 'Tagihan bulanan WiFi router kios']
-      ];
-
-      for (const exp of defaultExpenses) {
-        await dbQuery.run(
-          `INSERT INTO store_expenses (expense_no, shift_id, user_id, category, category_name, type, amount, source, notes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          exp
-        );
-      }
-    }
-  } catch (err) {
-    console.warn('[DB] seedInitialExpenses skipped:', err.message);
-  }
+  // Disabled: Real store expenses should only be created from explicit cashier or owner input
 }
 
 /**
