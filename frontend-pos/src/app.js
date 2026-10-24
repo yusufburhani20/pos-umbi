@@ -6617,7 +6617,12 @@ function renderCashierPurchasesTable() {
           ${formatRupiah(remaining)}
         </td>
         <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
-          ${payBtn}
+          <div style="display: flex; gap: 5px; justify-content: center; align-items: center;">
+            ${payBtn}
+            <button type="button" class="btn-cashier-delete-purchase-row" data-id="${p.id}" data-no="${escapeHtml(p.purchase_no || '')}" data-supplier="${escapeHtml(p.supplier_name || 'Bebas')}" data-remaining="${remaining}" style="padding: 4px 8px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px; color: #dc2626; font-weight: 700; cursor: pointer; font-size: 11px;" title="Hapus Nota Kulakan Ini">
+              🗑️
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -6626,6 +6631,16 @@ function renderCashierPurchasesTable() {
   el.cashierPurchasesTableBody.querySelectorAll('.btn-cashier-pay-debt').forEach(btn => {
     btn.addEventListener('click', () => {
       openCashierPaySupplierDebtModal(Number(btn.dataset.id));
+    });
+  });
+
+  el.cashierPurchasesTableBody.querySelectorAll('.btn-cashier-delete-purchase-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.id);
+      const no = btn.dataset.no;
+      const sup = btn.dataset.supplier;
+      const rem = Number(btn.dataset.remaining) || 0;
+      handleDeletePurchase(id, no, sup, rem);
     });
   });
 }
@@ -6691,9 +6706,14 @@ function renderCashierTempoDebtsTable() {
           ${isOverdue ? '<span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #dc2626; color: #fff; font-weight: 800;">🚨 Lewat Tempo</span>' : ''}
         </td>
         <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
-          <button type="button" class="btn-cashier-pay-tempo-row" data-id="${p.id}" style="padding: 6px 14px; background: #059669; border: none; border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; font-size: 12px; display: inline-flex; align-items: gap: 4px; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
-            <span>💵</span> Bayar Tempo
-          </button>
+          <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+            <button type="button" class="btn-cashier-pay-tempo-row" data-id="${p.id}" style="padding: 6px 12px; background: #059669; border: none; border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; font-size: 11.5px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(5,150,105,0.25);">
+              <span>💵</span> Bayar
+            </button>
+            <button type="button" class="btn-cashier-delete-purchase-row" data-id="${p.id}" data-no="${escapeHtml(p.purchase_no || '')}" data-supplier="${escapeHtml(p.supplier_name || 'Bebas')}" data-remaining="${p.remaining_amount}" style="padding: 6px 9px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 8px; color: #dc2626; font-weight: 700; cursor: pointer; font-size: 11.5px;" title="Hapus Hutang Kulakan Ini">
+              <span>🗑️</span> Hapus
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -6704,6 +6724,35 @@ function renderCashierTempoDebtsTable() {
       openCashierPaySupplierDebtModal(Number(btn.dataset.id));
     });
   });
+
+  el.cashierTempoDebtsTableBody.querySelectorAll('.btn-cashier-delete-purchase-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.id);
+      const no = btn.dataset.no;
+      const sup = btn.dataset.supplier;
+      const rem = Number(btn.dataset.remaining) || 0;
+      handleDeletePurchase(id, no, sup, rem);
+    });
+  });
+}
+
+async function handleDeletePurchase(purchaseId, purchaseNo, supplierName, remainingAmount) {
+  const remText = Number(remainingAmount) > 0 ? `dengan sisa hutang tempo ${formatRupiah(remainingAmount)}` : '';
+  const confirmMsg = `Apakah Anda yakin ingin menghapus catatan nota kulakan ${purchaseNo} (${supplierName}) ${remText}?\n\nPerhatian: Data hutang/kulakan ini akan dihapus dari sistem pembukuan.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await api.deletePurchase(purchaseId);
+    if (res && res.success) {
+      showToast(res.message || 'Nota kulakan berhasil dihapus!', 'success');
+      await loadCashierSuppliers();
+    } else {
+      showToast(res.message || 'Gagal menghapus nota kulakan', 'error');
+    }
+  } catch (err) {
+    showToast('Error menghapus kulakan: ' + err.message, 'error');
+  }
 }
 
 function openCashierPaySupplierDebtModal(purchaseId) {

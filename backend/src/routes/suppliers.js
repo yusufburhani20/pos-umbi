@@ -758,6 +758,84 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
     console.error('Error paying supplier debt:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
+// DELETE /api/suppliers/purchases/:id
+// Cancel / Delete a purchase (kulakan) record & unpaid tempo debt manually
+router.delete('/purchases/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rollback_stock = 'true' } = req.query;
+    const shouldRollbackStock = String(rollback_stock) !== 'false';
+
+    const purchase = await dbQuery.get(
+      `SELECT p.*, s.name as supplier_name, pr.name as product_name
+       FROM purchases p
+       LEFT JOIN suppliers s ON p.supplier_id = s.id
+       LEFT JOIN products pr ON p.product_id = pr.id
+       WHERE p.id = ?`,
+      [id]
+    );
+
+    if (!purchase) {
+      return res.status(404).json({ success: false, message: 'Data nota kulakan / utang supplier tidak ditemukan' });
+    }
+
+    const payments = await dbQuery.all('SELECT * FROM supplier_payments WHERE purchase_id = ?', [id]);
+    const totalPaid = payments.reduce((sum, pay) => sum + (Number(pay.amount_paid) || 0), 0);
+
+    await dbQuery.exec('BEGIN IMMEDIATE;');
+
+    try {
+      // 1. If any payments were made from safe cash, remove corresponding safe cash transactions
+      for (const pay of payments) {
+        if (pay.payment_method === 'safe') {
+          await dbQuery.run(
+            `DELETE FROM safe_cash_transactions 
+             WHERE reference_no = ? AND type = 'supplier_pay'`,
+            [purchase.purchase_no]
+          );
+        }
+      }
+
+      // 2. Delete all payment records related to this purchase
+      await dbQuery.run('DELETE FROM supplier_payments WHERE purchase_id = ?', [id]);
+
+      // 3. Rollback product physical stock if requested and product exists
+      if (shouldRollbackStock && purchase.product_id && Number(purchase.qty_kg) > 0) {
+        await dbQuery.run(
+          'UPDATE products SET stock_qty = MAX(0, ROUND(stock_qty - ?, 2)) WHERE id = ?',
+          [Number(purchase.qty_kg), purchase.product_id]
+        );
+      }
+
+      // 4. Delete the purchase itself
+      await dbQuery.run('DELETE FROM purchases WHERE id = ?', [id]);
+
+      await dbQuery.exec('COMMIT;');
+
+      await logAudit(req.user.id, 'PURCHASE_DELETED', {
+        purchase_id: id,
+        purchase_no: purchase.purchase_no,
+        supplier: purchase.supplier_name,
+        product: purchase.product_name,
+        total_cost: purchase.total_cost,
+        remaining_amount: purchase.remaining_amount,
+        payments_deleted: payments.length,
+        total_paid_cleared: totalPaid,
+        stock_rolled_back: shouldRollbackStock ? purchase.qty_kg : 0
+      });
+
+      return res.json({
+        success: true,
+        message: `Nota kulakan ${purchase.purchase_no} (${purchase.supplier_name || 'Bebas'}) berhasil dihapus.`
+      });
+    } catch (dErr) {
+      await dbQuery.exec('ROLLBACK;');
+      throw dErr;
+    }
+  } catch (err) {
+    console.error('Error deleting purchase:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 module.exports = router;

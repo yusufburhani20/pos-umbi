@@ -5618,13 +5618,18 @@ function renderPurchasesTable(purchasesList) {
           ${p.due_date ? `<div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">Tempo: ${dueDateStr}</div>` : ''}
         </td>
         <td class="text-center">
-          ${remaining > 0 ? `
-            <button class="btn-table-action btn-pay-purchase" data-id="${p.id}" style="padding: 5px 12px; font-size: 12px; background: #059669; color: #ffffff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-              💵 Bayar
+          <div style="display: flex; gap: 5px; justify-content: center; align-items: center;">
+            ${remaining > 0 ? `
+              <button class="btn-table-action btn-pay-purchase" data-id="${p.id}" style="padding: 5px 10px; font-size: 11.5px; background: #059669; color: #ffffff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                💵 Bayar
+              </button>
+            ` : `
+              <span style="font-size: 11.5px; color: #059669; font-weight: 700;">✅ Beres</span>
+            `}
+            <button class="btn-table-action btn-delete-purchase" data-id="${p.id}" data-no="${p.purchase_no}" data-supplier="${p.supplier_name || 'Bebas'}" data-remaining="${remaining}" style="padding: 5px 8px; font-size: 11px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; font-weight: 700; cursor: pointer;" title="Hapus Nota Kulakan Ini">
+              🗑️
             </button>
-          ` : `
-            <span style="font-size: 12px; color: #059669; font-weight: 700;">✅ Beres</span>
-          `}
+          </div>
         </td>
       </tr>
     `;
@@ -5634,6 +5639,28 @@ function renderPurchasesTable(purchasesList) {
     btn.addEventListener('click', () => {
       const p = state.purchases.find(item => item.id === Number(btn.dataset.id));
       if (p) openSupplierPayModal(p);
+    });
+  });
+
+  el.purchasesTableBody.querySelectorAll('.btn-delete-purchase').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.id);
+      const no = btn.dataset.no;
+      const sup = btn.dataset.supplier;
+      const rem = Number(btn.dataset.remaining) || 0;
+      const remText = rem > 0 ? `dengan sisa hutang tempo ${formatRupiah(rem)}` : '';
+      if (!confirm(`Apakah Anda yakin ingin menghapus nota kulakan ${no} (${sup}) ${remText}?\n\nData hutang/kulakan ini akan dihapus dari sistem pembukuan.`)) return;
+      try {
+        const res = await api.deletePurchase(id);
+        if (res && res.success) {
+          showToast(res.message || 'Nota kulakan berhasil dihapus!', 'success');
+          loadPurchasesData();
+        } else {
+          showToast(res.message || 'Gagal menghapus nota kulakan', 'error');
+        }
+      } catch (err) {
+        showToast('Error menghapus: ' + err.message, 'error');
+      }
     });
   });
 }

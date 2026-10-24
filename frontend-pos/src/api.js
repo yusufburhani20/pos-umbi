@@ -163,6 +163,13 @@ class ApiClient {
     });
   }
 
+  deletePurchase(purchaseId, params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.request(`/suppliers/purchases/${purchaseId}${qs ? '?' + qs : ''}`, {
+      method: 'DELETE'
+    });
+  }
+
   getExpenses(params = {}) {
     const qs = new URLSearchParams(params).toString();
     return this.request(`/expenses${qs ? '?' + qs : ''}`);
