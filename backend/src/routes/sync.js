@@ -191,13 +191,19 @@ router.post('/push', authenticateToken, async (req, res) => {
       // Insert Order
       const orderRes = await dbQuery.run(
         `INSERT INTO orders 
-         (order_no, shift_id, customer_id, customer_name, total_amount, payment_method, cash_tendered, change_due, status, due_date, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (order_no, shift_id, customer_id, customer_name, subtotal_amount, manual_total_override, discount_amount, discount_notes, rotten_refund_amount, rotten_refund_notes, total_amount, payment_method, cash_tendered, change_due, status, due_date, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           order.order_no,
           shiftId,
           resolvedCustomerId,
           resolvedCustomerName,
+          order.subtotal_amount || order.total_amount,
+          order.manual_total_override || null,
+          order.discount_amount || 0,
+          order.discount_notes || null,
+          order.rotten_refund_amount || 0,
+          order.rotten_refund_notes || null,
           order.total_amount,
           order.payment_method,
           order.cash_tendered || order.total_amount,

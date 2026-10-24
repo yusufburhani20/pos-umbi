@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { dbQuery, getCurrentDrawerCash } = require('../db');
+const { dbQuery, getCurrentDrawerCash, getSafeCashBalance, recordSafeCashTransaction } = require('../db');
 const { authenticateToken, requireStrictOwner, logAudit } = require('../middleware/auth');
 
 // Preset categories for traditional market store
@@ -146,7 +146,8 @@ router.get('/', authenticateToken, async (req, res) => {
         COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as period_income,
         COALESCE(SUM(CASE WHEN type = 'income' THEN 1 ELSE 0 END), 0) as period_income_count,
         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as period_cash_drawer_out,
-        COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as period_transfer_out
+        COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as period_transfer_out,
+        COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'safe' THEN amount ELSE 0 END), 0) as period_safe_out
       FROM store_expenses
       WHERE ${filterCond}
     `, filterParams);
@@ -177,8 +178,10 @@ router.get('/', authenticateToken, async (req, res) => {
         COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as total_cash_drawer_out,
         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as total_transfer_out,
+        COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'safe' THEN amount ELSE 0 END), 0) as total_safe_out,
         COALESCE(SUM(CASE WHEN type = 'expense' AND date(created_at) = date('now', 'localtime') THEN amount ELSE 0 END), 0) as today_expenses,
         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' AND date(created_at) = date('now', 'localtime') THEN amount ELSE 0 END), 0) as today_cash_drawer_out,
+        COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'safe' AND date(created_at) = date('now', 'localtime') THEN amount ELSE 0 END), 0) as today_safe_out,
         COALESCE(SUM(CASE WHEN type = 'income' AND date(created_at) = date('now', 'localtime') THEN amount ELSE 0 END), 0) as today_income,
         COALESCE(SUM(CASE WHEN type = 'expense' AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime') THEN amount ELSE 0 END), 0) as month_expenses
       FROM store_expenses
@@ -217,6 +220,7 @@ router.get('/', authenticateToken, async (req, res) => {
         period_income_count: Number(periodSummaryRow.period_income_count) || 0,
         period_cash_drawer_out: Number(periodSummaryRow.period_cash_drawer_out) || 0,
         period_transfer_out: Number(periodSummaryRow.period_transfer_out) || 0,
+        period_safe_out: Number(periodSummaryRow.period_safe_out) || 0,
         category_breakdown,
         shift_summary
       }
@@ -242,8 +246,8 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Nominal transaksi harus lebih besar dari Rp 0' });
     }
 
-    if (!['cash', 'transfer'].includes(source)) {
-      return res.status(400).json({ success: false, message: 'Sumber dana harus kas laci atau transfer' });
+    if (!['cash', 'transfer', 'safe'].includes(source)) {
+      return res.status(400).json({ success: false, message: 'Sumber dana harus kas laci, transfer, atau kas brankas' });
     }
 
     if (!['expense', 'income'].includes(type)) {
@@ -257,7 +261,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
     const shift_id = activeShift ? activeShift.id : null;
 
-    // RULE: Avoid minus cash drawer! If source is cash and type is expense, verify drawer has enough balance
+    // RULE 1: If source is cash drawer and type is expense, verify drawer has enough balance
     if (type === 'expense' && source === 'cash') {
       const drawerState = await getCurrentDrawerCash(shift_id);
       if (!drawerState.has_active_shift) {
@@ -275,6 +279,22 @@ router.post('/', authenticateToken, async (req, res) => {
           code: 'INSUFFICIENT_DRAWER_CASH',
           message: `Saldo kas laci tidak mencukupi! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pengeluaran Rp ${numAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan otomatis agar saldo tidak minus. Harap tambah dana ke kas/saldo terlebih dahulu via '+ Kas Masuk / Modal'.`,
           current_drawer_cash: drawerState.current_drawer_cash,
+          required_amount: numAmount,
+          shortage
+        });
+      }
+    }
+
+    // RULE 2: If source is safe and type is expense, verify safe cash balance
+    if (type === 'expense' && source === 'safe') {
+      const safeStats = await getSafeCashBalance();
+      if (safeStats.balance < numAmount) {
+        const shortage = numAmount - safeStats.balance;
+        return res.status(400).json({
+          success: false,
+          code: 'INSUFFICIENT_SAFE_CASH',
+          message: `Saldo kas brankas tidak mencukupi! Saldo brankas saat ini hanya Rp ${safeStats.balance.toLocaleString('id-ID')}, sedangkan pengeluaran Rp ${numAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Harap setor dana ke brankas terlebih dahulu.`,
+          current_safe_cash: safeStats.balance,
           required_amount: numAmount,
           shortage
         });
@@ -309,6 +329,19 @@ router.post('/', authenticateToken, async (req, res) => {
       shift_id
     });
 
+    // Auto-record in safe cash mutations if source is safe
+    if (source === 'safe') {
+      await recordSafeCashTransaction({
+        user_id: req.user.id,
+        shift_id: shift_id || null,
+        type: type === 'expense' ? 'expense' : 'income',
+        amount: numAmount,
+        source: 'safe',
+        reference_no: expense_no,
+        notes: `Biaya Operasional: ${category_name} - ${notes.trim()}`
+      });
+    }
+
     const created = await dbQuery.get(`
       SELECT 
         e.*,
@@ -342,6 +375,29 @@ router.delete('/:id', authenticateToken, requireStrictOwner, async (req, res) =>
     }
 
     await dbQuery.run('DELETE FROM store_expenses WHERE id = ?', [expenseId]);
+
+    // Revert safe cash mutation if it was paid from safe
+    if (existing.source === 'safe') {
+      if (existing.type === 'expense') {
+        await recordSafeCashTransaction({
+          user_id: req.user.id,
+          type: 'deposit',
+          amount: existing.amount,
+          source: 'safe',
+          reference_no: existing.expense_no,
+          notes: `Pembatalan / Reversal pengeluaran ${existing.expense_no}`
+        });
+      } else if (existing.type === 'income') {
+        await recordSafeCashTransaction({
+          user_id: req.user.id,
+          type: 'withdrawal',
+          amount: existing.amount,
+          source: 'safe',
+          reference_no: existing.expense_no,
+          notes: `Pembatalan / Reversal kas masuk ${existing.expense_no}`
+        });
+      }
+    }
 
     await logAudit(req.user.id, 'EXPENSE_DELETED', {
       expense_id: expenseId,

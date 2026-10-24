@@ -15,6 +15,7 @@ const syncRoutes = require('./routes/sync');
 const suppliersRoutes = require('./routes/suppliers');
 const expensesRoutes = require('./routes/expenses');
 const subscriptionRoutes = require('./routes/subscription');
+const safeCashRoutes = require('./routes/safeCash');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/expenses', expensesRoutes);
 app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/safe-cash', safeCashRoutes);
 
 // 404 Handler
 app.use((req, res) => {

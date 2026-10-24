@@ -80,6 +80,13 @@ const state = {
   selectedCustomer: null,
   activeCategory: '',
   cart: loadCartFromStorage(),
+  cartAdjustments: {
+    manualTotalOverride: null,
+    discountAmount: 0,
+    discountNotes: '',
+    rottenRefundAmount: 0,
+    rottenRefundNotes: ''
+  },
   activeScaleProduct: null,
   scaleMode: 'weight',
   scaleCustomRate: null,
@@ -172,6 +179,7 @@ const el = {
   cashierDebtsModal: document.getElementById('cashierDebtsModal'),
   searchCashierDebt: document.getElementById('searchCashierDebt'),
   btnRefreshCashierDebts: document.getElementById('btnRefreshCashierDebts'),
+  btnOpenManualDebtModal: document.getElementById('btnOpenManualDebtModal'),
   cashierDebtsTableBody: document.getElementById('cashierDebtsTableBody'),
   btnCloseCashierDebtsModal: document.getElementById('btnCloseCashierDebtsModal'),
   btnCloseCashierDebtsFooter: document.getElementById('btnCloseCashierDebtsFooter'),
@@ -179,6 +187,23 @@ const el = {
   btnDebtFilterOverdue: document.getElementById('btnDebtFilterOverdue'),
   btnDebtFilterPaid: document.getElementById('btnDebtFilterPaid'),
   btnDebtFilterAll: document.getElementById('btnDebtFilterAll'),
+
+  // Manual Debt Modal Elements
+  modalManualDebt: document.getElementById('modalManualDebt'),
+  btnCloseManualDebtModal: document.getElementById('btnCloseManualDebtModal'),
+  btnCancelManualDebt: document.getElementById('btnCancelManualDebt'),
+  btnSubmitManualDebt: document.getElementById('btnSubmitManualDebt'),
+  manualDebtCustomerSelect: document.getElementById('manualDebtCustomerSelect'),
+  manualDebtCustomerName: document.getElementById('manualDebtCustomerName'),
+  manualDebtCustomerPhone: document.getElementById('manualDebtCustomerPhone'),
+  manualDebtTotalAmount: document.getElementById('manualDebtTotalAmount'),
+  manualDebtDpAmount: document.getElementById('manualDebtDpAmount'),
+  manualDebtDpMethod: document.getElementById('manualDebtDpMethod'),
+  manualDebtDueDate: document.getElementById('manualDebtDueDate'),
+  manualDebtNotes: document.getElementById('manualDebtNotes'),
+  manualDebtRemainingPreview: document.getElementById('manualDebtRemainingPreview'),
+  manualDebtPrintReceipt: document.getElementById('manualDebtPrintReceipt'),
+  btnResetManualDebtAmount: document.getElementById('btnResetManualDebtAmount'),
 
   // Debt Detail Modal
   modalDetailDebt: document.getElementById('modalDetailDebt'),
@@ -355,6 +380,32 @@ const el = {
 
   paymentModal: document.getElementById('paymentModal'),
   payModalTotal: document.getElementById('payModalTotal'),
+
+  // Cart Adjustments (Nego, Kompensasi Barang Busuk, & Diskon)
+  cartAdjustmentsSummary: document.getElementById('cartAdjustmentsSummary'),
+  cartSubtotalText: document.getElementById('cartSubtotalText'),
+  cartNegoRow: document.getElementById('cartNegoRow'),
+  cartNegoAmountText: document.getElementById('cartNegoAmountText'),
+  cartRottenRow: document.getElementById('cartRottenRow'),
+  cartRottenAmountText: document.getElementById('cartRottenAmountText'),
+  cartDiscountRow: document.getElementById('cartDiscountRow'),
+  cartDiscountAmountText: document.getElementById('cartDiscountAmountText'),
+
+  btnToggleAdjustmentsSection: document.getElementById('btnToggleAdjustmentsSection'),
+  arrowAdjustmentsSection: document.getElementById('arrowAdjustmentsSection'),
+  badgeAdjustmentActive: document.getElementById('badgeAdjustmentActive'),
+  checkoutAdjustmentsBody: document.getElementById('checkoutAdjustmentsBody'),
+  payModalSubtotalText: document.getElementById('payModalSubtotalText'),
+  inputManualNegoTotal: document.getElementById('inputManualNegoTotal'),
+  btnResetManualNego: document.getElementById('btnResetManualNego'),
+  inputRottenRefundAmount: document.getElementById('inputRottenRefundAmount'),
+  inputRottenRefundNotes: document.getElementById('inputRottenRefundNotes'),
+  btnResetRottenRefund: document.getElementById('btnResetRottenRefund'),
+  inputDiscountAmount: document.getElementById('inputDiscountAmount'),
+  inputDiscountNotes: document.getElementById('inputDiscountNotes'),
+  btnResetDiscount: document.getElementById('btnResetDiscount'),
+  checkoutCalcBreakdown: document.getElementById('checkoutCalcBreakdown'),
+
   cashTenderedInput: document.getElementById('cashTenderedInput'),
   changeDueText: document.getElementById('changeDueText'),
   cashPaymentSection: document.getElementById('cashPaymentSection'),
@@ -1615,6 +1666,71 @@ function bindEvents() {
     });
   }
 
+  // Manual Debt Modal Events
+  if (el.btnOpenManualDebtModal) {
+    el.btnOpenManualDebtModal.addEventListener('click', openManualDebtModal);
+  }
+  if (el.btnCloseManualDebtModal) {
+    el.btnCloseManualDebtModal.addEventListener('click', () => {
+      if (el.modalManualDebt) el.modalManualDebt.style.display = 'none';
+    });
+  }
+  if (el.btnCancelManualDebt) {
+    el.btnCancelManualDebt.addEventListener('click', () => {
+      if (el.modalManualDebt) el.modalManualDebt.style.display = 'none';
+    });
+  }
+  if (el.manualDebtCustomerSelect) {
+    el.manualDebtCustomerSelect.addEventListener('change', (e) => {
+      const opt = e.target.selectedOptions[0];
+      if (opt && opt.value) {
+        if (el.manualDebtCustomerName) el.manualDebtCustomerName.value = opt.dataset.name || '';
+        if (el.manualDebtCustomerPhone) el.manualDebtCustomerPhone.value = opt.dataset.phone || '';
+      }
+    });
+  }
+  if (el.manualDebtTotalAmount) {
+    el.manualDebtTotalAmount.addEventListener('input', (e) => {
+      const num = Number(e.target.value.replace(/[^0-9]/g, ''));
+      e.target.value = num ? formatRupiah(num) : '';
+      updateManualDebtPreview();
+    });
+  }
+  if (el.manualDebtDpAmount) {
+    el.manualDebtDpAmount.addEventListener('input', (e) => {
+      const num = Number(e.target.value.replace(/[^0-9]/g, ''));
+      e.target.value = num ? formatRupiah(num) : '';
+      updateManualDebtPreview();
+    });
+  }
+  document.querySelectorAll('#modalManualDebt .btn-chip-nom').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const val = Number(chip.dataset.val) || 0;
+      const current = Number(el.manualDebtTotalAmount.value.replace(/[^0-9]/g, '')) || 0;
+      const next = current + val;
+      el.manualDebtTotalAmount.value = formatRupiah(next);
+      updateManualDebtPreview();
+    });
+  });
+  if (el.btnResetManualDebtAmount) {
+    el.btnResetManualDebtAmount.addEventListener('click', () => {
+      if (el.manualDebtTotalAmount) el.manualDebtTotalAmount.value = '';
+      if (el.manualDebtDpAmount) el.manualDebtDpAmount.value = '';
+      updateManualDebtPreview();
+    });
+  }
+  document.querySelectorAll('#modalManualDebt .btn-tempo-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const days = Number(btn.dataset.days) || 7;
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      if (el.manualDebtDueDate) el.manualDebtDueDate.value = d.toISOString().split('T')[0];
+    });
+  });
+  if (el.btnSubmitManualDebt) {
+    el.btnSubmitManualDebt.addEventListener('click', handleSaveManualDebt);
+  }
+
   // Debt Filter Tabs
   const debtFilterBtns = [
     { btn: el.btnDebtFilterUnpaid, filter: 'unpaid' },
@@ -2359,6 +2475,94 @@ function bindEvents() {
   }
 
   el.btnProcessPayment.addEventListener('click', handleProcessOrder);
+
+  // Adjustments Card Toggle & Real-time Inputs
+  if (el.btnToggleAdjustmentsSection) {
+    el.btnToggleAdjustmentsSection.addEventListener('click', () => {
+      if (!el.checkoutAdjustmentsBody) return;
+      const isHidden = el.checkoutAdjustmentsBody.style.display === 'none';
+      el.checkoutAdjustmentsBody.style.display = isHidden ? 'block' : 'none';
+      if (el.arrowAdjustmentsSection) {
+        el.arrowAdjustmentsSection.textContent = isHidden ? '▲' : '▼';
+      }
+    });
+  }
+
+  if (el.inputManualNegoTotal) {
+    el.inputManualNegoTotal.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9]/g, '');
+      const num = Number(raw) || 0;
+      e.target.value = raw ? formatRupiah(num) : '';
+      state.cartAdjustments.manualTotalOverride = raw ? num : null;
+      syncAdjustmentsUI();
+      renderCartSummaryOnly();
+    });
+  }
+
+  if (el.btnResetManualNego) {
+    el.btnResetManualNego.addEventListener('click', () => {
+      state.cartAdjustments.manualTotalOverride = null;
+      if (el.inputManualNegoTotal) el.inputManualNegoTotal.value = '';
+      syncAdjustmentsUI();
+      renderCartSummaryOnly();
+    });
+  }
+
+  if (el.inputRottenRefundAmount) {
+    el.inputRottenRefundAmount.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9]/g, '');
+      const num = Number(raw) || 0;
+      e.target.value = raw ? formatRupiah(num) : '';
+      state.cartAdjustments.rottenRefundAmount = num;
+      syncAdjustmentsUI();
+      renderCartSummaryOnly();
+    });
+  }
+
+  if (el.inputRottenRefundNotes) {
+    el.inputRottenRefundNotes.addEventListener('input', (e) => {
+      state.cartAdjustments.rottenRefundNotes = e.target.value.trim();
+    });
+  }
+
+  if (el.btnResetRottenRefund) {
+    el.btnResetRottenRefund.addEventListener('click', () => {
+      state.cartAdjustments.rottenRefundAmount = 0;
+      state.cartAdjustments.rottenRefundNotes = '';
+      if (el.inputRottenRefundAmount) el.inputRottenRefundAmount.value = '';
+      if (el.inputRottenRefundNotes) el.inputRottenRefundNotes.value = '';
+      syncAdjustmentsUI();
+      renderCartSummaryOnly();
+    });
+  }
+
+  if (el.inputDiscountAmount) {
+    el.inputDiscountAmount.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9]/g, '');
+      const num = Number(raw) || 0;
+      e.target.value = raw ? formatRupiah(num) : '';
+      state.cartAdjustments.discountAmount = num;
+      syncAdjustmentsUI();
+      renderCartSummaryOnly();
+    });
+  }
+
+  if (el.inputDiscountNotes) {
+    el.inputDiscountNotes.addEventListener('input', (e) => {
+      state.cartAdjustments.discountNotes = e.target.value.trim();
+    });
+  }
+
+  if (el.btnResetDiscount) {
+    el.btnResetDiscount.addEventListener('click', () => {
+      state.cartAdjustments.discountAmount = 0;
+      state.cartAdjustments.discountNotes = '';
+      if (el.inputDiscountAmount) el.inputDiscountAmount.value = '';
+      if (el.inputDiscountNotes) el.inputDiscountNotes.value = '';
+      syncAdjustmentsUI();
+      renderCartSummaryOnly();
+    });
+  }
 
   // Receipt Modal
   const closeReceiptModal = () => {
@@ -3110,6 +3314,14 @@ function renderCart() {
   saveCartToStorage();
 
   if (state.cart.length === 0) {
+    state.cartAdjustments = {
+      manualTotalOverride: null,
+      discountAmount: 0,
+      discountNotes: '',
+      rottenRefundAmount: 0,
+      rottenRefundNotes: ''
+    };
+    renderCartSummaryOnly();
     el.cartItemsList.innerHTML = `
       <div class="empty-cart">
         <span class="empty-icon">🛒</span>
@@ -3221,8 +3433,8 @@ function renderCart() {
   }).join('');
 
   el.totalWeightText.textContent = `${totalWeight.toFixed(2)} kg`;
-  el.totalAmountText.textContent = formatRupiah(totalAmount);
-  updateTabletCartIndicators(state.cart.length, totalWeight, totalAmount);
+  renderCartSummaryOnly();
+  updateTabletCartIndicators(state.cart.length, totalWeight, getCartTotal());
 
   // Bind cart item controls
   el.cartItemsList.querySelectorAll('.btn-minus').forEach(btn => {
@@ -3743,8 +3955,98 @@ function updateKarungModalPreview() {
   });
 }
 
-function getCartTotal() {
+function getCartSubtotal() {
   return state.cart.reduce((sum, item) => sum + item.subtotal, 0);
+}
+
+function getCartTotal() {
+  const subtotal = getCartSubtotal();
+  const adj = state.cartAdjustments || {};
+  const manual = (adj.manualTotalOverride !== null && adj.manualTotalOverride !== undefined && Number(adj.manualTotalOverride) > 0)
+    ? Number(adj.manualTotalOverride)
+    : null;
+  const rotten = Math.max(0, Number(adj.rottenRefundAmount) || 0);
+  const discount = Math.max(0, Number(adj.discountAmount) || 0);
+
+  if (manual !== null) {
+    return Math.max(0, manual - rotten - discount);
+  }
+  return Math.max(0, subtotal - discount - rotten);
+}
+
+function renderCartSummaryOnly() {
+  const subtotal = getCartSubtotal();
+  const total = getCartTotal();
+  const adj = state.cartAdjustments || {};
+  const manual = (adj.manualTotalOverride !== null && adj.manualTotalOverride !== undefined && Number(adj.manualTotalOverride) > 0)
+    ? Number(adj.manualTotalOverride)
+    : null;
+  const rotten = Math.max(0, Number(adj.rottenRefundAmount) || 0);
+  const discount = Math.max(0, Number(adj.discountAmount) || 0);
+
+  const hasAdj = (manual !== null && manual !== subtotal) || rotten > 0 || discount > 0;
+  if (el.cartAdjustmentsSummary) {
+    el.cartAdjustmentsSummary.style.display = hasAdj ? 'block' : 'none';
+  }
+  if (el.cartSubtotalText) el.cartSubtotalText.textContent = formatRupiah(subtotal);
+
+  if (el.cartNegoRow) {
+    el.cartNegoRow.style.display = manual !== null ? 'flex' : 'none';
+    if (el.cartNegoAmountText) el.cartNegoAmountText.textContent = formatRupiah(manual || 0);
+  }
+  if (el.cartRottenRow) {
+    el.cartRottenRow.style.display = rotten > 0 ? 'flex' : 'none';
+    if (el.cartRottenAmountText) el.cartRottenAmountText.textContent = '-' + formatRupiah(rotten);
+  }
+  if (el.cartDiscountRow) {
+    el.cartDiscountRow.style.display = discount > 0 ? 'flex' : 'none';
+    if (el.cartDiscountAmountText) el.cartDiscountAmountText.textContent = '-' + formatRupiah(discount);
+  }
+
+  if (el.totalAmountText) {
+    el.totalAmountText.textContent = formatRupiah(total);
+  }
+}
+
+function syncAdjustmentsUI() {
+  const subtotal = getCartSubtotal();
+  const total = getCartTotal();
+  const adj = state.cartAdjustments || {};
+  const manual = (adj.manualTotalOverride !== null && adj.manualTotalOverride !== undefined && Number(adj.manualTotalOverride) > 0)
+    ? Number(adj.manualTotalOverride)
+    : null;
+  const rotten = Math.max(0, Number(adj.rottenRefundAmount) || 0);
+  const discount = Math.max(0, Number(adj.discountAmount) || 0);
+
+  if (el.payModalSubtotalText) el.payModalSubtotalText.textContent = formatRupiah(subtotal);
+  if (el.payModalTotal) el.payModalTotal.textContent = formatRupiah(total);
+
+  const hasActive = (manual !== null && manual !== subtotal) || rotten > 0 || discount > 0;
+  if (el.badgeAdjustmentActive) {
+    el.badgeAdjustmentActive.style.display = hasActive ? 'inline-block' : 'none';
+  }
+
+  // Build breakdown narrative
+  if (el.checkoutCalcBreakdown) {
+    let parts = [`Subtotal: ${formatRupiah(subtotal)}`];
+    if (manual !== null) {
+      parts.push(`Nego: ${formatRupiah(manual)}`);
+    }
+    if (rotten > 0) {
+      parts.push(`Ganti Busuk: -${formatRupiah(rotten)}`);
+    }
+    if (discount > 0) {
+      parts.push(`Diskon: -${formatRupiah(discount)}`);
+    }
+    parts.push(`<strong style="color: #10b981;">Total Akhir: ${formatRupiah(total)}</strong>`);
+    el.checkoutCalcBreakdown.innerHTML = parts.join(' ➔ ');
+  }
+
+  // Also update tender change due and tempo calculation
+  calculateChangeDue();
+  if (state.paymentMethod === 'tempo') {
+    updateTempoCalculation();
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -3757,7 +4059,10 @@ function openPaymentModal() {
     return;
   }
 
+  const subtotal = getCartSubtotal();
   const total = getCartTotal();
+  const adj = state.cartAdjustments || {};
+
   state.paymentMethod = 'cash';
   el.payModalTotal.textContent = formatRupiah(total);
   el.cashTenderedInput.value = '';
@@ -3765,6 +4070,34 @@ function openPaymentModal() {
   if (el.tempoCustomerNameInput) el.tempoCustomerNameInput.value = '';
   if (el.tempoCustomerPhoneInput) el.tempoCustomerPhoneInput.value = '';
   if (el.tempoDpInput) el.tempoDpInput.value = '';
+
+  // Populate adjustment inputs
+  if (el.inputManualNegoTotal) {
+    el.inputManualNegoTotal.value = adj.manualTotalOverride ? formatRupiah(adj.manualTotalOverride) : '';
+  }
+  if (el.inputRottenRefundAmount) {
+    el.inputRottenRefundAmount.value = adj.rottenRefundAmount ? formatRupiah(adj.rottenRefundAmount) : '';
+  }
+  if (el.inputRottenRefundNotes) {
+    el.inputRottenRefundNotes.value = adj.rottenRefundNotes || '';
+  }
+  if (el.inputDiscountAmount) {
+    el.inputDiscountAmount.value = adj.discountAmount ? formatRupiah(adj.discountAmount) : '';
+  }
+  if (el.inputDiscountNotes) {
+    el.inputDiscountNotes.value = adj.discountNotes || '';
+  }
+
+  // If there are active adjustments, open the accordion so cashier sees it immediately
+  const hasActive = (adj.manualTotalOverride !== null && adj.manualTotalOverride !== subtotal) || (adj.rottenRefundAmount > 0) || (adj.discountAmount > 0);
+  if (el.checkoutAdjustmentsBody) {
+    el.checkoutAdjustmentsBody.style.display = hasActive ? 'block' : 'none';
+  }
+  if (el.arrowAdjustmentsSection) {
+    el.arrowAdjustmentsSection.textContent = hasActive ? '▲' : '▼';
+  }
+
+  syncAdjustmentsUI();
 
   document.querySelectorAll('.btn-method').forEach(b => {
     b.classList.toggle('active', b.dataset.method === 'cash');
@@ -3857,11 +4190,21 @@ async function handleProcessOrder() {
     if (found) matchedCustomerId = found.id;
   }
 
+  const subtotal = getCartSubtotal();
+  const adj = state.cartAdjustments || {};
+
   const orderPayload = {
     shift_id: state.shift ? state.shift.id : null,
     customer_id: matchedCustomerId,
     customer_name: buyerName,
     customer_phone: buyerPhone,
+    subtotal_amount: subtotal,
+    manual_total_override: adj.manualTotalOverride || null,
+    discount_amount: adj.discountAmount || 0,
+    discount_notes: adj.discountNotes || null,
+    rotten_refund_amount: adj.rottenRefundAmount || 0,
+    rotten_refund_notes: adj.rottenRefundNotes || null,
+    total_amount: total,
     payment_method: state.paymentMethod,
     cash_tendered: tendered,
     due_date: state.paymentMethod === 'tempo' && el.tempoDueDateInput ? el.tempoDueDateInput.value : null,
@@ -3908,13 +4251,17 @@ async function handleProcessOrder() {
       const rand = Math.floor(1000 + Math.random() * 9000);
       const offlineOrderNo = `TR-${yyyy}${mm}${dd}-OFF-${rand}`;
 
-      const totalBill = state.cart.reduce((sum, item) => sum + item.subtotal, 0);
-
       orderResult = {
         ...orderPayload,
         order_no: offlineOrderNo,
-        total_amount: totalBill,
-        change_due: Math.max(0, (tendered || totalBill) - totalBill),
+        total_amount: total,
+        subtotal_amount: subtotal,
+        manual_total_override: adj.manualTotalOverride || null,
+        discount_amount: adj.discountAmount || 0,
+        discount_notes: adj.discountNotes || null,
+        rotten_refund_amount: adj.rottenRefundAmount || 0,
+        rotten_refund_notes: adj.rottenRefundNotes || null,
+        change_due: Math.max(0, (tendered || total) - total),
         status: 'completed',
         cashier_name: state.user ? state.user.name : 'Kasir',
         customer_name: buyerName,
@@ -3952,8 +4299,15 @@ async function handleProcessOrder() {
       console.warn('[Hardware] Auto print order error:', err);
     });
 
-    // Reset Cart & refresh products
+    // Reset Cart & adjustments
     state.cart = [];
+    state.cartAdjustments = {
+      manualTotalOverride: null,
+      discountAmount: 0,
+      discountNotes: '',
+      rottenRefundAmount: 0,
+      rottenRefundNotes: ''
+    };
     renderCart();
     renderProductGrid();
 
@@ -4008,6 +4362,33 @@ function renderThermalReceipt(order, isReprint = false) {
     <div class="receipt-divider"></div>
     ${itemsHtml}
     <div class="receipt-divider"></div>
+    ${(order.manual_total_override || (order.rotten_refund_amount && Number(order.rotten_refund_amount) > 0) || (order.discount_amount && Number(order.discount_amount) > 0)) ? `
+      <div class="receipt-row">
+        <span>Subtotal Produk</span>
+        <span>${formatRupiah(order.subtotal_amount || order.total_amount)}</span>
+      </div>
+      ${order.manual_total_override ? `
+        <div class="receipt-row" style="color: #d97706;">
+          <span>Nego Total</span>
+          <span>${formatRupiah(order.manual_total_override)}</span>
+        </div>
+      ` : ''}
+      ${(order.rotten_refund_amount && Number(order.rotten_refund_amount) > 0) ? `
+        <div class="receipt-row" style="color: #dc2626;">
+          <span>Ganti Barang Busuk</span>
+          <span>-${formatRupiah(order.rotten_refund_amount)}</span>
+        </div>
+        ${order.rotten_refund_notes ? `<div style="font-size: 10px; color: #64748b; padding-left: 8px;">* ${escapeHtml(order.rotten_refund_notes)}</div>` : ''}
+      ` : ''}
+      ${(order.discount_amount && Number(order.discount_amount) > 0) ? `
+        <div class="receipt-row" style="color: #0284c7;">
+          <span>Potongan Diskon</span>
+          <span>-${formatRupiah(order.discount_amount)}</span>
+        </div>
+        ${order.discount_notes ? `<div style="font-size: 10px; color: #64748b; padding-left: 8px;">* ${escapeHtml(order.discount_notes)}</div>` : ''}
+      ` : ''}
+      <div class="receipt-divider"></div>
+    ` : ''}
     <div class="receipt-row bold">
       <span>TOTAL TAGIHAN</span>
       <span>${formatRupiah(order.total_amount)}</span>
@@ -4356,7 +4737,12 @@ function renderFilteredHistoryTable() {
 
     return `
       <tr>
-        <td><strong style="color: #0f172a; font-family: monospace; font-size: 13px;">${escapeHtml(o.order_no)}</strong></td>
+        <td>
+          <strong style="color: #0f172a; font-family: monospace; font-size: 13px;">${escapeHtml(o.order_no)}</strong>
+          ${o.manual_total_override ? '<div style="font-size:10px; color:#d97706; font-weight:700;">✍️ Nego Total</div>' : ''}
+          ${(o.rotten_refund_amount && Number(o.rotten_refund_amount) > 0) ? `<div style="font-size:10px; color:#dc2626; font-weight:700;" title="${escapeHtml(o.rotten_refund_notes || '')}">🥔 Ganti Busuk: -${formatRupiah(o.rotten_refund_amount)}</div>` : ''}
+          ${(o.discount_amount && Number(o.discount_amount) > 0) ? `<div style="font-size:10px; color:#0284c7; font-weight:700;" title="${escapeHtml(o.discount_notes || '')}">✂️ Diskon: -${formatRupiah(o.discount_amount)}</div>` : ''}
+        </td>
         <td>
           <div style="display: flex; flex-direction: column; gap: 2px;">
             <span style="font-weight: 700; font-size: 12.5px; color: #1e293b; white-space: nowrap;">${dateFormatted}</span>
@@ -4612,6 +4998,140 @@ async function openCashierDebtsModal() {
   }
 }
 
+function openManualDebtModal() {
+  if (!el.modalManualDebt) return;
+
+  // Populate registered customers dropdown
+  if (el.manualDebtCustomerSelect) {
+    el.manualDebtCustomerSelect.innerHTML = `
+      <option value="">-- Ketik Nama Pelanggan Baru --</option>
+      ${(state.customers || []).map(c => `
+        <option value="${c.id}" data-name="${escapeHtml(c.name)}" data-phone="${escapeHtml(c.phone || '')}">
+          ${escapeHtml(c.name)} (${c.phone || 'Tanpa HP'} - ${c.tier === 'reseller' ? 'Grosir' : 'Eceran'})
+        </option>
+      `).join('')}
+    `;
+    el.manualDebtCustomerSelect.value = '';
+  }
+
+  if (el.manualDebtCustomerName) el.manualDebtCustomerName.value = '';
+  if (el.manualDebtCustomerPhone) el.manualDebtCustomerPhone.value = '';
+  if (el.manualDebtTotalAmount) el.manualDebtTotalAmount.value = '';
+  if (el.manualDebtDpAmount) el.manualDebtDpAmount.value = '';
+  if (el.manualDebtDpMethod) el.manualDebtDpMethod.value = 'cash';
+  if (el.manualDebtNotes) el.manualDebtNotes.value = '';
+
+  // Default due date to +7 days
+  if (el.manualDebtDueDate) {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    el.manualDebtDueDate.value = d.toISOString().split('T')[0];
+  }
+
+  updateManualDebtPreview();
+
+  el.modalManualDebt.style.display = 'flex';
+  setTimeout(() => {
+    if (el.manualDebtCustomerName) el.manualDebtCustomerName.focus();
+  }, 50);
+}
+
+function updateManualDebtPreview() {
+  const rawTotal = el.manualDebtTotalAmount ? el.manualDebtTotalAmount.value.replace(/[^0-9]/g, '') : '0';
+  const rawDp = el.manualDebtDpAmount ? el.manualDebtDpAmount.value.replace(/[^0-9]/g, '') : '0';
+
+  const total = Number(rawTotal) || 0;
+  const dp = Number(rawDp) || 0;
+  const remaining = Math.max(0, total - dp);
+
+  if (el.manualDebtRemainingPreview) {
+    el.manualDebtRemainingPreview.textContent = formatRupiah(remaining);
+  }
+}
+
+async function handleSaveManualDebt() {
+  const customerId = el.manualDebtCustomerSelect ? el.manualDebtCustomerSelect.value : '';
+  const customerName = el.manualDebtCustomerName ? el.manualDebtCustomerName.value.trim() : '';
+  const customerPhone = el.manualDebtCustomerPhone ? el.manualDebtCustomerPhone.value.trim() : '';
+  const rawTotal = el.manualDebtTotalAmount ? el.manualDebtTotalAmount.value.replace(/[^0-9]/g, '') : '0';
+  const rawDp = el.manualDebtDpAmount ? el.manualDebtDpAmount.value.replace(/[^0-9]/g, '') : '0';
+  const dpMethod = el.manualDebtDpMethod ? el.manualDebtDpMethod.value : 'cash';
+  const dueDate = el.manualDebtDueDate ? el.manualDebtDueDate.value : '';
+  const notes = el.manualDebtNotes ? el.manualDebtNotes.value.trim() : '';
+  const shouldPrint = el.manualDebtPrintReceipt ? el.manualDebtPrintReceipt.checked : false;
+
+  const total = Number(rawTotal);
+  const dp = Number(rawDp) || 0;
+
+  if (!customerName && !customerId) {
+    showToast('Nama pembeli/peminjam kasbon wajib diisi!', 'error');
+    if (el.manualDebtCustomerName) el.manualDebtCustomerName.focus();
+    return;
+  }
+
+  if (isNaN(total) || total <= 0) {
+    showToast('Nominal kasbon / piutang harus lebih dari Rp 0!', 'error');
+    if (el.manualDebtTotalAmount) el.manualDebtTotalAmount.focus();
+    return;
+  }
+
+  if (dp > total) {
+    showToast(`Uang Muka DP (${formatRupiah(dp)}) tidak boleh melebihi total kasbon (${formatRupiah(total)})!`, 'error');
+    if (el.manualDebtDpAmount) el.manualDebtDpAmount.focus();
+    return;
+  }
+
+  try {
+    if (el.btnSubmitManualDebt) {
+      el.btnSubmitManualDebt.disabled = true;
+      el.btnSubmitManualDebt.textContent = 'Menyimpan...';
+    }
+
+    const payload = {
+      customer_id: customerId ? Number(customerId) : null,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      total_amount: total,
+      dp_amount: dp,
+      dp_payment_method: dpMethod,
+      due_date: dueDate || null,
+      notes: notes
+    };
+
+    const res = await api.createManualDebt(payload);
+
+    if (res.success) {
+      showToast(res.message || 'Piutang manual berhasil dicatat!', 'success');
+      if (el.modalManualDebt) el.modalManualDebt.style.display = 'none';
+
+      // Reload customers and debts
+      await loadCustomers();
+      await loadCashierDebts();
+      if (state.shift) await syncShift();
+
+      // Print receipt if requested
+      if (shouldPrint && res.debt) {
+        try {
+          await hardwareController.printDebtReceipt(res.debt, state.settings);
+          showToast('Bukti kasbon tercetak ke printer thermal!', 'success');
+        } catch (printErr) {
+          console.warn('[Printer] Gagal cetak bukti kasbon:', printErr);
+          showToast('Kasbon tersimpan, printer: ' + printErr.message, 'warning');
+        }
+      }
+    } else {
+      showToast('Gagal: ' + res.message, 'error');
+    }
+  } catch (err) {
+    showToast('Terjadi kesalahan: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitManualDebt) {
+      el.btnSubmitManualDebt.disabled = false;
+      el.btnSubmitManualDebt.textContent = 'Simpan Piutang Manual';
+    }
+  }
+}
+
 async function loadCashierDebts() {
   if (!el.cashierDebtsTableBody) return;
 
@@ -4655,17 +5175,23 @@ async function loadCashierDebts() {
         }
       }
 
+      const isManual = !d.order_id;
       const isPaid = Number(d.remaining_amount) <= 0;
+      const canDelete = isManual && Number(d.paid_amount || 0) === 0;
 
       return `
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 12px 14px;">
-            <strong style="color: #0f172a; font-family: monospace; font-size: 13.5px;">${d.order_no}</strong>
+            <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+              <strong style="color: #0f172a; font-family: monospace; font-size: 13.5px;">${d.order_no}</strong>
+              ${isManual ? '<span style="background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 4px; border: 1px solid #fde68a;">✍️ MANUAL</span>' : ''}
+            </div>
             <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${orderDate}</div>
           </td>
           <td style="padding: 12px 14px;">
             <strong style="color: #0f172a; font-size: 14px;">${d.customer_name}</strong>
             <div style="font-size: 12px; color: #047857; font-weight: 600; margin-top: 2px;">📞 ${d.customer_phone || '-'}</div>
+            ${d.notes ? `<div style="font-size: 11px; color: #64748b; font-style: italic; margin-top: 2px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(d.notes)}</div>` : ''}
           </td>
           <td style="padding: 12px 14px; text-align: right; color: #475569; font-family: monospace; font-weight: 600;">${formatRupiah(d.total_amount)}</td>
           <td style="padding: 12px 14px; text-align: right; font-weight: 800; color: ${isPaid ? '#047857' : '#b45309'}; font-family: monospace; font-size: 13.5px;">
@@ -4691,6 +5217,11 @@ async function loadCashierDebts() {
               ` : `
                 <span class="badge-debt-lunas">Lunas</span>
               `}
+              ${canDelete ? `
+                <button class="btn-debt-action btn-delete-manual-debt" data-debt-id="${d.id}" data-no="${d.order_no}" title="Hapus kasbon manual ini" style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;">
+                  🗑️
+                </button>
+              ` : ''}
             </div>
           </td>
         </tr>
@@ -4712,6 +5243,22 @@ async function loadCashierDebts() {
     el.cashierDebtsTableBody.querySelectorAll('.btn-pay-cashier-debt').forEach(btn => {
       btn.addEventListener('click', () => {
         openPayCashierDebtModal(Number(btn.dataset.debtId));
+      });
+    });
+
+    el.cashierDebtsTableBody.querySelectorAll('.btn-delete-manual-debt').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const debtId = Number(btn.dataset.debtId);
+        const refNo = btn.dataset.no || 'ini';
+        if (confirm(`Apakah Anda yakin ingin menghapus / membatalkan catatan piutang manual ${refNo}?`)) {
+          try {
+            const res = await api.deleteManualDebt(debtId);
+            showToast(res.message || 'Piutang manual berhasil dihapus', 'success');
+            await loadCashierDebts();
+          } catch (err) {
+            showToast('Gagal menghapus: ' + err.message, 'error');
+          }
+        }
       });
     });
   } catch (err) {

@@ -636,6 +636,31 @@ class HardwareManager {
 
     // 5. Total & Payments
     append(divider + '\n');
+
+    const hasAdjustments = (order.manual_total_override && Number(order.manual_total_override) > 0) ||
+                           (order.rotten_refund_amount && Number(order.rotten_refund_amount) > 0) ||
+                           (order.discount_amount && Number(order.discount_amount) > 0);
+
+    if (hasAdjustments) {
+      append(formatRow('Subtotal Produk', formatRp(order.subtotal_amount || order.total_amount)));
+      if (order.manual_total_override) {
+        append(formatRow('Nego Total', formatRp(order.manual_total_override)));
+      }
+      if (order.rotten_refund_amount && Number(order.rotten_refund_amount) > 0) {
+        append(formatRow('Ganti Barang Busuk', '-' + formatRp(order.rotten_refund_amount)));
+        if (order.rotten_refund_notes) {
+          wrapByWords('  * ' + order.rotten_refund_notes, maxCols).forEach(l => append(l + '\n'));
+        }
+      }
+      if (order.discount_amount && Number(order.discount_amount) > 0) {
+        append(formatRow('Potongan Diskon', '-' + formatRp(order.discount_amount)));
+        if (order.discount_notes) {
+          wrapByWords('  * ' + order.discount_notes, maxCols).forEach(l => append(l + '\n'));
+        }
+      }
+      append(divider + '\n');
+    }
+
     append(COMMANDS.BOLD_ON);
     append(formatRow('TOTAL TAGIHAN', formatRp(order.total_amount)));
     append(COMMANDS.BOLD_OFF);
@@ -901,6 +926,140 @@ class HardwareManager {
         console.warn('[Hardware] Gagal membuka laci otomatis:', err);
       }
     }
+
+    if (this.config.mode === 'bluetooth') {
+      await this.ensureConnection();
+      if (this.isConnected) {
+        await this.sendBluetoothBytes(bytes);
+        return { success: true, mode: 'bluetooth' };
+      } else {
+        console.warn('[Hardware] Bluetooth printer belum terhubung, mencoba RawBT...');
+        this.sendRawBT(bytes);
+        return { success: true, mode: 'rawbt_fallback' };
+      }
+    } else if (this.config.mode === 'rawbt') {
+      this.sendRawBT(bytes);
+      return { success: true, mode: 'rawbt' };
+    } else {
+      window.print();
+      return { success: true, mode: 'system' };
+    }
+  }
+
+  // --- ESC/POS Debt / Kasbon Receipt Formatter ---
+  buildDebtReceiptBytes(debt, settings = {}, isReprint = false) {
+    const is80mm = this.config.paperSize === '80mm';
+    const maxCols = is80mm ? 48 : 32;
+    const divider = '='.repeat(maxCols);
+    const subDivider = '-'.repeat(maxCols);
+
+    const encoder = new TextEncoder();
+    const byteChunks = [];
+    const append = (b) => {
+      if (Array.isArray(b)) byteChunks.push(new Uint8Array(b));
+      else if (b instanceof Uint8Array) byteChunks.push(b);
+      else if (typeof b === 'string') byteChunks.push(encoder.encode(b));
+    };
+
+    const formatRow = (left, right) => {
+      const leftStr = String(left || '');
+      const rightStr = String(right || '');
+      const spaces = Math.max(1, maxCols - leftStr.length - rightStr.length);
+      return leftStr + ' '.repeat(spaces) + rightStr + '\n';
+    };
+
+    const formatRp = (num) => 'Rp ' + Math.round(Number(num) || 0).toLocaleString('id-ID');
+
+    // 1. Init printer
+    append(COMMANDS.INIT);
+
+    // 2. Header Store Info
+    append(COMMANDS.ALIGN_CENTER);
+    append(COMMANDS.DOUBLE_HEIGHT);
+    append(COMMANDS.BOLD_ON);
+    append((settings.store_name || 'PD. HASIL BUMI RAYA 1') + '\n');
+    append(COMMANDS.NORMAL);
+    append(COMMANDS.BOLD_OFF);
+
+    if (settings.store_address) {
+      append((settings.store_address) + '\n');
+    }
+    if (settings.store_phone) {
+      append('Telp/WA: ' + settings.store_phone + '\n');
+    }
+
+    append(divider + '\n');
+    append(COMMANDS.BOLD_ON);
+    append('*** BUKTI KASBON / PIUTANG ***\n');
+    if (isReprint) {
+      append('*** SALINAN / CETAK ULANG ***\n');
+    }
+    append(COMMANDS.BOLD_OFF);
+    append(divider + '\n');
+
+    // 3. Meta Data
+    append(COMMANDS.ALIGN_LEFT);
+    append(formatRow('No. Bukti  :', debt.manual_ref_no || debt.order_no || '-'));
+    append(formatRow('Waktu      :', parseSafeDate(debt.created_at || Date.now()).toLocaleString('id-ID')));
+    append(formatRow('Pencatat   :', debt.recorded_by_name || 'Kasir'));
+    append(formatRow('Peminjam   :', debt.customer_name || 'Pelanggan'));
+    if (debt.customer_phone) {
+      append(formatRow('No. HP/WA  :', debt.customer_phone));
+    }
+    if (debt.due_date) {
+      append(formatRow('Jatuh Tempo:', debt.due_date));
+    }
+    append(subDivider + '\n');
+
+    // 4. Details / Keperluan
+    append(COMMANDS.BOLD_ON);
+    append('Keperluan / Keterangan:\n');
+    append(COMMANDS.BOLD_OFF);
+    append('  ' + (debt.notes || 'Kasbon manual kios') + '\n');
+    append(subDivider + '\n');
+
+    // 5. Financial Summary
+    append(COMMANDS.BOLD_ON);
+    append(formatRow('TOTAL KASBON', formatRp(debt.total_amount)));
+    append(COMMANDS.BOLD_OFF);
+    if (debt.paid_amount > 0) {
+      append(formatRow('Uang Muka (DP)', formatRp(debt.paid_amount)));
+    }
+    append(COMMANDS.BOLD_ON);
+    append(formatRow('SISA PIUTANG', formatRp(debt.remaining_amount)));
+    append(COMMANDS.BOLD_OFF);
+    append(subDivider + '\n');
+
+    // 6. Signatures
+    append(COMMANDS.ALIGN_CENTER);
+    append('\n');
+    if (is80mm) {
+      append('Tanda Tangan Peminjam:           Kasir / Toko:\n\n\n');
+      append('( ..................... )       ( ..................... )\n');
+    } else {
+      append('Peminjam:           Kasir:\n\n\n');
+      append('(..........)     (..........)\n');
+    }
+
+    // 7. Footer
+    append(divider + '\n');
+    append('Harap simpan bukti ini sebagai\nkonfirmasi kasbon yang sah.\n');
+    append(COMMANDS.FEED_AND_CUT);
+
+    let totalLen = 0;
+    byteChunks.forEach(c => (totalLen += c.length));
+    const merged = new Uint8Array(totalLen);
+    let offset = 0;
+    byteChunks.forEach(c => {
+      merged.set(c, offset);
+      offset += c.length;
+    });
+    return merged;
+  }
+
+  // --- Main Print Debt Receipt Method ---
+  async printDebtReceipt(debt, settings = {}, isReprint = false) {
+    const bytes = this.buildDebtReceiptBytes(debt, settings, isReprint);
 
     if (this.config.mode === 'bluetooth') {
       await this.ensureConnection();

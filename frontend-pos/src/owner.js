@@ -70,6 +70,7 @@ const state = {
   debtSummary: {},
   activeDebtFilter: 'all',
   activeDebtForPayment: null,
+  customers: [],
   revenueChartInstance: null,
   reportSalesChartInstance: null,
   currentChartTimeView: '7days',
@@ -128,11 +129,42 @@ const el = {
   // Liquidity & Working Capital Snapshot
   lblWorkingCapitalStatus: document.getElementById('lblWorkingCapitalStatus'),
   liqCashDrawer: document.getElementById('liqCashDrawer'),
+  liqCashSafe: document.getElementById('liqCashSafe'),
+  liqTotalPhysicalCash: document.getElementById('liqTotalPhysicalCash'),
+  btnOpenSafeCashModal: document.getElementById('btnOpenSafeCashModal'),
+  btnOpenSafeCashTabBtn: document.getElementById('btnOpenSafeCashTabBtn'),
   liqBankIncoming: document.getElementById('liqBankIncoming'),
   liqCustomerDebts: document.getElementById('liqCustomerDebts'),
   liqCustomerDebtorsCount: document.getElementById('liqCustomerDebtorsCount'),
   liqSupplierDebts: document.getElementById('liqSupplierDebts'),
   liqSuppliersCount: document.getElementById('liqSuppliersCount'),
+
+  // Safe Cash Management Modal & Controls
+  modalOwnerSafeCash: document.getElementById('modalOwnerSafeCash'),
+  btnCloseOwnerSafeCash: document.getElementById('btnCloseOwnerSafeCash'),
+  btnCloseSafeModalFooter: document.getElementById('btnCloseSafeModalFooter'),
+  safeModalBalanceDisplay: document.getElementById('safeModalBalanceDisplay'),
+  safeModalDrawerRef: document.getElementById('safeModalDrawerRef'),
+  safeModalTotalPhysicalRef: document.getElementById('safeModalTotalPhysicalRef'),
+  safeModalTodayIn: document.getElementById('safeModalTodayIn'),
+  safeModalTodayOut: document.getElementById('safeModalTodayOut'),
+  safeModalTotalSupplier: document.getElementById('safeModalTotalSupplier'),
+  safeModalTotalPrive: document.getElementById('safeModalTotalPrive'),
+  formSafeCashAction: document.getElementById('formSafeCashAction'),
+  safeActionType: document.getElementById('safeActionType'),
+  safeActionAmount: document.getElementById('safeActionAmount'),
+  safeActionSource: document.getElementById('safeActionSource'),
+  safeSourceWrapper: document.getElementById('safeSourceWrapper'),
+  safeActionNotes: document.getElementById('safeActionNotes'),
+  lblSafeAmount: document.getElementById('lblSafeAmount'),
+  lblSafeSource: document.getElementById('lblSafeSource'),
+  btnSubmitSafeAction: document.getElementById('btnSubmitSafeAction'),
+  btnTabInitialSafe: document.getElementById('btnTabInitialSafe'),
+  safeHistoryFilterType: document.getElementById('safeHistoryFilterType'),
+  btnRefreshSafeHistory: document.getElementById('btnRefreshSafeHistory'),
+  safeCashTableBody: document.getElementById('safeCashTableBody'),
+  ownerSourceSafe: document.getElementById('ownerSourceSafe'),
+  ownerPurchasePaymentMethodSelect: document.getElementById('ownerPurchasePaymentMethodSelect'),
 
   // Daily Cashflow Movement Ledger
   netCashflowPill: document.getElementById('netCashflowPill'),
@@ -394,6 +426,22 @@ const el = {
   ownerDebtsTableBody: document.getElementById('ownerDebtsTableBody'),
   searchOwnerDebt: document.getElementById('searchOwnerDebt'),
   btnRefreshOwnerDebts: document.getElementById('btnRefreshOwnerDebts'),
+  btnOwnerOpenManualDebtModal: document.getElementById('btnOwnerOpenManualDebtModal'),
+
+  // Modal Manual Debt (Owner)
+  modalOwnerManualDebt: document.getElementById('modalOwnerManualDebt'),
+  btnCloseOwnerManualDebt: document.getElementById('btnCloseOwnerManualDebt'),
+  btnCancelOwnerManualDebt: document.getElementById('btnCancelOwnerManualDebt'),
+  btnSubmitOwnerManualDebt: document.getElementById('btnSubmitOwnerManualDebt'),
+  ownerManualDebtCustomerSelect: document.getElementById('ownerManualDebtCustomerSelect'),
+  ownerManualDebtCustomerName: document.getElementById('ownerManualDebtCustomerName'),
+  ownerManualDebtCustomerPhone: document.getElementById('ownerManualDebtCustomerPhone'),
+  ownerManualDebtTotalAmount: document.getElementById('ownerManualDebtTotalAmount'),
+  ownerManualDebtDpAmount: document.getElementById('ownerManualDebtDpAmount'),
+  ownerManualDebtDpMethod: document.getElementById('ownerManualDebtDpMethod'),
+  ownerManualDebtDueDate: document.getElementById('ownerManualDebtDueDate'),
+  ownerManualDebtNotes: document.getElementById('ownerManualDebtNotes'),
+  ownerManualDebtRemainingPreview: document.getElementById('ownerManualDebtRemainingPreview'),
 
   // Modal Pay Debt (Owner)
   modalOwnerPayDebt: document.getElementById('modalOwnerPayDebt'),
@@ -1200,6 +1248,47 @@ function bindEvents() {
     });
   }
 
+  // Modal Manual Debt Events
+  if (el.btnOwnerOpenManualDebtModal) {
+    el.btnOwnerOpenManualDebtModal.addEventListener('click', openOwnerManualDebtModal);
+  }
+  if (el.btnCloseOwnerManualDebt) {
+    el.btnCloseOwnerManualDebt.addEventListener('click', () => {
+      if (el.modalOwnerManualDebt) el.modalOwnerManualDebt.style.display = 'none';
+    });
+  }
+  if (el.btnCancelOwnerManualDebt) {
+    el.btnCancelOwnerManualDebt.addEventListener('click', () => {
+      if (el.modalOwnerManualDebt) el.modalOwnerManualDebt.style.display = 'none';
+    });
+  }
+  if (el.ownerManualDebtCustomerSelect) {
+    el.ownerManualDebtCustomerSelect.addEventListener('change', (e) => {
+      const selected = e.target.options[e.target.selectedIndex];
+      if (selected && selected.value) {
+        if (el.ownerManualDebtCustomerName) el.ownerManualDebtCustomerName.value = selected.dataset.name || '';
+        if (el.ownerManualDebtCustomerPhone) el.ownerManualDebtCustomerPhone.value = selected.dataset.phone || '';
+      }
+    });
+  }
+  if (el.ownerManualDebtTotalAmount) {
+    el.ownerManualDebtTotalAmount.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = raw ? formatRupiah(Number(raw)) : '';
+      updateOwnerManualDebtPreview();
+    });
+  }
+  if (el.ownerManualDebtDpAmount) {
+    el.ownerManualDebtDpAmount.addEventListener('input', (e) => {
+      const raw = e.target.value.replace(/[^0-9]/g, '');
+      e.target.value = raw ? formatRupiah(Number(raw)) : '';
+      updateOwnerManualDebtPreview();
+    });
+  }
+  if (el.btnSubmitOwnerManualDebt) {
+    el.btnSubmitOwnerManualDebt.addEventListener('click', handleSaveOwnerManualDebt);
+  }
+
 function switchTab(tabId) {
   if (!tabId) return;
 
@@ -1723,6 +1812,9 @@ function switchTab(tabId) {
   if (el.ownerSourceTransfer) {
     el.ownerSourceTransfer.addEventListener('change', checkOwnerExpenseSufficiency);
   }
+  if (el.ownerSourceSafe) {
+    el.ownerSourceSafe.addEventListener('change', checkOwnerExpenseSufficiency);
+  }
   if (el.btnOwnerQuickAddIncomeFromAlert) {
     el.btnOwnerQuickAddIncomeFromAlert.addEventListener('click', () => {
       const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0) || 0;
@@ -1737,6 +1829,41 @@ function switchTab(tabId) {
   if (el.btnSubmitOwnerAddExpense) {
     el.btnSubmitOwnerAddExpense.addEventListener('click', handleSaveOwnerExpense);
   }
+
+  // Safe Cash Modal Triggers & Event Listeners
+  if (el.btnOpenSafeCashModal) {
+    el.btnOpenSafeCashModal.addEventListener('click', openSafeCashModal);
+  }
+  if (el.btnOpenSafeCashTabBtn) {
+    el.btnOpenSafeCashTabBtn.addEventListener('click', openSafeCashModal);
+  }
+  if (el.btnCloseOwnerSafeCash) {
+    el.btnCloseOwnerSafeCash.addEventListener('click', closeSafeCashModal);
+  }
+  if (el.btnCloseSafeModalFooter) {
+    el.btnCloseSafeModalFooter.addEventListener('click', closeSafeCashModal);
+  }
+  if (el.formSafeCashAction) {
+    el.formSafeCashAction.addEventListener('submit', handleSafeActionSubmit);
+  }
+  if (el.safeHistoryFilterType) {
+    el.safeHistoryFilterType.addEventListener('change', loadSafeCashData);
+  }
+  if (el.btnRefreshSafeHistory) {
+    el.btnRefreshSafeHistory.addEventListener('click', loadSafeCashData);
+  }
+
+  document.querySelectorAll('.btn-safe-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchSafeActionTab(btn.dataset.action);
+    });
+  });
+
+  document.querySelectorAll('.btn-chip-safe').forEach(btn => {
+    btn.addEventListener('click', () => {
+      addSafeQuickAmount(Number(btn.dataset.amount));
+    });
+  });
 
   if (el.btnOwnerAddIncome) {
     el.btnOwnerAddIncome.addEventListener('click', () => {
@@ -2114,15 +2241,23 @@ function openProfitBreakdownModal() {
 
 function renderLiquiditySnapshot() {
   const liq = state.dashboard.liquidity_snapshot || {};
-  if (el.liqCashDrawer) el.liqCashDrawer.textContent = formatRupiah(liq.cash_in_drawer || 0);
+  const safeCash = Number(liq.cash_in_safe !== undefined ? liq.cash_in_safe : (state.dashboard.summary ? state.dashboard.summary.cash_in_safe : 0)) || 0;
+  const drawerCash = Number(liq.cash_in_drawer || 0);
+  const totalPhysical = Number(liq.total_cash_liquid || (drawerCash + safeCash));
+
+  state.safeCashBalance = safeCash;
+
+  if (el.liqCashDrawer) el.liqCashDrawer.textContent = formatRupiah(drawerCash);
+  if (el.liqCashSafe) el.liqCashSafe.textContent = formatRupiah(safeCash);
+  if (el.liqTotalPhysicalCash) el.liqTotalPhysicalCash.textContent = formatRupiah(totalPhysical);
   if (el.liqBankIncoming) el.liqBankIncoming.textContent = formatRupiah(liq.bank_incoming_today || 0);
   if (el.liqCustomerDebts) el.liqCustomerDebts.textContent = formatRupiah(liq.total_customer_debts || 0);
-  if (el.liqCustomerDebtorsCount) el.liqCustomerDebtorsCount.textContent = `${liq.total_debtors || 0} Pelanggan belum lunas`;
+  if (el.liqCustomerDebtorsCount) el.liqCustomerDebtorsCount.textContent = `${liq.total_debtors || 0} Pelanggan`;
   if (el.liqSupplierDebts) el.liqSupplierDebts.textContent = formatRupiah(liq.total_supplier_debt || 0);
   if (el.liqSuppliersCount) el.liqSuppliersCount.textContent = `${liq.total_suppliers_debt || 0} Pemasok tempo aktif`;
 
   if (el.lblWorkingCapitalStatus) {
-    const cashTotal = (liq.cash_in_drawer || 0) + (liq.bank_incoming_today || 0);
+    const cashTotal = totalPhysical + (liq.bank_incoming_today || 0);
     const supplierPayables = liq.total_supplier_debt || 0;
     if (cashTotal >= supplierPayables) {
       el.lblWorkingCapitalStatus.style.background = '#ecfdf5';
@@ -2133,7 +2268,7 @@ function renderLiquiditySnapshot() {
       el.lblWorkingCapitalStatus.style.background = '#fff1f2';
       el.lblWorkingCapitalStatus.style.borderColor = '#fecdd3';
       el.lblWorkingCapitalStatus.style.color = '#e11d48';
-      el.lblWorkingCapitalStatus.innerHTML = '⚠️ Perhatian: Hutang Supplier > Kas Toko';
+      el.lblWorkingCapitalStatus.innerHTML = '⚠️ Perhatian: Hutang Supplier > Total Kas Toko';
     }
   }
 }
@@ -4464,7 +4599,12 @@ async function loadSalesReport() {
 
           return `
             <tr>
-              <td><strong>${o.order_no}</strong></td>
+              <td>
+                <strong style="font-family: var(--font-mono); font-size: 12.5px;">${o.order_no}</strong>
+                ${o.manual_total_override ? '<div style="font-size:10px; color:#d97706; font-weight:700;">✍️ Nego Total</div>' : ''}
+                ${(o.rotten_refund_amount && Number(o.rotten_refund_amount) > 0) ? `<div style="font-size:10px; color:#dc2626; font-weight:700;" title="${o.rotten_refund_notes || ''}">🥔 Ganti Busuk: -${formatRupiah(o.rotten_refund_amount)}</div>` : ''}
+                ${(o.discount_amount && Number(o.discount_amount) > 0) ? `<div style="font-size:10px; color:#0284c7; font-weight:700;" title="${o.discount_notes || ''}">✂️ Diskon: -${formatRupiah(o.discount_amount)}</div>` : ''}
+              </td>
               <td>${timeFormatted}</td>
               <td>${o.cashier_name || 'Kasir'}</td>
               <td>${o.customer_name || 'Umum'}</td>
@@ -4892,6 +5032,7 @@ function renderOwnerDebtsTable() {
       <tr>
         <td>
           <strong style="color: #0f172a; font-family: var(--font-mono); font-size: 13px;">${d.order_no}</strong>
+          ${!d.order_id ? '<span style="display:inline-block; font-size:10px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:4px; padding:1px 5px; margin-left:4px; font-weight:700;">✍️ MANUAL</span>' : ''}
           <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${orderDateFormatted}</div>
         </td>
         <td>
@@ -4911,7 +5052,7 @@ function renderOwnerDebtsTable() {
         </td>
         <td class="text-center">${statusBadge}</td>
         <td class="text-center">
-          <div style="display: flex; gap: 6px; justify-content: center;">
+          <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
             ${d.remaining_amount > 0 ? `
               <button class="btn-table-action btn-pay-debt" data-debt-id="${d.id}" style="padding: 5px 12px; font-size: 12px; background: #059669; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                 💵 Bayar
@@ -4920,6 +5061,11 @@ function renderOwnerDebtsTable() {
             <button class="btn-table-action btn-detail-debt" data-debt-id="${d.id}" style="padding: 5px 10px; font-size: 12px; background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-weight: 600;">
               📋 Rincian
             </button>
+            ${(!d.order_id && d.paid_amount == 0) ? `
+              <button class="btn-table-action btn-delete-manual-debt" data-debt-id="${d.id}" style="padding: 5px 8px; font-size: 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; cursor: pointer; font-weight: 600;" title="Hapus Piutang Manual">
+                🗑️
+              </button>
+            ` : ''}
           </div>
         </td>
       </tr>
@@ -4936,6 +5082,26 @@ function renderOwnerDebtsTable() {
   el.ownerDebtsTableBody.querySelectorAll('.btn-detail-debt').forEach(btn => {
     btn.addEventListener('click', () => {
       openOwnerDebtDetailModal(Number(btn.dataset.debtId));
+    });
+  });
+
+  el.ownerDebtsTableBody.querySelectorAll('.btn-delete-manual-debt').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = Number(btn.dataset.debtId);
+      if (confirm('Apakah Anda yakin ingin menghapus piutang manual ini? Data kasbon ini akan dibatalkan/dihapus.')) {
+        try {
+          const res = await api.deleteManualDebt(id);
+          if (res.success) {
+            alert(res.message);
+            await loadDebtsData();
+            await loadAllData();
+          } else {
+            alert('Gagal: ' + res.message);
+          }
+        } catch (err) {
+          alert('Terjadi kesalahan: ' + err.message);
+        }
+      }
     });
   });
 }
@@ -5067,6 +5233,135 @@ async function openOwnerDebtDetailModal(debtId) {
     }
   } catch (err) {
     alert('Gagal membuka rincian piutang: ' + err.message);
+  }
+}
+
+// Catat Piutang Manual (Owner)
+async function openOwnerManualDebtModal() {
+  try {
+    if (!state.customers || state.customers.length === 0) {
+      const res = await api.getCustomers();
+      if (res && res.success) {
+        state.customers = res.customers || [];
+      }
+    }
+
+    if (el.ownerManualDebtCustomerSelect) {
+      el.ownerManualDebtCustomerSelect.innerHTML = '<option value="">-- Ketik Nama Pelanggan Baru --</option>' +
+        (state.customers || []).map(c => `
+          <option value="${c.id}" data-name="${c.name}" data-phone="${c.phone || ''}">
+            ${c.name} (${c.tier === 'reseller' ? 'Grosir' : 'Eceran'})${c.phone ? ' - ' + c.phone : ''}
+          </option>
+        `).join('');
+    }
+
+    if (el.ownerManualDebtCustomerName) el.ownerManualDebtCustomerName.value = '';
+    if (el.ownerManualDebtCustomerPhone) el.ownerManualDebtCustomerPhone.value = '';
+    if (el.ownerManualDebtTotalAmount) el.ownerManualDebtTotalAmount.value = '';
+    if (el.ownerManualDebtDpAmount) el.ownerManualDebtDpAmount.value = '';
+    if (el.ownerManualDebtDpMethod) el.ownerManualDebtDpMethod.value = 'transfer';
+    if (el.ownerManualDebtNotes) el.ownerManualDebtNotes.value = '';
+
+    // Default due date to +7 days
+    if (el.ownerManualDebtDueDate) {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      el.ownerManualDebtDueDate.value = d.toISOString().split('T')[0];
+    }
+
+    updateOwnerManualDebtPreview();
+
+    if (el.modalOwnerManualDebt) {
+      el.modalOwnerManualDebt.style.display = 'flex';
+      setTimeout(() => {
+        if (el.ownerManualDebtCustomerName) el.ownerManualDebtCustomerName.focus();
+      }, 50);
+    }
+  } catch (err) {
+    console.error('Error opening owner manual debt modal:', err);
+    alert('Gagal membuka modal kasbon manual: ' + err.message);
+  }
+}
+
+function updateOwnerManualDebtPreview() {
+  const rawTotal = el.ownerManualDebtTotalAmount ? el.ownerManualDebtTotalAmount.value.replace(/[^0-9]/g, '') : '0';
+  const rawDp = el.ownerManualDebtDpAmount ? el.ownerManualDebtDpAmount.value.replace(/[^0-9]/g, '') : '0';
+
+  const total = Number(rawTotal) || 0;
+  const dp = Number(rawDp) || 0;
+  const remaining = Math.max(0, total - dp);
+
+  if (el.ownerManualDebtRemainingPreview) {
+    el.ownerManualDebtRemainingPreview.textContent = formatRupiah(remaining);
+  }
+}
+
+async function handleSaveOwnerManualDebt() {
+  const customerId = el.ownerManualDebtCustomerSelect ? el.ownerManualDebtCustomerSelect.value : '';
+  const customerName = el.ownerManualDebtCustomerName ? el.ownerManualDebtCustomerName.value.trim() : '';
+  const customerPhone = el.ownerManualDebtCustomerPhone ? el.ownerManualDebtCustomerPhone.value.trim() : '';
+  const rawTotal = el.ownerManualDebtTotalAmount ? el.ownerManualDebtTotalAmount.value.replace(/[^0-9]/g, '') : '0';
+  const rawDp = el.ownerManualDebtDpAmount ? el.ownerManualDebtDpAmount.value.replace(/[^0-9]/g, '') : '0';
+  const dpMethod = el.ownerManualDebtDpMethod ? el.ownerManualDebtDpMethod.value : 'transfer';
+  const dueDate = el.ownerManualDebtDueDate ? el.ownerManualDebtDueDate.value : '';
+  const notes = el.ownerManualDebtNotes ? el.ownerManualDebtNotes.value.trim() : '';
+
+  const total = Number(rawTotal);
+  const dp = Number(rawDp) || 0;
+
+  if (!customerName && !customerId) {
+    alert('Nama pembeli/peminjam kasbon wajib diisi!');
+    if (el.ownerManualDebtCustomerName) el.ownerManualDebtCustomerName.focus();
+    return;
+  }
+
+  if (isNaN(total) || total <= 0) {
+    alert('Nominal kasbon / piutang harus lebih dari Rp 0!');
+    if (el.ownerManualDebtTotalAmount) el.ownerManualDebtTotalAmount.focus();
+    return;
+  }
+
+  if (dp > total) {
+    alert(`Uang Muka DP (${formatRupiah(dp)}) tidak boleh melebihi total kasbon (${formatRupiah(total)})!`);
+    if (el.ownerManualDebtDpAmount) el.ownerManualDebtDpAmount.focus();
+    return;
+  }
+
+  try {
+    if (el.btnSubmitOwnerManualDebt) {
+      el.btnSubmitOwnerManualDebt.disabled = true;
+      el.btnSubmitOwnerManualDebt.textContent = 'Menyimpan...';
+    }
+
+    const payload = {
+      customer_id: customerId ? Number(customerId) : null,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      total_amount: total,
+      dp_amount: dp,
+      dp_payment_method: dpMethod,
+      due_date: dueDate || null,
+      notes: notes
+    };
+
+    const res = await api.createManualDebt(payload);
+
+    if (res.success) {
+      alert(res.message || 'Piutang manual berhasil dicatat!');
+      if (el.modalOwnerManualDebt) el.modalOwnerManualDebt.style.display = 'none';
+
+      await loadDebtsData();
+      await loadAllData();
+    } else {
+      alert('Gagal: ' + res.message);
+    }
+  } catch (err) {
+    alert('Terjadi kesalahan: ' + err.message);
+  } finally {
+    if (el.btnSubmitOwnerManualDebt) {
+      el.btnSubmitOwnerManualDebt.disabled = false;
+      el.btnSubmitOwnerManualDebt.textContent = 'Simpan Piutang Manual';
+    }
   }
 }
 
@@ -5729,12 +6024,15 @@ async function handleSubmitOwnerRecordPurchase() {
     return;
   }
 
+  const paymentMethod = el.ownerPurchasePaymentMethodSelect ? el.ownerPurchasePaymentMethodSelect.value : 'safe';
+
   const payload = {
     supplier_id: supplierId ? Number(supplierId) : null,
     product_id: Number(productId),
     qty_kg: qty,
     cost_price: cost,
     payment_status: paymentStatus,
+    payment_method: paymentMethod,
     due_date: dueDate,
     dp_amount: dpAmount,
     notes
@@ -6264,8 +6562,10 @@ async function loadOwnerExpensesData() {
 function checkOwnerExpenseSufficiency() {
   if (!el.ownerExpenseShortageAlert) return;
   const isCash = el.ownerSourceCash && el.ownerSourceCash.checked;
+  const isSafe = el.ownerSourceSafe && el.ownerSourceSafe.checked;
   const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0) || 0;
   const drawerCash = Number(state.currentDrawerCash) || 0;
+  const safeCash = Number(state.safeCashBalance) || 0;
 
   if (isCash && amount > drawerCash) {
     const shortage = amount - drawerCash;
@@ -6275,6 +6575,15 @@ function checkOwnerExpenseSufficiency() {
     if (el.btnSubmitOwnerAddExpense) {
       el.btnSubmitOwnerAddExpense.style.background = '#94a3b8';
       el.btnSubmitOwnerAddExpense.title = 'Saldo kas laci kasir tidak mencukupi.';
+    }
+  } else if (isSafe && amount > safeCash) {
+    const shortage = amount - safeCash;
+    if (el.lblOwnerDrawerAvail) el.lblOwnerDrawerAvail.textContent = formatRupiah(safeCash);
+    if (el.lblOwnerDrawerShortage) el.lblOwnerDrawerShortage.textContent = formatRupiah(shortage);
+    el.ownerExpenseShortageAlert.style.display = 'block';
+    if (el.btnSubmitOwnerAddExpense) {
+      el.btnSubmitOwnerAddExpense.style.background = '#94a3b8';
+      el.btnSubmitOwnerAddExpense.title = 'Saldo kas brankas toko tidak mencukupi.';
     }
   } else {
     el.ownerExpenseShortageAlert.style.display = 'none';
@@ -6413,7 +6722,8 @@ function renderOwnerExpensesTable() {
 async function handleSaveOwnerExpense() {
   const category = el.ownerExpenseCategorySelect ? el.ownerExpenseCategorySelect.value : 'makan_rokok';
   const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0);
-  const source = el.ownerSourceCash && el.ownerSourceCash.checked ? 'cash' : 'transfer';
+  const selectedSourceRadio = document.querySelector('input[name="ownerExpenseSource"]:checked');
+  const source = selectedSourceRadio ? selectedSourceRadio.value : 'cash';
   const notes = el.ownerExpenseNotesInput ? el.ownerExpenseNotesInput.value.trim() : '';
 
   if (isNaN(amount) || amount <= 0) {
@@ -6425,7 +6735,15 @@ async function handleSaveOwnerExpense() {
   // Pre-check drawer cash balance if source is cash
   if (source === 'cash' && amount > (Number(state.currentDrawerCash) || 0)) {
     const shortage = amount - (Number(state.currentDrawerCash) || 0);
-    showToast(`Saldo kas laci tidak mencukupi! Kurang ${formatRupiah(shortage)}. Tambah modal kas laci terlebih dahulu atau gunakan Transfer Bank.`, 'error');
+    showToast(`Saldo kas laci tidak mencukupi! Kurang ${formatRupiah(shortage)}. Tambah modal kas laci terlebih dahulu atau gunakan Transfer Bank / Kas Brankas.`, 'error');
+    checkOwnerExpenseSufficiency();
+    return;
+  }
+
+  // Pre-check safe cash balance if source is safe
+  if (source === 'safe' && amount > (Number(state.safeCashBalance) || 0)) {
+    const shortage = amount - (Number(state.safeCashBalance) || 0);
+    showToast(`Saldo kas brankas tidak mencukupi! Kurang ${formatRupiah(shortage)}. Setor uang ke brankas terlebih dahulu.`, 'error');
     checkOwnerExpenseSufficiency();
     return;
   }
@@ -6509,6 +6827,295 @@ async function handleDeleteOwnerExpense(id) {
     await loadDashboardData();
   } catch (err) {
     showToast('Gagal menghapus biaya: ' + err.message, 'error');
+  }
+}
+
+/* ==========================================================================
+   SAFE CASH MANAGEMENT (BUKU KAS FISIK DI BRANKAS TOKO)
+   ========================================================================== */
+
+function openSafeCashModal() {
+  if (el.modalOwnerSafeCash) {
+    el.modalOwnerSafeCash.style.display = 'flex';
+    switchSafeActionTab('deposit');
+    loadSafeCashData();
+  }
+}
+
+function closeSafeCashModal() {
+  if (el.modalOwnerSafeCash) {
+    el.modalOwnerSafeCash.style.display = 'none';
+  }
+}
+
+function switchSafeActionTab(action) {
+  document.querySelectorAll('.btn-safe-tab').forEach(b => {
+    if (b.dataset.action === action) {
+      b.classList.add('active');
+      b.style.borderColor = '#10b981';
+      b.style.background = '#ecfdf5';
+      b.style.color = '#065f46';
+    } else {
+      b.classList.remove('active');
+      b.style.borderColor = '#cbd5e1';
+      b.style.background = '#ffffff';
+      b.style.color = '#475569';
+    }
+  });
+
+  if (el.safeActionType) el.safeActionType.value = action;
+  if (el.safeActionAmount) el.safeActionAmount.value = '';
+  if (el.safeActionNotes) el.safeActionNotes.value = '';
+
+  if (action === 'deposit') {
+    if (el.lblSafeAmount) el.lblSafeAmount.textContent = 'Nominal Setoran (Rp):';
+    if (el.safeSourceWrapper) el.safeSourceWrapper.style.display = 'block';
+    if (el.lblSafeSource) el.lblSafeSource.textContent = 'Sumber Uang:';
+    if (el.safeActionSource) {
+      el.safeActionSource.innerHTML = `
+        <option value="drawer">💵 Dari Laci Kasir (Pindah Kas)</option>
+        <option value="capital">💼 Suntikan Modal Pribadi Owner</option>
+        <option value="bank">🏦 Tarik Tunai dari Rekening Bank</option>
+      `;
+    }
+    if (el.btnSubmitSafeAction) {
+      el.btnSubmitSafeAction.innerHTML = '<span>📥</span> Simpan Setoran';
+      el.btnSubmitSafeAction.style.background = '#059669';
+    }
+  } else if (action === 'withdraw') {
+    if (el.lblSafeAmount) el.lblSafeAmount.textContent = 'Nominal Penarikan (Rp):';
+    if (el.safeSourceWrapper) el.safeSourceWrapper.style.display = 'block';
+    if (el.lblSafeSource) el.lblSafeSource.textContent = 'Tujuan Penarikan:';
+    if (el.safeActionSource) {
+      el.safeActionSource.innerHTML = `
+        <option value="drawer">💵 Ke Laci Kasir (Tambah Uang Kembalian)</option>
+        <option value="bank">🏦 Setor Kas ke Rekening Bank Toko</option>
+        <option value="other">📝 Pengeluaran Tunai Toko Lainnya</option>
+      `;
+    }
+    if (el.btnSubmitSafeAction) {
+      el.btnSubmitSafeAction.innerHTML = '<span>📤</span> Simpan Penarikan';
+      el.btnSubmitSafeAction.style.background = '#d97706';
+    }
+  } else if (action === 'prive') {
+    if (el.lblSafeAmount) el.lblSafeAmount.textContent = 'Nominal Prive Pribadi (Rp):';
+    if (el.safeSourceWrapper) el.safeSourceWrapper.style.display = 'none';
+    if (el.btnSubmitSafeAction) {
+      el.btnSubmitSafeAction.innerHTML = '<span>👤</span> Ambil Prive Owner';
+      el.btnSubmitSafeAction.style.background = '#7c3aed';
+    }
+  } else if (action === 'initial') {
+    if (el.lblSafeAmount) el.lblSafeAmount.textContent = 'Nominal Saldo Awal Fisik (Rp):';
+    if (el.safeSourceWrapper) el.safeSourceWrapper.style.display = 'none';
+    if (el.btnSubmitSafeAction) {
+      el.btnSubmitSafeAction.innerHTML = '<span>⚙️</span> Tetapkan Saldo Awal';
+      el.btnSubmitSafeAction.style.background = '#0f766e';
+    }
+  }
+}
+
+function addSafeQuickAmount(amt) {
+  if (!el.safeActionAmount) return;
+  const current = Number(el.safeActionAmount.value) || 0;
+  el.safeActionAmount.value = current + amt;
+}
+
+async function loadSafeCashData() {
+  try {
+    const filterType = el.safeHistoryFilterType ? el.safeHistoryFilterType.value : 'all';
+    const res = await api.getSafeCash({ type: filterType, limit: 100 });
+    if (res.success) {
+      state.safeCashData = res;
+      state.safeCashBalance = res.current_balance;
+      renderSafeCashUI(res);
+    }
+  } catch (err) {
+    console.error('Gagal memuat data kas brankas:', err);
+    showToast('Gagal memuat data kas brankas: ' + err.message, 'error');
+  }
+}
+
+function renderSafeCashUI(data) {
+  if (!data) return;
+
+  const curBalance = Number(data.current_balance) || 0;
+  const drawerCash = Number(state.currentDrawerCash) || 0;
+  const totalPhysical = curBalance + drawerCash;
+
+  if (el.safeModalBalanceDisplay) el.safeModalBalanceDisplay.textContent = formatRupiah(curBalance);
+  if (el.safeModalDrawerRef) el.safeModalDrawerRef.textContent = formatRupiah(drawerCash);
+  if (el.safeModalTotalPhysicalRef) el.safeModalTotalPhysicalRef.textContent = formatRupiah(totalPhysical);
+
+  // Sync to main liquidity cards if available
+  if (el.liqCashSafe) el.liqCashSafe.textContent = formatRupiah(curBalance);
+  if (el.liqTotalPhysicalCash) el.liqTotalPhysicalCash.textContent = formatRupiah(totalPhysical);
+
+  if (el.safeModalTodayIn) el.safeModalTodayIn.textContent = formatRupiah(data.today ? data.today.inflow : 0);
+  if (el.safeModalTodayOut) el.safeModalTodayOut.textContent = formatRupiah(data.today ? data.today.outflow : 0);
+  if (el.safeModalTotalSupplier) el.safeModalTotalSupplier.textContent = formatRupiah(data.all_time ? data.all_time.supplier_pay : 0);
+  if (el.safeModalTotalPrive) el.safeModalTotalPrive.textContent = formatRupiah(data.all_time ? data.all_time.prive : 0);
+
+  // Hide or show 'Atur Saldo Awal' tab button: only prominent if 0 trx or 0 balance
+  if (el.btnTabInitialSafe) {
+    if (curBalance > 0 && data.total_trx > 0) {
+      el.btnTabInitialSafe.style.opacity = '0.6';
+      el.btnTabInitialSafe.title = 'Brankas sudah berjalan dengan saldo aktif.';
+    } else {
+      el.btnTabInitialSafe.style.opacity = '1';
+      el.btnTabInitialSafe.title = 'Atur uang fisik awal di brankas';
+    }
+  }
+
+  // Render Transactions Table
+  if (!el.safeCashTableBody) return;
+  const transactions = data.transactions || [];
+
+  if (transactions.length === 0) {
+    el.safeCashTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 32px 14px; color: #94a3b8;">
+          <div style="font-size: 30px; margin-bottom: 6px;">🔐</div>
+          <strong style="color: #64748b; font-size: 13.5px;">Belum ada riwayat mutasi brankas</strong>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">Gunakan tombol 'Setor ke Brankas' atau 'Atur Saldo Awal' di atas untuk memulai pencatatan kas fisik.</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  const typeConfig = {
+    initial: { label: '⚙️ Saldo Awal', color: '#0f766e', bg: '#ccfbf1' },
+    deposit: { label: '📥 Setoran Masuk', color: '#047857', bg: '#ecfdf5' },
+    withdrawal: { label: '📤 Tarik Kas', color: '#b45309', bg: '#fffbeb' },
+    expense: { label: '💸 Biaya Operasional', color: '#be123c', bg: '#fff1f2' },
+    supplier_pay: { label: '🚛 Bayar Kulakan', color: '#1d4ed8', bg: '#eff6ff' },
+    income: { label: '💵 Kas Masuk Lain', color: '#059669', bg: '#ecfdf5' },
+    prive: { label: '👤 Prive Owner', color: '#6d28d9', bg: '#f5f3ff' },
+    transfer_in: { label: '📥 Pindahan Masuk', color: '#047857', bg: '#ecfdf5' },
+    transfer_out: { label: '📤 Pindahan Keluar', color: '#b45309', bg: '#fffbeb' }
+  };
+
+  const sourceLabels = {
+    drawer: '💵 Kas Laci Kasir',
+    capital: '💼 Modal Pribadi Owner',
+    bank: '🏦 Rekening Bank',
+    safe: '🔐 Brankas Toko',
+    owner: '👤 Pribadi Pemilik',
+    owner_capital: '💼 Modal Awal Owner',
+    other: '📝 Lain-lain'
+  };
+
+  const rowsHtml = transactions.map(t => {
+    const isOut = ['withdrawal', 'transfer_out', 'expense', 'supplier_pay', 'prive'].includes(t.type);
+    const cfg = typeConfig[t.type] || { label: t.type, color: '#475569', bg: '#f1f5f9' };
+    const srcLabel = sourceLabels[t.source] || t.source || '-';
+    const amountPrefix = isOut ? '-' : '+';
+    const amountColor = isOut ? '#dc2626' : '#059669';
+
+    const dateFormatted = t.created_at ? new Date(t.created_at).toLocaleString('id-ID', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : '-';
+
+    return `
+      <tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 10px 12px;">
+          <strong style="color: #0f172a; font-family: monospace; font-size: 11.5px; display: block;">${escapeHtml(t.trx_no)}</strong>
+          <span style="font-size: 11px; color: #64748b;">${dateFormatted}</span>
+        </td>
+        <td style="padding: 10px 12px;">
+          <span style="display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; color: ${cfg.color}; background: ${cfg.bg};">
+            ${cfg.label}
+          </span>
+        </td>
+        <td style="padding: 10px 12px; font-size: 12px; color: #334155;">
+          ${srcLabel}
+        </td>
+        <td style="padding: 10px 12px; font-size: 12px; color: #475569; max-width: 220px; word-break: break-word;">
+          ${escapeHtml(t.notes || '-')}
+          ${t.reference_no ? `<br><small style="color: #94a3b8; font-family: monospace;">Ref: ${escapeHtml(t.reference_no)}</small>` : ''}
+        </td>
+        <td style="padding: 10px 12px; text-align: right;">
+          <strong style="font-family: monospace; font-size: 13px; color: ${amountColor};">
+            ${amountPrefix} ${formatRupiah(t.amount)}
+          </strong>
+        </td>
+        <td style="padding: 10px 12px; text-align: right;">
+          <span style="font-family: monospace; font-size: 12.5px; font-weight: 700; color: #047857;">
+            ${formatRupiah(t.balance_after)}
+          </span>
+        </td>
+        <td style="padding: 10px 12px; font-size: 11.5px; color: #64748b;">
+          ${escapeHtml(t.recorded_by_name || 'Owner')}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  el.safeCashTableBody.innerHTML = rowsHtml;
+}
+
+async function handleSafeActionSubmit(e) {
+  if (e) e.preventDefault();
+
+  const action = el.safeActionType ? el.safeActionType.value : 'deposit';
+  const amount = Number(el.safeActionAmount ? el.safeActionAmount.value : 0);
+  const source = el.safeActionSource ? el.safeActionSource.value : 'drawer';
+  const notes = el.safeActionNotes ? el.safeActionNotes.value.trim() : '';
+
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Nominal harus lebih besar dari Rp 0!', 'error');
+    if (el.safeActionAmount) el.safeActionAmount.focus();
+    return;
+  }
+
+  // Pre-check drawer balance if depositing from drawer
+  if (action === 'deposit' && source === 'drawer') {
+    const drawerCash = Number(state.currentDrawerCash) || 0;
+    if (amount > drawerCash) {
+      showToast(`Saldo kas laci tidak mencukupi untuk disetor! Saldo laci saat ini hanya ${formatRupiah(drawerCash)}, setoran: ${formatRupiah(amount)}.`, 'error');
+      return;
+    }
+  }
+
+  // Pre-check safe cash balance if withdrawing or prive
+  if (action === 'withdraw' || action === 'prive') {
+    const safeCash = Number(state.safeCashBalance) || 0;
+    if (amount > safeCash) {
+      showToast(`Saldo brankas tidak mencukupi! Saldo brankas saat ini: ${formatRupiah(safeCash)}, penarikan: ${formatRupiah(amount)}.`, 'error');
+      return;
+    }
+  }
+
+  try {
+    if (el.btnSubmitSafeAction) {
+      el.btnSubmitSafeAction.disabled = true;
+      el.btnSubmitSafeAction.textContent = 'Memproses...';
+    }
+
+    let res;
+    if (action === 'deposit') {
+      res = await api.depositSafeCash({ amount, source, notes });
+    } else if (action === 'withdraw') {
+      res = await api.withdrawSafeCash({ amount, destination: source, notes });
+    } else if (action === 'prive') {
+      res = await api.priveSafeCash({ amount, notes });
+    } else if (action === 'initial') {
+      res = await api.setInitialSafeCash({ amount, notes });
+    }
+
+    showToast(res.message || 'Mutasi brankas berhasil dicatat!', 'success');
+    if (el.safeActionAmount) el.safeActionAmount.value = '';
+    if (el.safeActionNotes) el.safeActionNotes.value = '';
+
+    await loadSafeCashData();
+    await loadDashboardData();
+  } catch (err) {
+    showToast('Gagal memproses mutasi: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitSafeAction) {
+      el.btnSubmitSafeAction.disabled = false;
+      switchSafeActionTab(action);
+    }
   }
 }
 

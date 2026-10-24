@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { dbQuery, getCurrentDrawerCash } = require('../db');
+const { dbQuery, getCurrentDrawerCash, getSafeCashBalance, recordSafeCashTransaction } = require('../db');
 const { authenticateToken, requireOwner, logAudit } = require('../middleware/auth');
 
 // Helper to generate unique Purchase No (KUL-YYYYMMDD-XXXX)
@@ -442,7 +442,7 @@ router.post('/purchases', authenticateToken, async (req, res) => {
         return res.status(400).json({
           success: false,
           code: 'NO_ACTIVE_SHIFT',
-          message: 'Tidak dapat membayar kulakan tunai dari kas laci karena tidak ada shift kasir yang aktif. Buka shift kasir terlebih dahulu atau gunakan Transfer Bank.'
+          message: 'Tidak dapat membayar kulakan tunai dari kas laci karena tidak ada shift kasir yang aktif. Buka shift kasir terlebih dahulu atau gunakan Transfer Bank / Brankas.'
         });
       }
 
@@ -451,8 +451,24 @@ router.post('/purchases', authenticateToken, async (req, res) => {
         return res.status(400).json({
           success: false,
           code: 'INSUFFICIENT_DRAWER_CASH',
-          message: `Saldo kas laci tidak mencukupi untuk bayar kulakan tunai! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pembayaran tunai Rp ${paidAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap tambah kas masuk/modal terlebih dahulu atau pilih metode Transfer Bank / Tempo.`,
+          message: `Saldo kas laci tidak mencukupi untuk bayar kulakan tunai! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pembayaran tunai Rp ${paidAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap tambah kas masuk/modal terlebih dahulu atau pilih metode Transfer Bank / Kas Brankas / Tempo.`,
           current_drawer_cash: drawerState.current_drawer_cash,
+          required_amount: paidAmount,
+          shortage
+        });
+      }
+    }
+
+    // RULE 2: If paid from safe cash, ensure safe has enough balance
+    if (paidAmount > 0 && payment_method === 'safe') {
+      const safeStats = await getSafeCashBalance();
+      if (safeStats.balance < paidAmount) {
+        const shortage = paidAmount - safeStats.balance;
+        return res.status(400).json({
+          success: false,
+          code: 'INSUFFICIENT_SAFE_CASH',
+          message: `Saldo kas brankas tidak mencukupi untuk bayar kulakan! Saldo brankas saat ini hanya Rp ${safeStats.balance.toLocaleString('id-ID')}, sedangkan pembayaran Rp ${paidAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap setor kas ke brankas terlebih dahulu atau pilih metode lain.`,
+          current_safe_cash: safeStats.balance,
           required_amount: paidAmount,
           shortage
         });
@@ -506,6 +522,19 @@ router.post('/purchases', authenticateToken, async (req, res) => {
           req.user.id
         ]
       );
+
+      // If paid from safe cash, record in safe cash transactions
+      if (payment_method === 'safe') {
+        await recordSafeCashTransaction({
+          user_id: req.user.id,
+          shift_id: targetShiftId,
+          type: 'supplier_pay',
+          amount: paidAmount,
+          source: 'safe',
+          reference_no: purchaseNo,
+          notes: `Bayar Kulakan ${purchaseNo} (${supplierName})`
+        });
+      }
     }
 
     // 3. Update product physical stock and cost_price
@@ -602,14 +631,14 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
     const newRemaining = Math.max(0, Number(purchase.remaining_amount) - payAmount);
     const newStatus = newRemaining === 0 ? 'lunas' : 'partial';
 
-    // RULE: Avoid minus drawer balance! If payment method is cash, check drawer cash sufficiency
+    // RULE 1: If payment method is cash drawer, check drawer cash sufficiency
     if (payment_method === 'cash') {
       const drawerState = await getCurrentDrawerCash();
       if (!drawerState.has_active_shift) {
         return res.status(400).json({
           success: false,
           code: 'NO_ACTIVE_SHIFT',
-          message: 'Tidak dapat membayar tunai dari laci karena tidak ada shift kasir yang sedang aktif. Buka shift kasir terlebih dahulu atau gunakan Transfer Bank.'
+          message: 'Tidak dapat membayar tunai dari laci karena tidak ada shift kasir yang sedang aktif. Buka shift kasir terlebih dahulu atau gunakan Transfer Bank / Brankas.'
         });
       }
 
@@ -618,8 +647,24 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
         return res.status(400).json({
           success: false,
           code: 'INSUFFICIENT_DRAWER_CASH',
-          message: `Saldo kas laci tidak mencukupi untuk bayar hutang supplier! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pembayaran tunai Rp ${payAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap tambah kas masuk/modal terlebih dahulu atau pilih metode Transfer Bank.`,
+          message: `Saldo kas laci tidak mencukupi untuk bayar hutang supplier! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pembayaran tunai Rp ${payAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap tambah kas masuk/modal terlebih dahulu atau pilih metode Transfer Bank / Kas Brankas.`,
           current_drawer_cash: drawerState.current_drawer_cash,
+          required_amount: payAmount,
+          shortage
+        });
+      }
+    }
+
+    // RULE 2: If payment method is safe cash, check safe cash sufficiency
+    if (payment_method === 'safe') {
+      const safeStats = await getSafeCashBalance();
+      if (safeStats.balance < payAmount) {
+        const shortage = payAmount - safeStats.balance;
+        return res.status(400).json({
+          success: false,
+          code: 'INSUFFICIENT_SAFE_CASH',
+          message: `Saldo kas brankas tidak mencukupi untuk bayar hutang supplier! Saldo brankas saat ini hanya Rp ${safeStats.balance.toLocaleString('id-ID')}, sedangkan pembayaran Rp ${payAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap setor kas ke brankas terlebih dahulu atau pilih metode lain.`,
+          current_safe_cash: safeStats.balance,
           required_amount: payAmount,
           shortage
         });
@@ -633,7 +678,7 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
     );
 
     // 2. Insert into supplier_payments
-    let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : (drawerState && drawerState.has_active_shift ? drawerState.shift.id : null);
+    let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
     if (!targetShiftId) {
       const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
       if (activeShift) targetShiftId = activeShift.id;
@@ -653,6 +698,19 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
         req.user.id
       ]
     );
+
+    // If paid from safe cash, record in safe cash transactions
+    if (payment_method === 'safe') {
+      await recordSafeCashTransaction({
+        user_id: req.user.id,
+        shift_id: targetShiftId,
+        type: 'supplier_pay',
+        amount: payAmount,
+        source: 'safe',
+        reference_no: purchase.purchase_no,
+        notes: `Bayar Hutang Kulakan ${purchase.purchase_no} (${purchase.supplier_name || 'Supplier'})`
+      });
+    }
 
     // 3. Log audit
     await logAudit(req.user.id, 'SUPPLIER_PAYMENT_RECORDED', {

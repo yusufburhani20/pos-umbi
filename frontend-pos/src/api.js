@@ -185,6 +185,40 @@ class ApiClient {
     });
   }
 
+  // Safe Cash (Buku Kas Brankas Toko - Owner)
+  getSafeCash(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return this.request(`/safe-cash${qs ? '?' + qs : ''}`);
+  }
+
+  setInitialSafeCash(payload) {
+    return this.request('/safe-cash/set-initial', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  depositSafeCash(payload) {
+    return this.request('/safe-cash/deposit', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  withdrawSafeCash(payload) {
+    return this.request('/safe-cash/withdraw', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  priveSafeCash(payload) {
+    return this.request('/safe-cash/prive', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
   
   createProduct(payload) {
     return this.request('/products', {
@@ -353,6 +387,19 @@ class ApiClient {
     return this.request(`/debts/${debtId}/pay`, {
       method: 'POST',
       body: JSON.stringify(payload)
+    });
+  }
+
+  createManualDebt(payload) {
+    return this.request('/debts/manual', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  deleteManualDebt(debtId) {
+    return this.request(`/debts/${debtId}`, {
+      method: 'DELETE'
     });
   }
 

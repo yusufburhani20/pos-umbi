@@ -56,6 +56,15 @@ router.get('/current', authenticateToken, async (req, res) => {
       [shift.id, shift.start_time]
     );
 
+    const safeTransferRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN type = 'deposit' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_deposited_to_safe,
+         COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
+       FROM safe_cash_transactions
+       WHERE shift_id = ? OR (shift_id IS NULL AND created_at >= ?)`,
+      [shift.id, shift.start_time]
+    );
+
     // Recent cash expenses for cashier dashboard
     const recentExpenses = await dbQuery.all(
       `SELECT id, expense_no, category, amount, notes, created_at
@@ -76,8 +85,17 @@ router.get('/current', authenticateToken, async (req, res) => {
     const cashIncome = expensesRow.cash_income || 0;
     const cashSupplier = supplierCashRow.cash_supplier_payments || 0;
     const cashDebt = debtCashRow.cash_debt_collected || 0;
+    const cashDepositedToSafe = Number(safeTransferRow ? safeTransferRow.cash_deposited_to_safe : 0) || 0;
+    const cashWithdrawnFromSafe = Number(safeTransferRow ? safeTransferRow.cash_withdrawn_from_safe : 0) || 0;
 
-    const currentDrawerCash = Number(shift.starting_cash) + Number(cashSales) + Number(cashIncome) + Number(cashDebt) - Number(cashExpenses) - Number(cashSupplier);
+    const currentDrawerCash = Number(shift.starting_cash) 
+      + Number(cashSales) 
+      + Number(cashIncome) 
+      + Number(cashDebt) 
+      + Number(cashWithdrawnFromSafe)
+      - Number(cashExpenses) 
+      - Number(cashSupplier)
+      - Number(cashDepositedToSafe);
 
     return res.json({
       success: true,
@@ -209,18 +227,31 @@ router.post('/close', authenticateToken, async (req, res) => {
       [shift_id, shift.start_time]
     );
 
+    const safeTransferRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN type = 'deposit' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_deposited_to_safe,
+         COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
+       FROM safe_cash_transactions
+       WHERE shift_id = ? OR (shift_id IS NULL AND created_at >= ?)`,
+      [shift_id, shift.start_time]
+    );
+
     const totalCashSales = ordersStatsRow.total_cash_sales || 0;
     const totalCashExpenses = cashExpensesRow.total_cash_expenses || 0;
     const totalCashIncome = cashExpensesRow.total_cash_income || 0;
     const totalCashSupplierPaid = cashSupplierPaymentsRow.total_cash_supplier || 0;
     const totalCashDebtCollected = debtCashRow.total_cash_debt || 0;
+    const cashDepositedToSafe = Number(safeTransferRow ? safeTransferRow.cash_deposited_to_safe : 0) || 0;
+    const cashWithdrawnFromSafe = Number(safeTransferRow ? safeTransferRow.cash_withdrawn_from_safe : 0) || 0;
 
     const expectedSystemCash = Number(shift.starting_cash) 
       + Number(totalCashSales) 
       + Number(totalCashIncome) 
       + Number(totalCashDebtCollected)
+      + Number(cashWithdrawnFromSafe)
       - Number(totalCashExpenses) 
-      - Number(totalCashSupplierPaid);
+      - Number(totalCashSupplierPaid)
+      - Number(cashDepositedToSafe);
 
     const cashDifference = Number(actual_cash) - Number(expectedSystemCash);
 

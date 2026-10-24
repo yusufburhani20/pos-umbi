@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { dbQuery } = require('../db');
+const { dbQuery, getSafeCashBalance } = require('../db');
 const { authenticateToken, requireOwner, requireStrictOwner } = require('../middleware/auth');
 
 // GET /api/reports/dashboard
@@ -120,7 +120,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
       `SELECT 
          COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses_today,
          COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'cash' THEN amount ELSE 0 END), 0) as cash_expenses_today,
-         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_expenses_today
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_expenses_today,
+         COALESCE(SUM(CASE WHEN type = 'expense' AND source = 'safe' THEN amount ELSE 0 END), 0) as safe_expenses_today
        FROM store_expenses
        WHERE date(created_at) = date('now', 'localtime')`
     );
@@ -130,17 +131,19 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
       `SELECT 
          COALESCE(SUM(amount), 0) as total_income_today,
          COALESCE(SUM(CASE WHEN source = 'cash' THEN amount ELSE 0 END), 0) as cash_income_today,
-         COALESCE(SUM(CASE WHEN source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_income_today
+         COALESCE(SUM(CASE WHEN source = 'transfer' THEN amount ELSE 0 END), 0) as transfer_income_today,
+         COALESCE(SUM(CASE WHEN source = 'safe' THEN amount ELSE 0 END), 0) as safe_income_today
        FROM store_expenses
        WHERE date(created_at) = date('now', 'localtime') AND type = 'income'`
     );
 
-    // 4d. Supplier payments made today (Kulakan bayar tunai / transfer)
+    // 4d. Supplier payments made today (Kulakan bayar tunai / transfer / brankas)
     const supPayTodayRow = await dbQuery.get(
       `SELECT 
          COALESCE(SUM(amount_paid), 0) as total_supplier_paid_today,
          COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN amount_paid ELSE 0 END), 0) as cash_supplier_paid_today,
-         COALESCE(SUM(CASE WHEN payment_method = 'transfer' THEN amount_paid ELSE 0 END), 0) as transfer_supplier_paid_today
+         COALESCE(SUM(CASE WHEN payment_method = 'transfer' THEN amount_paid ELSE 0 END), 0) as transfer_supplier_paid_today,
+         COALESCE(SUM(CASE WHEN payment_method = 'safe' THEN amount_paid ELSE 0 END), 0) as safe_supplier_paid_today
        FROM supplier_payments
        WHERE date(payment_date) = date('now', 'localtime')`
     );
@@ -363,12 +366,17 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         - Number(activeShiftCashSupplier)
       : cashSalesToday;
 
+    const safeCashStats = await getSafeCashBalance();
+    const safeCashBalance = safeCashStats ? safeCashStats.balance : 0;
+
     return res.json({
       success: true,
       timestamp: new Date().toISOString(),
       summary: {
         total_revenue: totalRevenue,
         cash_in_drawer: estimatedDrawerCash,
+        cash_in_safe: safeCashBalance,
+        total_physical_cash: estimatedDrawerCash + safeCashBalance,
         total_cash_today: cashSalesToday,
         total_qris: Number(salesSummary.total_qris) || 0,
         total_transfer: Number(salesSummary.total_transfer) || 0,
@@ -408,9 +416,11 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         outflow: {
           store_expenses_cash: Number(expensesToday ? expensesToday.cash_expenses_today : 0) || 0,
           store_expenses_transfer: Number(expensesToday ? expensesToday.transfer_expenses_today : 0) || 0,
+          store_expenses_safe: Number(expensesToday ? expensesToday.safe_expenses_today : 0) || 0,
           total_store_expenses: totalStoreExpenses,
           supplier_paid_cash: Number(supPayTodayRow ? supPayTodayRow.cash_supplier_paid_today : 0) || 0,
           supplier_paid_transfer: Number(supPayTodayRow ? supPayTodayRow.transfer_supplier_paid_today : 0) || 0,
+          supplier_paid_safe: Number(supPayTodayRow ? supPayTodayRow.safe_supplier_paid_today : 0) || 0,
           total_supplier_paid: totalSupplierPaidToday,
           total_cash_outflow: totalCashOutflow
         },
@@ -418,6 +428,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
       },
       liquidity_snapshot: {
         cash_in_drawer: estimatedDrawerCash,
+        cash_in_safe: safeCashBalance,
+        total_cash_liquid: estimatedDrawerCash + safeCashBalance,
         bank_incoming_today: digitalSalesToday,
         total_customer_debts: Number(customerDebtsRow ? customerDebtsRow.total_customer_debts : 0) || 0,
         total_debtors: Number(customerDebtsRow ? customerDebtsRow.total_debtors : 0) || 0,
@@ -672,6 +684,12 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
          o.customer_name,
          o.payment_method,
          o.total_amount,
+         o.subtotal_amount,
+         o.manual_total_override,
+         o.discount_amount,
+         o.discount_notes,
+         o.rotten_refund_amount,
+         o.rotten_refund_notes,
          o.cash_tendered,
          o.change_due,
          o.status,

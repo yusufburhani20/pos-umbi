@@ -126,19 +126,43 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
+    const calculatedSubtotal = calculatedTotal;
+
+    // 3b. Price Adjustments (Nego Total Manual, Rotten Produce Refund, & Discounts)
+    const rawManualTotal = req.body.manual_total_override;
+    const manualTotalOverride = (rawManualTotal !== undefined && rawManualTotal !== null && rawManualTotal !== '' && !isNaN(Number(rawManualTotal)) && Number(rawManualTotal) > 0)
+      ? Math.round(Number(rawManualTotal))
+      : null;
+
+    const discountAmount = Math.max(0, Math.round(Number(req.body.discount_amount) || 0));
+    const discountNotes = (req.body.discount_notes || '').trim();
+
+    const rottenRefundAmount = Math.max(0, Math.round(Number(req.body.rotten_refund_amount) || 0));
+    const rottenRefundNotes = (req.body.rotten_refund_notes || '').trim();
+
+    // Calculate final net payable:
+    // If manual total is set (tawar-menawar total), start from that negotiated base, then deduct any rotten refund or extra discount.
+    // Otherwise, start from item subtotal and deduct discounts and rotten refund.
+    let finalPayableTotal = calculatedSubtotal;
+    if (manualTotalOverride !== null) {
+      finalPayableTotal = Math.max(0, manualTotalOverride - discountAmount - rottenRefundAmount);
+    } else {
+      finalPayableTotal = Math.max(0, calculatedSubtotal - discountAmount - rottenRefundAmount);
+    }
+
     // 4. Validate payment
     let changeDue = 0;
     const finalCashTendered = Number(cash_tendered) || 0;
     let finalDueDate = null;
 
     if (payment_method === 'cash') {
-      if (finalCashTendered < calculatedTotal) {
+      if (finalCashTendered < finalPayableTotal) {
         return res.status(400).json({
           success: false,
-          message: `Uang tunai kurang. Total: Rp ${calculatedTotal.toLocaleString('id-ID')}, diterima: Rp ${finalCashTendered.toLocaleString('id-ID')}`
+          message: `Uang tunai kurang. Total: Rp ${finalPayableTotal.toLocaleString('id-ID')}, diterima: Rp ${finalCashTendered.toLocaleString('id-ID')}`
         });
       }
-      changeDue = finalCashTendered - calculatedTotal;
+      changeDue = finalCashTendered - finalPayableTotal;
     } else if (payment_method === 'tempo') {
       if (!customer) {
         return res.status(400).json({
@@ -155,7 +179,7 @@ router.post('/', authenticateToken, async (req, res) => {
         finalDueDate = d.toISOString().split('T')[0];
       }
     } else {
-      // For transfer/qris, cash_tendered equals total_amount
+      // For transfer/qris, cash_tendered equals finalPayableTotal
       changeDue = 0;
     }
 
@@ -167,16 +191,22 @@ router.post('/', authenticateToken, async (req, res) => {
     try {
       const orderResult = await dbQuery.run(
         `INSERT INTO orders 
-         (order_no, shift_id, customer_id, customer_name, total_amount, payment_method, cash_tendered, change_due, status, due_date, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, datetime('now', 'localtime'))`,
+         (order_no, shift_id, customer_id, customer_name, subtotal_amount, manual_total_override, discount_amount, discount_notes, rotten_refund_amount, rotten_refund_notes, total_amount, payment_method, cash_tendered, change_due, status, due_date, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, datetime('now', 'localtime'))`,
         [
           orderNo,
           shift_id,
           customer ? customer.id : null,
           customer ? customer.name : 'Pelanggan Umum',
-          calculatedTotal,
+          calculatedSubtotal,
+          manualTotalOverride,
+          discountAmount,
+          discountNotes || null,
+          rottenRefundAmount,
+          rottenRefundNotes || null,
+          finalPayableTotal,
           payment_method,
-          payment_method === 'cash' ? finalCashTendered : (payment_method === 'tempo' ? finalCashTendered : calculatedTotal),
+          payment_method === 'cash' ? finalCashTendered : (payment_method === 'tempo' ? finalCashTendered : finalPayableTotal),
           changeDue,
           finalDueDate
         ]
@@ -202,8 +232,8 @@ router.post('/', authenticateToken, async (req, res) => {
 
       // Record in customer_debts if tempo
       if (payment_method === 'tempo') {
-        const dpAmount = finalCashTendered > 0 ? Math.min(finalCashTendered, calculatedTotal) : 0;
-        const remaining = calculatedTotal - dpAmount;
+        const dpAmount = finalCashTendered > 0 ? Math.min(finalCashTendered, finalPayableTotal) : 0;
+        const remaining = finalPayableTotal - dpAmount;
         const debtStatus = remaining <= 0 ? 'paid' : (dpAmount > 0 ? 'partial' : 'unpaid');
 
         const debtRes = await dbQuery.run(
@@ -213,7 +243,7 @@ router.post('/', authenticateToken, async (req, res) => {
           [
             orderId,
             customer.id,
-            calculatedTotal,
+            finalPayableTotal,
             dpAmount,
             remaining,
             finalDueDate,
@@ -237,7 +267,11 @@ router.post('/', authenticateToken, async (req, res) => {
       await logAudit(req.user.id, 'ORDER_CREATED', {
         order_id: orderId,
         order_no: orderNo,
-        total: calculatedTotal,
+        subtotal: calculatedSubtotal,
+        manual_override: manualTotalOverride,
+        rotten_refund: rottenRefundAmount,
+        discount: discountAmount,
+        total: finalPayableTotal,
         payment_method,
         item_count: processedItems.length
       });
@@ -260,9 +294,15 @@ router.post('/', authenticateToken, async (req, res) => {
             order_no: orderNo,
             shift_id,
             customer_name: customer ? customer.name : 'Pelanggan Umum',
-            total_amount: calculatedTotal,
+            subtotal_amount: calculatedSubtotal,
+            manual_total_override: manualTotalOverride,
+            discount_amount: discountAmount,
+            discount_notes: discountNotes,
+            rotten_refund_amount: rottenRefundAmount,
+            rotten_refund_notes: rottenRefundNotes,
+            total_amount: finalPayableTotal,
             payment_method,
-            cash_tendered: payment_method === 'cash' ? finalCashTendered : calculatedTotal,
+            cash_tendered: payment_method === 'cash' ? finalCashTendered : finalPayableTotal,
             change_due: changeDue
           }),
           items: processedItems

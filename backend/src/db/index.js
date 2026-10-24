@@ -118,6 +118,12 @@ async function initDatabase() {
       shift_id INTEGER NOT NULL,
       customer_id INTEGER,
       customer_name TEXT,
+      subtotal_amount REAL DEFAULT 0.0,
+      manual_total_override REAL,
+      discount_amount REAL DEFAULT 0.0,
+      discount_notes TEXT,
+      rotten_refund_amount REAL DEFAULT 0.0,
+      rotten_refund_notes TEXT,
       total_amount REAL NOT NULL,
       payment_method TEXT NOT NULL CHECK(payment_method IN ('cash', 'transfer', 'qris', 'tempo')),
       cash_tendered REAL,
@@ -138,8 +144,10 @@ async function initDatabase() {
   await dbQuery.exec(`
     CREATE TABLE IF NOT EXISTS customer_debts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_id INTEGER UNIQUE NOT NULL,
+      order_id INTEGER UNIQUE,
       customer_id INTEGER NOT NULL,
+      manual_ref_no TEXT,
+      recorded_by INTEGER,
       total_amount REAL NOT NULL,
       paid_amount REAL DEFAULT 0.0,
       remaining_amount REAL NOT NULL,
@@ -149,7 +157,8 @@ async function initDatabase() {
       created_at DATETIME DEFAULT (datetime('now', 'localtime')),
       updated_at DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
-      FOREIGN KEY(customer_id) REFERENCES customers(id)
+      FOREIGN KEY(customer_id) REFERENCES customers(id),
+      FOREIGN KEY(recorded_by) REFERENCES users(id)
     );
   `);
 
@@ -275,7 +284,7 @@ async function initDatabase() {
       supplier_id INTEGER NOT NULL,
       shift_id INTEGER,
       amount_paid REAL NOT NULL,
-      payment_method TEXT NOT NULL CHECK(payment_method IN ('cash', 'transfer')),
+      payment_method TEXT NOT NULL CHECK(payment_method IN ('cash', 'transfer', 'safe')),
       payment_date DATETIME DEFAULT (datetime('now', 'localtime')),
       notes TEXT,
       recorded_by INTEGER,
@@ -297,13 +306,44 @@ async function initDatabase() {
       category_name TEXT NOT NULL,
       type TEXT DEFAULT 'expense' CHECK(type IN ('expense', 'income')),
       amount REAL NOT NULL,
-      source TEXT DEFAULT 'cash' CHECK(source IN ('cash', 'transfer')),
+      source TEXT DEFAULT 'cash' CHECK(source IN ('cash', 'transfer', 'safe')),
       notes TEXT,
       created_at DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY(shift_id) REFERENCES shifts(id),
       FOREIGN KEY(user_id) REFERENCES users(id)
     );
   `);
+
+  // 14. Safe Cash Transactions (Buku Kas Brankas Toko / Master Brankas Owner)
+  await dbQuery.exec(`
+    CREATE TABLE IF NOT EXISTS safe_cash_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      trx_no TEXT UNIQUE NOT NULL,
+      user_id INTEGER NOT NULL,
+      shift_id INTEGER,
+      type TEXT NOT NULL CHECK(type IN ('initial', 'deposit', 'withdrawal', 'transfer_in', 'transfer_out', 'expense', 'supplier_pay', 'income', 'prive')),
+      amount REAL NOT NULL,
+      balance_before REAL DEFAULT 0,
+      balance_after REAL DEFAULT 0,
+      source TEXT DEFAULT 'cash',
+      reference_no TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY(user_id) REFERENCES users(id),
+      FOREIGN KEY(shift_id) REFERENCES shifts(id)
+    );
+  `);
+
+  // Migration: Add shift_id to safe_cash_transactions if not present
+  try {
+    const safeCols = await dbQuery.all("PRAGMA table_info(safe_cash_transactions)");
+    if (!safeCols.some(c => c.name === 'shift_id')) {
+      await dbQuery.exec("ALTER TABLE safe_cash_transactions ADD COLUMN shift_id INTEGER;");
+      console.log('[DB] Migrated: Added shift_id column to safe_cash_transactions table');
+    }
+  } catch (sErr) {
+    console.warn('[DB] Migration error on safe_cash_transactions shift_id:', sErr.message);
+  }
 
   // Migration: Add breakdown column to shifts if not present
   try {
@@ -325,6 +365,117 @@ async function initDatabase() {
     }
   } catch (spErr) {
     console.warn('[DB] Migration error on supplier_payments shift_id:', spErr.message);
+  }
+
+  // Migration: Add manual_ref_no and recorded_by to customer_debts if not present
+  try {
+    const debtCols = await dbQuery.all("PRAGMA table_info(customer_debts)");
+    if (!debtCols.some(c => c.name === 'manual_ref_no')) {
+      await dbQuery.exec("ALTER TABLE customer_debts ADD COLUMN manual_ref_no TEXT;");
+      console.log('[DB] Migrated: Added manual_ref_no column to customer_debts table');
+    }
+    if (!debtCols.some(c => c.name === 'recorded_by')) {
+      await dbQuery.exec("ALTER TABLE customer_debts ADD COLUMN recorded_by INTEGER;");
+      console.log('[DB] Migrated: Added recorded_by column to customer_debts table');
+    }
+  } catch (dErr) {
+    console.warn('[DB] Migration error on customer_debts:', dErr.message);
+  }
+
+  // Migration: Add adjustment columns to orders if not present
+  try {
+    const orderCols = await dbQuery.all("PRAGMA table_info(orders)");
+    const colNames = new Set(orderCols.map(c => c.name));
+    if (!colNames.has('subtotal_amount')) {
+      await dbQuery.exec("ALTER TABLE orders ADD COLUMN subtotal_amount REAL DEFAULT 0.0;");
+      console.log('[DB] Migrated: Added subtotal_amount column to orders table');
+    }
+    if (!colNames.has('manual_total_override')) {
+      await dbQuery.exec("ALTER TABLE orders ADD COLUMN manual_total_override REAL;");
+      console.log('[DB] Migrated: Added manual_total_override column to orders table');
+    }
+    if (!colNames.has('discount_amount')) {
+      await dbQuery.exec("ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0.0;");
+      console.log('[DB] Migrated: Added discount_amount column to orders table');
+    }
+    if (!colNames.has('discount_notes')) {
+      await dbQuery.exec("ALTER TABLE orders ADD COLUMN discount_notes TEXT;");
+      console.log('[DB] Migrated: Added discount_notes column to orders table');
+    }
+    if (!colNames.has('rotten_refund_amount')) {
+      await dbQuery.exec("ALTER TABLE orders ADD COLUMN rotten_refund_amount REAL DEFAULT 0.0;");
+      console.log('[DB] Migrated: Added rotten_refund_amount column to orders table');
+    }
+    if (!colNames.has('rotten_refund_notes')) {
+      await dbQuery.exec("ALTER TABLE orders ADD COLUMN rotten_refund_notes TEXT;");
+      console.log('[DB] Migrated: Added rotten_refund_notes column to orders table');
+    }
+  } catch (ordErr) {
+    console.warn('[DB] Migration error on orders adjustments:', ordErr.message);
+  }
+
+  // Migration: Allow 'safe' in store_expenses source
+  try {
+    const tableExp = await dbQuery.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='store_expenses'");
+    if (tableExp && tableExp.sql && !tableExp.sql.includes("'safe'")) {
+      await dbQuery.exec(`
+        PRAGMA foreign_keys=OFF;
+        CREATE TABLE store_expenses_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          expense_no TEXT UNIQUE NOT NULL,
+          shift_id INTEGER,
+          user_id INTEGER NOT NULL,
+          category TEXT NOT NULL,
+          category_name TEXT NOT NULL,
+          type TEXT DEFAULT 'expense' CHECK(type IN ('expense', 'income')),
+          amount REAL NOT NULL,
+          source TEXT DEFAULT 'cash' CHECK(source IN ('cash', 'transfer', 'safe')),
+          notes TEXT,
+          created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+          FOREIGN KEY(shift_id) REFERENCES shifts(id),
+          FOREIGN KEY(user_id) REFERENCES users(id)
+        );
+        INSERT INTO store_expenses_new SELECT * FROM store_expenses;
+        DROP TABLE store_expenses;
+        ALTER TABLE store_expenses_new RENAME TO store_expenses;
+        PRAGMA foreign_keys=ON;
+      `);
+      console.log("[DB] Migrated store_expenses to support 'safe' source");
+    }
+  } catch (err) {
+    console.warn("[DB] Migration error on store_expenses safe source:", err.message);
+  }
+
+  // Migration: Allow 'safe' in supplier_payments payment_method
+  try {
+    const tableSp = await dbQuery.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='supplier_payments'");
+    if (tableSp && tableSp.sql && !tableSp.sql.includes("'safe'")) {
+      await dbQuery.exec(`
+        PRAGMA foreign_keys=OFF;
+        CREATE TABLE supplier_payments_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          purchase_id INTEGER NOT NULL,
+          supplier_id INTEGER NOT NULL,
+          shift_id INTEGER,
+          amount_paid REAL NOT NULL,
+          payment_method TEXT NOT NULL CHECK(payment_method IN ('cash', 'transfer', 'safe')),
+          payment_date DATETIME DEFAULT (datetime('now', 'localtime')),
+          notes TEXT,
+          recorded_by INTEGER,
+          FOREIGN KEY(purchase_id) REFERENCES purchases(id) ON DELETE CASCADE,
+          FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
+          FOREIGN KEY(shift_id) REFERENCES shifts(id),
+          FOREIGN KEY(recorded_by) REFERENCES users(id)
+        );
+        INSERT INTO supplier_payments_new SELECT * FROM supplier_payments;
+        DROP TABLE supplier_payments;
+        ALTER TABLE supplier_payments_new RENAME TO supplier_payments;
+        PRAGMA foreign_keys=ON;
+      `);
+      console.log("[DB] Migrated supplier_payments to support 'safe' payment_method");
+    }
+  } catch (err) {
+    console.warn("[DB] Migration error on supplier_payments safe method:", err.message);
   }
 
   // Seed default data if empty
@@ -552,14 +703,25 @@ async function getCurrentDrawerCash(targetShiftId = null) {
     [shift.id, shift.start_time]
   );
 
+  const safeTransferRow = await dbQuery.get(
+    `SELECT 
+       COALESCE(SUM(CASE WHEN type = 'deposit' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_deposited_to_safe,
+       COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
+     FROM safe_cash_transactions
+     WHERE shift_id = ? OR (shift_id IS NULL AND created_at >= ?)`,
+    [shift.id, shift.start_time]
+  );
+
   const starting_cash = Number(shift.starting_cash) || 0;
   const cash_sales = Number(cashSalesRow ? cashSalesRow.cash_sales : 0) || 0;
   const cash_expenses = Number(expensesRow ? expensesRow.cash_expenses : 0) || 0;
   const cash_income = Number(expensesRow ? expensesRow.cash_income : 0) || 0;
   const cash_supplier_payments = Number(supplierCashRow ? supplierCashRow.cash_supplier_payments : 0) || 0;
   const cash_debt_collected = Number(debtCashRow ? debtCashRow.cash_debt_collected : 0) || 0;
+  const cash_deposited_to_safe = Number(safeTransferRow ? safeTransferRow.cash_deposited_to_safe : 0) || 0;
+  const cash_withdrawn_from_safe = Number(safeTransferRow ? safeTransferRow.cash_withdrawn_from_safe : 0) || 0;
 
-  const current_drawer_cash = starting_cash + cash_sales + cash_income + cash_debt_collected - cash_expenses - cash_supplier_payments;
+  const current_drawer_cash = starting_cash + cash_sales + cash_income + cash_debt_collected + cash_withdrawn_from_safe - cash_expenses - cash_supplier_payments - cash_deposited_to_safe;
 
   return {
     has_active_shift: true,
@@ -570,7 +732,84 @@ async function getCurrentDrawerCash(targetShiftId = null) {
     cash_income,
     cash_debt_collected,
     cash_supplier_payments,
+    cash_deposited_to_safe,
+    cash_withdrawn_from_safe,
     current_drawer_cash
+  };
+}
+
+// Helper for Safe Cash Balance (Uang Kas di Brankas Toko)
+async function getSafeCashBalance() {
+  const row = await dbQuery.get(`
+    SELECT 
+      COALESCE(SUM(
+        CASE 
+          WHEN type IN ('initial', 'deposit', 'transfer_in', 'income') THEN amount
+          WHEN type IN ('withdrawal', 'transfer_out', 'expense', 'supplier_pay', 'prive') THEN -amount
+          ELSE 0
+        END
+      ), 0) as balance,
+      COUNT(id) as total_trx,
+      COALESCE(SUM(CASE WHEN type IN ('initial', 'deposit', 'transfer_in', 'income') THEN amount ELSE 0 END), 0) as total_in,
+      COALESCE(SUM(CASE WHEN type IN ('withdrawal', 'transfer_out', 'expense', 'supplier_pay', 'prive') THEN amount ELSE 0 END), 0) as total_out
+    FROM safe_cash_transactions
+  `);
+  return {
+    balance: Number(row ? row.balance : 0) || 0,
+    total_trx: Number(row ? row.total_trx : 0) || 0,
+    total_in: Number(row ? row.total_in : 0) || 0,
+    total_out: Number(row ? row.total_out : 0) || 0
+  };
+}
+
+async function recordSafeCashTransaction({ user_id, type, amount, source = 'cash', reference_no = null, notes = '', shift_id = null }) {
+  const numAmount = Math.max(0, Math.round(Number(amount) || 0));
+  if (numAmount <= 0) {
+    throw new Error('Nominal transaksi brankas harus lebih dari Rp 0');
+  }
+
+  const current = await getSafeCashBalance();
+  const balanceBefore = current.balance;
+
+  const isDeduction = ['withdrawal', 'transfer_out', 'expense', 'supplier_pay', 'prive'].includes(type);
+  if (isDeduction && balanceBefore < numAmount) {
+    throw new Error(`Saldo uang di brankas tidak mencukupi! Saldo saat ini: Rp ${balanceBefore.toLocaleString('id-ID')}, penarikan: Rp ${numAmount.toLocaleString('id-ID')}`);
+  }
+
+  const balanceAfter = isDeduction ? (balanceBefore - numAmount) : (balanceBefore + numAmount);
+
+  // Generate transaction number: TRX-BRK-YYYYMMDD-XXXX
+  const today = new Date();
+  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+  const prefix = `TRX-BRK-${dateStr}-`;
+  const last = await dbQuery.get('SELECT trx_no FROM safe_cash_transactions WHERE trx_no LIKE ? ORDER BY id DESC LIMIT 1', [`${prefix}%`]);
+  let seq = 1;
+  if (last && last.trx_no) {
+    const parts = last.trx_no.split('-');
+    if (parts.length >= 4) {
+      seq = parseInt(parts[3], 10) + 1;
+    }
+  }
+  const trx_no = `${prefix}${String(seq).padStart(4, '0')}`;
+
+  const res = await dbQuery.run(`
+    INSERT INTO safe_cash_transactions 
+    (trx_no, user_id, shift_id, type, amount, balance_before, balance_after, source, reference_no, notes, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+  `, [trx_no, user_id, shift_id, type, numAmount, balanceBefore, balanceAfter, source, reference_no, notes]);
+
+  return {
+    id: res.lastID,
+    trx_no,
+    user_id,
+    shift_id,
+    type,
+    amount: numAmount,
+    balance_before: balanceBefore,
+    balance_after: balanceAfter,
+    source,
+    reference_no,
+    notes
   };
 }
 
@@ -578,6 +817,8 @@ module.exports = {
   db,
   dbQuery,
   initDatabase,
-  getCurrentDrawerCash
+  getCurrentDrawerCash,
+  getSafeCashBalance,
+  recordSafeCashTransaction
 };
 

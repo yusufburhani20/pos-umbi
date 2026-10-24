@@ -407,6 +407,27 @@
             <span class="summary-label">Total Timbangan</span>
             <span class="summary-val" id="totalWeightText">0.00 kg</span>
           </div>
+
+          <!-- Adjustments Summary if any -->
+          <div id="cartAdjustmentsSummary" style="display: none; font-size: 11px; margin: 4px 0; padding: 5px 8px; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.3); border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; color: #94a3b8;">
+              <span>Subtotal Produk:</span>
+              <span id="cartSubtotalText">Rp 0</span>
+            </div>
+            <div id="cartNegoRow" style="display: none; justify-content: space-between; color: #f59e0b; margin-top: 2px;">
+              <span>✍️ Nego Total:</span>
+              <span id="cartNegoAmountText">Rp 0</span>
+            </div>
+            <div id="cartRottenRow" style="display: none; justify-content: space-between; color: #f87171; margin-top: 2px;">
+              <span>🥔 Ganti Barang Busuk:</span>
+              <span id="cartRottenAmountText">-Rp 0</span>
+            </div>
+            <div id="cartDiscountRow" style="display: none; justify-content: space-between; color: #38bdf8; margin-top: 2px;">
+              <span>✂️ Diskon:</span>
+              <span id="cartDiscountAmountText">-Rp 0</span>
+            </div>
+          </div>
+
           <div class="summary-row total-row">
             <span class="total-label">TOTAL TAGIHAN</span>
             <span class="total-val" id="totalAmountText">Rp 0</span>
@@ -627,6 +648,64 @@
         <div class="bill-summary-banner" style="padding: 6px 10px; border-radius: 8px;">
           <span class="banner-label" style="font-size: 11px;">Total Tagihan:</span>
           <span class="banner-amount" id="payModalTotal" style="font-size: 17px; font-weight: 800;">Rp 0</span>
+        </div>
+
+        <!-- Penyesuaian Nego, Kompensasi Barang Busuk, & Diskon -->
+        <div class="checkout-adjustments-card" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 6px 10px; margin-bottom: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="btnToggleAdjustmentsSection">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 13px;">🏷️</span>
+              <strong style="font-size: 11.5px; color: #f8fafc;">Nego, Ganti Busuk & Diskon</strong>
+              <span id="badgeAdjustmentActive" style="display:none; font-size: 9.5px; background: #f59e0b; color: #0f172a; font-weight: 800; padding: 1px 6px; border-radius: 10px;">Potongan Aktif</span>
+            </div>
+            <span id="arrowAdjustmentsSection" style="font-size: 11px; color: #94a3b8; transition: transform 0.2s;">▼</span>
+          </div>
+
+          <div id="checkoutAdjustmentsBody" style="margin-top: 8px; display: none;">
+            <!-- Baris Subtotal Awal -->
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
+              <span>Subtotal Produk Keranjang:</span>
+              <strong id="payModalSubtotalText" style="color: #cbd5e1; font-family: monospace;">Rp 0</strong>
+            </div>
+
+            <!-- 1. Nego / Total Manual -->
+            <div style="margin-bottom: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <label style="font-size: 11px; font-weight: 700; color: #f59e0b; margin: 0;">✍️ Total Manual / Nego Transaksi:</label>
+                <button type="button" id="btnResetManualNego" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Reset Normal</button>
+              </div>
+              <input type="text" inputmode="numeric" id="inputManualNegoTotal" class="input-modern font-mono" placeholder="Ketik total disepakati (cth: 95.000)" style="width: 100%; height: 32px; background: rgba(0,0,0,0.3); border: 1.5px solid #f59e0b; border-radius: 6px; color: #f59e0b; font-size: 12.5px; font-weight: 700; padding: 0 8px; text-align: right;">
+            </div>
+
+            <!-- 2. Ganti Barang Busuk / Kompensasi Retur -->
+            <div style="margin-bottom: 6px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 6px 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                <label style="font-size: 11px; font-weight: 700; color: #fca5a5; margin: 0;">🥔 Potongan Ganti Barang Rusak / Busuk:</label>
+                <button type="button" id="btnResetRottenRefund" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Hapus</button>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 6px;">
+                <input type="text" inputmode="numeric" id="inputRottenRefundAmount" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; color: #f87171; font-size: 12px; font-weight: 700; padding: 0 6px; text-align: right;">
+                <input type="text" id="inputRottenRefundNotes" class="input-modern" placeholder="Keterangan (cth: Ubi busuk 2kg)" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 11px; padding: 0 6px;">
+              </div>
+            </div>
+
+            <!-- 3. Potongan Diskon -->
+            <div style="margin-bottom: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <label style="font-size: 11px; font-weight: 700; color: #38bdf8; margin: 0;">✂️ Potongan Diskon Tambahan:</label>
+                <button type="button" id="btnResetDiscount" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Hapus</button>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 6px;">
+                <input type="text" inputmode="numeric" id="inputDiscountAmount" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; color: #38bdf8; font-size: 12px; font-weight: 700; padding: 0 6px; text-align: right;">
+                <input type="text" id="inputDiscountNotes" class="input-modern" placeholder="Alasan (cth: Langganan tetap)" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 11px; padding: 0 6px;">
+              </div>
+            </div>
+
+            <!-- Breakdown Perhitungan Cepat -->
+            <div id="checkoutCalcBreakdown" style="font-size: 10.5px; color: #cbd5e1; background: rgba(0,0,0,0.25); border-radius: 4px; padding: 4px 6px; text-align: right; line-height: 1.4;">
+              <!-- Otomatis diisi oleh JavaScript -->
+            </div>
+          </div>
         </div>
 
         <div class="payment-method-selector" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 2px;">
@@ -1489,9 +1568,12 @@
           <button class="debt-tab-btn" data-filter="all" id="btnDebtFilterAll">Semua Tagihan</button>
         </div>
 
-        <div class="debts-modal-controls" style="display: flex; gap: 10px; margin-bottom: 14px;">
-          <input type="text" id="searchCashierDebt" placeholder="🔍 Cari nama pembeli, nomor HP, atau no nota..." style="flex: 1; height: 42px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; color: #0f172a; padding: 0 14px; font-size: 13.5px; font-weight: 500;">
+        <div class="debts-modal-controls" style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
+          <input type="text" id="searchCashierDebt" placeholder="🔍 Cari nama pembeli, nomor HP, atau no nota..." style="flex: 1; min-width: 220px; height: 42px; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; color: #0f172a; padding: 0 14px; font-size: 13.5px; font-weight: 500;">
           <button class="btn-refresh-pill" id="btnRefreshCashierDebts" style="height: 42px; padding: 0 16px; background: #ffffff; border: 1.5px solid #cbd5e1; color: #334155; font-weight: 700; border-radius: 8px; cursor: pointer;">🔄 Segarkan</button>
+          <button class="btn-primary" id="btnOpenManualDebtModal" type="button" style="height: 42px; padding: 0 18px; background: #f59e0b; border: none; color: #0f172a; font-weight: 800; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(245,158,11,0.25);">
+            <span>✍️</span> + Tulis Piutang Manual
+          </button>
         </div>
 
         <div class="table-responsive" style="max-height: 380px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
@@ -1516,6 +1598,128 @@
       </div>
       <div class="modal-footer" style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
         <button class="btn-footer-secondary" id="btnCloseCashierDebtsFooter" style="padding: 8px 22px; border-radius: 8px; background: #ffffff; border: 1.5px solid #cbd5e1; color: #334155; font-weight: 600; cursor: pointer;">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Tulis / Catat Piutang Manual (Kasir / Admin) -->
+  <div class="modal-backdrop" id="modalManualDebt" style="display:none; z-index: 10035;">
+    <div class="modal-dialog modal-md" style="max-width: 520px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+      <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 16px 20px;">
+        <div class="modal-title-wrap" style="display: flex; align-items: center; gap: 12px;">
+          <span class="modal-icon-badge amber" style="font-size: 24px; padding: 8px 12px; background: #fef3c7; color: #b45309; border-radius: 10px;">✍️</span>
+          <div>
+            <h2 style="color: #0f172a; margin: 0; font-size: 18px; font-weight: 800;">Tulis Piutang / Kasbon Manual</h2>
+            <p class="modal-subtitle" style="color: #64748b; font-size: 12.5px; margin: 2px 0 0 0;">Catat kasbon pembeli langsung tanpa melalui keranjang belanja.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btnCloseManualDebtModal" style="color: #64748b;">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 18px 20px; background: #ffffff; max-height: calc(85vh - 120px); overflow-y: auto;">
+        <!-- Pilihan Pelanggan -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="field-label" style="font-size: 12.5px; color: #0f172a; font-weight: 700; display: block; margin-bottom: 4px;">
+            Pilih Pelanggan Terdaftar (Opsional):
+          </label>
+          <select id="manualDebtCustomerSelect" class="input-modern" style="width: 100%; height: 40px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; color: #0f172a; font-size: 13.5px; font-weight: 600; padding: 0 10px;">
+            <option value="">-- Ketik Nama Pelanggan Baru --</option>
+          </select>
+        </div>
+
+        <!-- Nama & Telepon (Dua Kolom) -->
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label class="field-label" style="font-size: 12px; color: #334155; font-weight: 700; display: block; margin-bottom: 4px;">
+              Nama Peminjam / Pembeli: <span style="color: #ef4444;">*</span>
+            </label>
+            <input type="text" id="manualDebtCustomerName" class="input-modern" placeholder="Contoh: Pak Joko Supir" style="width: 100%; height: 38px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; color: #0f172a; font-weight: 600; padding: 0 10px;" required>
+          </div>
+          <div class="form-group">
+            <label class="field-label" style="font-size: 12px; color: #334155; font-weight: 700; display: block; margin-bottom: 4px;">
+              No. HP / WhatsApp:
+            </label>
+            <input type="tel" id="manualDebtCustomerPhone" class="input-modern font-mono" placeholder="08xxxxxxxxxx" style="width: 100%; height: 38px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; color: #0f172a; padding: 0 10px;">
+          </div>
+        </div>
+
+        <!-- Nominal Kasbon -->
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label class="field-label" style="font-size: 12.5px; color: #b45309; font-weight: 800; display: block; margin-bottom: 4px;">
+            Nominal Total Kasbon / Piutang (Rp): <span style="color: #ef4444;">*</span>
+          </label>
+          <input type="text" inputmode="numeric" id="manualDebtTotalAmount" class="input-huge font-mono" placeholder="Rp 0" style="width: 100%; height: 48px; font-size: 22px; font-weight: 900; text-align: right; background: #fffbeb; border: 2px solid #f59e0b; border-radius: 8px; color: #b45309; padding: 0 14px;" required>
+          
+          <!-- Chip Nominal Cepat -->
+          <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-chip-nom" data-val="50000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;">+50 Rb</button>
+            <button type="button" class="btn-chip-nom" data-val="100000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;">+100 Rb</button>
+            <button type="button" class="btn-chip-nom" data-val="250000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;">+250 Rb</button>
+            <button type="button" class="btn-chip-nom" data-val="500000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;">+500 Rb</button>
+            <button type="button" class="btn-chip-nom" data-val="1000000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; color: #334155;">+1 Jt</button>
+            <button type="button" id="btnResetManualDebtAmount" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; cursor: pointer; color: #b91c1c;">Reset C</button>
+          </div>
+        </div>
+
+        <!-- Uang Muka DP & Metode DP -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div class="form-group">
+            <label class="field-label" style="font-size: 12px; color: #065f46; font-weight: 700; display: block; margin-bottom: 4px;">
+              Uang Muka / DP (Rp):
+            </label>
+            <input type="text" inputmode="numeric" id="manualDebtDpAmount" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 38px; background: #ffffff; border: 1.5px solid #10b981; border-radius: 6px; color: #047857; font-weight: 700; text-align: right; padding: 0 10px;">
+          </div>
+          <div class="form-group">
+            <label class="field-label" style="font-size: 12px; color: #334155; font-weight: 700; display: block; margin-bottom: 4px;">
+              Metode DP:
+            </label>
+            <select id="manualDebtDpMethod" class="input-modern" style="width: 100%; height: 38px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 6px; color: #0f172a; font-size: 12px; font-weight: 600; padding: 0 8px;">
+              <option value="cash">💵 Tunai (Masuk Laci)</option>
+              <option value="transfer">🏦 Transfer Bank</option>
+              <option value="qris">📱 QRIS</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tanggal Jatuh Tempo -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="field-label" style="font-size: 12.5px; color: #334155; font-weight: 700; display: block; margin-bottom: 4px;">
+            Jatuh Tempo Pembayaran:
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="date" id="manualDebtDueDate" class="input-modern font-mono" style="flex: 1; height: 38px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; color: #0f172a; font-weight: 600; padding: 0 10px;">
+            <button type="button" class="btn-tempo-preset" data-days="7" style="padding: 0 10px; font-size: 12px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; color: #334155;">7 Hari</button>
+            <button type="button" class="btn-tempo-preset" data-days="14" style="padding: 0 10px; font-size: 12px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; color: #334155;">14 Hari</button>
+            <button type="button" class="btn-tempo-preset" data-days="30" style="padding: 0 10px; font-size: 12px; font-weight: 700; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; color: #334155;">30 Hari</button>
+          </div>
+        </div>
+
+        <!-- Catatan / Keterangan Kasbon -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="field-label" style="font-size: 12.5px; color: #334155; font-weight: 700; display: block; margin-bottom: 4px;">
+            Catatan / Keperluan Kasbon:
+          </label>
+          <input type="text" id="manualDebtNotes" class="input-modern" placeholder="Misal: Kasbon uang jalan supir, sisa nota lama, pinjaman pribadi" style="width: 100%; height: 38px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; color: #0f172a; padding: 0 10px;">
+        </div>
+
+        <!-- Live Ringkasan Banner -->
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12.5px; color: #92400e; font-weight: 700;">Sisa Piutang Berjalan:</span>
+          <span id="manualDebtRemainingPreview" style="font-size: 18px; font-weight: 900; color: #b45309; font-family: monospace;">Rp 0</span>
+        </div>
+
+        <!-- Cetak Struk Checkbox -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+          <input type="checkbox" id="manualDebtPrintReceipt" checked style="width: 17px; height: 17px; cursor: pointer;">
+          <label for="manualDebtPrintReceipt" style="font-size: 12.5px; font-weight: 600; color: #334155; cursor: pointer;">
+            🖨️ Cetak Bukti Kasbon (Struk Thermal) setelah disimpan
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+        <button class="btn-secondary" id="btnCancelManualDebt" style="padding: 8px 18px; border-radius: 8px; background: #ffffff; border: 1.5px solid #cbd5e1; color: #475569; font-weight: 600; cursor: pointer;">Batal</button>
+        <button class="btn-primary" id="btnSubmitManualDebt" style="padding: 8px 22px; border-radius: 8px; background: #f59e0b; border: none; color: #0f172a; font-weight: 800; cursor: pointer; box-shadow: 0 2px 6px rgba(245,158,11,0.25);">Simpan Piutang Manual</button>
       </div>
     </div>
   </div>
