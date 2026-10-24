@@ -382,6 +382,43 @@ async function initDatabase() {
     console.warn('[DB] Migration error on customer_debts:', dErr.message);
   }
 
+  // Migration: Make order_id nullable in customer_debts for manual debts
+  try {
+    const tableDebts = await dbQuery.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='customer_debts'");
+    if (tableDebts && tableDebts.sql && tableDebts.sql.includes("order_id INTEGER UNIQUE NOT NULL")) {
+      await dbQuery.exec(`
+        PRAGMA foreign_keys=OFF;
+        CREATE TABLE customer_debts_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id INTEGER UNIQUE,
+          customer_id INTEGER NOT NULL,
+          manual_ref_no TEXT,
+          recorded_by INTEGER,
+          total_amount REAL NOT NULL,
+          paid_amount REAL DEFAULT 0.0,
+          remaining_amount REAL NOT NULL,
+          due_date DATE NOT NULL,
+          status TEXT DEFAULT 'unpaid' CHECK(status IN ('unpaid', 'partial', 'paid')),
+          notes TEXT,
+          created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+          updated_at DATETIME DEFAULT (datetime('now', 'localtime')),
+          FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
+          FOREIGN KEY(customer_id) REFERENCES customers(id),
+          FOREIGN KEY(recorded_by) REFERENCES users(id)
+        );
+        INSERT INTO customer_debts_new (id, order_id, customer_id, manual_ref_no, recorded_by, total_amount, paid_amount, remaining_amount, due_date, status, notes, created_at, updated_at)
+        SELECT id, order_id, customer_id, manual_ref_no, recorded_by, total_amount, paid_amount, remaining_amount, due_date, status, notes, created_at, updated_at
+        FROM customer_debts;
+        DROP TABLE customer_debts;
+        ALTER TABLE customer_debts_new RENAME TO customer_debts;
+        PRAGMA foreign_keys=ON;
+      `);
+      console.log("[DB] Migrated customer_debts to allow nullable order_id for manual debts");
+    }
+  } catch (dErr) {
+    console.warn('[DB] Migration error on customer_debts order_id:', dErr.message);
+  }
+
   // Migration: Add adjustment columns to orders if not present
   try {
     const orderCols = await dbQuery.all("PRAGMA table_info(orders)");
