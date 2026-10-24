@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { hardwareManager } from './hardware.js';
 import { syncEngine } from './sync-engine.js';
-import { clearActiveShiftLocal } from './offline-db.js';
+import { saveActiveShiftLocal, getActiveShiftLocal, clearActiveShiftLocal } from './offline-db.js';
 
 // State
 const state = {
@@ -546,6 +546,9 @@ function initHeaderDropdowns() {
   const btnReloadAppCashier = document.getElementById('btnReloadAppCashier');
   if (btnReloadAppCashier) {
     btnReloadAppCashier.addEventListener('click', async () => {
+      if (state.shift) {
+        await saveActiveShiftLocal(state.shift).catch(() => {});
+      }
       if ('serviceWorker' in navigator) {
         try {
           const regs = await navigator.serviceWorker.getRegistrations();
@@ -621,9 +624,15 @@ async function loadActiveShiftData() {
       el.btnRefreshPageData.innerHTML = '<span>⏳</span> Memuat...';
     }
 
-    const res = await api.getCurrentShift().catch(() => null);
-    if (!res || !res.has_active_shift) {
-      // BELUM ADA SHIFT: Tampilkan kartu bersih ramah pengguna di cashier.html
+    let res = null;
+    try {
+      res = await api.getCurrentShift();
+    } catch (err) {
+      console.warn('Gagal memuat shift dari server (offline/koneksi), cek fallback lokal:', err);
+    }
+
+    // 1. JIKA SERVER SECARA EKSPLISIT MENGONFIRMASI SHIFT DITUTUP (has_active_shift === false)
+    if (res && res.has_active_shift === false) {
       state.shift = null;
       await clearActiveShiftLocal().catch(() => {});
       if (el.activeShiftDashboard) el.activeShiftDashboard.style.display = 'none';
@@ -646,14 +655,35 @@ async function loadActiveShiftData() {
       return;
     }
 
+    // 2. TENTUKAN DATA SHIFT (DARI SERVER ATAU CACHE LOKAL JIKA OFFLINE)
+    let s = null;
+    if (res && res.has_active_shift && res.shift) {
+      state.shift = res.shift;
+      s = state.shift;
+      await saveActiveShiftLocal(state.shift).catch(() => {});
+    } else {
+      // Server error / offline / timeout: JANGAN TUTUP SHIFT! Gunakan shift lokal
+      const localShift = await getActiveShiftLocal().catch(() => null);
+      if (localShift) {
+        state.shift = localShift;
+        s = state.shift;
+      } else if (state.shift) {
+        s = state.shift;
+      } else {
+        // Belum ada shift sama sekali di server maupun lokal
+        state.shift = null;
+        if (el.activeShiftDashboard) el.activeShiftDashboard.style.display = 'none';
+        if (el.stickyActionBar) el.stickyActionBar.style.display = 'none';
+        if (el.noShiftSection) el.noShiftSection.style.display = 'block';
+        return;
+      }
+    }
+
     // ADA SHIFT AKTIF: Tampilkan dashboard & bottom bar, sembunyikan kartu noShift
     if (el.noShiftSection) el.noShiftSection.style.display = 'none';
     if (el.activeShiftDashboard) el.activeShiftDashboard.style.display = 'block';
     if (el.stickyActionBar) el.stickyActionBar.style.display = 'block';
     if (el.btnHeaderCloseShift) el.btnHeaderCloseShift.style.display = 'flex';
-
-    state.shift = res.shift;
-    const s = state.shift;
 
     // Header Badges - Resolve clean cashier name (never display raw 'Owner')
     function resolveCashierName(shiftObj, userObj) {

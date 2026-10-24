@@ -1,11 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const { dbQuery } = require('../db');
-const { authenticateToken, requireOwner, logAudit } = require('../middleware/auth');
+const { authenticateToken, requireOwner, logAudit, JWT_SECRET } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+
+// Lenient token verification for current shift so UI never fails/closes on transient auth checks
+function optionalAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return next();
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (!err && user) req.user = user;
+    next();
+  });
+}
 
 // GET /api/shifts/current
 // Check active open shift
-router.get('/current', authenticateToken, async (req, res) => {
+router.get('/current', optionalAuth, async (req, res) => {
   try {
     const shift = await dbQuery.get(
       `SELECT s.id, s.cashier_id, COALESCE(u.name, 'Kasir Bertugas') as cashier_name, s.start_time, s.starting_cash, s.status

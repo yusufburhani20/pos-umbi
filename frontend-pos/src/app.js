@@ -1308,16 +1308,22 @@ async function syncShift() {
   const isEmbedMode = urlParams.get('embed') === '1';
 
   try {
+    let shiftRes = null;
     if (navigator.onLine) {
-      const shiftRes = await api.getCurrentShift().catch(() => null);
-      if (shiftRes && shiftRes.has_active_shift) {
+      try {
+        shiftRes = await api.getCurrentShift();
+      } catch (e) {
+        console.warn('Gagal ambil shift dari server, gunakan cache lokal:', e);
+      }
+
+      if (shiftRes && shiftRes.has_active_shift && shiftRes.shift) {
         state.shift = shiftRes.shift;
-        await saveActiveShiftLocal(state.shift);
+        await saveActiveShiftLocal(state.shift).catch(() => {});
         el.activeShiftMeta.textContent = `Shift Aktif #${state.shift.id} (Modal: ${formatRupiah(state.shift.starting_cash)})`;
         return;
-      } else if (shiftRes && !shiftRes.has_active_shift) {
-        // Server confirms no active shift: purge stale local shift
-        await clearActiveShiftLocal();
+      } else if (shiftRes && shiftRes.has_active_shift === false) {
+        // Server secara eksplisit mengonfirmasi bahwa tidak ada shift aktif
+        await clearActiveShiftLocal().catch(() => {});
         state.shift = null;
         el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
         if (!isEmbedMode) {
@@ -1327,15 +1333,20 @@ async function syncShift() {
       }
     }
 
-    // Fallback: Check local shift
-    const localShift = await getActiveShiftLocal();
+    // Fallback: Check local shift if offline or server error
+    const localShift = await getActiveShiftLocal().catch(() => null);
     if (localShift) {
       state.shift = localShift;
       el.activeShiftMeta.textContent = `Shift Aktif #${state.shift.id} (Lokal)`;
-    } else {
+    } else if (state.shift) {
+      // Pertahankan shift yang sudah ada di memori
+      el.activeShiftMeta.textContent = `Shift Aktif #${state.shift.id}`;
+    } else if (shiftRes && shiftRes.has_active_shift === false) {
       state.shift = null;
       el.activeShiftMeta.textContent = 'Shift Belum Dibuka';
-      showOpenShiftModal();
+      if (!isEmbedMode) {
+        showOpenShiftModal();
+      }
     }
   } catch (err) {
     console.warn('Gagal sinkron shift:', err);
@@ -2802,6 +2813,9 @@ function bindEvents() {
   if (el.btnReloadApp) {
     el.btnReloadApp.addEventListener('click', async () => {
       showToast('Memperbarui dan memuat ulang PWA...', 'info');
+      if (state.shift) {
+        await saveActiveShiftLocal(state.shift).catch(() => {});
+      }
       if ('serviceWorker' in navigator) {
         try {
           const regs = await navigator.serviceWorker.getRegistrations();
@@ -8307,16 +8321,40 @@ async function refreshCashierDashboardData() {
       el.btnRefreshCashierDashboard.disabled = true;
     }
 
-    const res = await api.getCurrentShift().catch(() => null);
-    if (!res || !res.has_active_shift) {
+    let res = null;
+    try {
+      res = await api.getCurrentShift();
+    } catch (e) {
+      console.warn('Gagal ambil data shift dari server:', e);
+    }
+
+    if (res && res.has_active_shift === false) {
       if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
       showToast('Shift kasir belum dibuka. Silakan buka shift terlebih dahulu.', 'warning');
       showOpenShiftModal();
       return;
     }
 
-    state.shift = res.shift;
-    const s = state.shift;
+    let s = null;
+    if (res && res.has_active_shift && res.shift) {
+      state.shift = res.shift;
+      s = state.shift;
+      await saveActiveShiftLocal(state.shift).catch(() => {});
+    } else {
+      const local = await getActiveShiftLocal().catch(() => null);
+      if (local) {
+        state.shift = local;
+        s = state.shift;
+        showToast('Mode offline: Menampilkan data shift aktif lokal.', 'info');
+      } else if (state.shift) {
+        s = state.shift;
+      } else {
+        if (el.modalCashierDashboard) el.modalCashierDashboard.style.display = 'none';
+        showToast('Shift kasir belum dibuka. Silakan buka shift terlebih dahulu.', 'warning');
+        showOpenShiftModal();
+        return;
+      }
+    }
 
     if (el.dashShiftBadge) {
       el.dashShiftBadge.textContent = `Shift #${s.id} Aktif`;
