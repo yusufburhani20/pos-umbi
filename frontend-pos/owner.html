@@ -3014,6 +3014,7 @@
           <div class="form-group">
             <label class="field-label">Pilih Komoditas Toko:</label>
             <select id="ownerPurchaseProductSelect" class="input-modern"></select>
+            <div id="ownerPurchaseProductHint" style="font-size: 11px; color: #0284c7; margin-top: 5px; font-weight: 600; display: none;"></div>
           </div>
         </div>
 
@@ -3025,12 +3026,16 @@
           <div class="form-group">
             <label class="field-label">Harga Modal Kulakan (Rp/kg): <span class="text-rose">*</span></label>
             <input type="number" id="ownerPurchaseCostInput" class="input-large font-mono font-bold" placeholder="Contoh: 5000">
+            <div id="ownerPurchaseCostWarning" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; border-radius: 8px; padding: 8px 10px; font-size: 11px; font-weight: 600; margin-top: 6px; line-height: 1.4;"></div>
           </div>
         </div>
 
         <!-- Total Calculation Card -->
         <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-weight: 700; color: #065f46; font-size: 13px;">Total Nilai Kulakan:</span>
+          <div>
+            <span style="font-weight: 700; color: #065f46; font-size: 13px; display: block;">Total Nilai Kulakan:</span>
+            <span style="font-size: 11px; color: #047857;">(Berat Riil Masuk × Harga Modal per Kg)</span>
+          </div>
           <strong id="ownerPurchaseTotalVal" style="font-size: 22px; color: #059669; font-family: var(--font-mono); font-weight: 800;">Rp 0</strong>
         </div>
 

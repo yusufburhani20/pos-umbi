@@ -477,84 +477,99 @@ router.post('/purchases', authenticateToken, async (req, res) => {
 
     const purchaseNo = await generatePurchaseNo();
 
-    // 1. Insert into purchases
-    const result = await dbQuery.run(
-      `INSERT INTO purchases 
-       (purchase_no, supplier_id, product_id, qty_kg, cost_price, total_cost, payment_status, paid_amount, remaining_amount, due_date, notes, recorded_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))`,
-      [
-        purchaseNo,
-        supplier_id || null,
-        product_id,
-        qty,
-        unitCost,
-        totalCost,
-        finalPaymentStatus,
-        paidAmount,
-        remainingAmount,
-        due_date || null,
-        notes || '',
-        req.user.id
-      ]
-    );
+    await dbQuery.exec('BEGIN IMMEDIATE;');
 
-    const purchaseId = result.lastID;
-
-    // 2. If DP or full payment made, record to supplier_payments
-    if (paidAmount > 0 && supplier_id) {
-      let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
-      if (!targetShiftId) {
-        const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
-        if (activeShift) targetShiftId = activeShift.id;
-      }
-
-      await dbQuery.run(
-        `INSERT INTO supplier_payments 
-         (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
-         VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
+    let purchaseId;
+    let newStock;
+    try {
+      // 1. Insert into purchases
+      const result = await dbQuery.run(
+        `INSERT INTO purchases 
+         (purchase_no, supplier_id, product_id, qty_kg, cost_price, total_cost, payment_status, paid_amount, remaining_amount, due_date, notes, recorded_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))`,
         [
-          purchaseId,
-          supplier_id,
-          targetShiftId,
+          purchaseNo,
+          supplier_id || null,
+          product_id,
+          qty,
+          unitCost,
+          totalCost,
+          finalPaymentStatus,
           paidAmount,
-          payment_method,
-          finalPaymentStatus === 'lunas' ? 'Pembayaran Lunas Saat Kulakan' : 'Uang Muka / DP Kulakan',
+          remainingAmount,
+          due_date || null,
+          notes || '',
           req.user.id
         ]
       );
 
-      // If paid from safe cash, record in safe cash transactions
-      if (payment_method === 'safe') {
-        await recordSafeCashTransaction({
-          user_id: req.user.id,
-          shift_id: targetShiftId,
-          type: 'supplier_pay',
-          amount: paidAmount,
-          source: 'safe',
-          reference_no: purchaseNo,
-          notes: `Bayar Kulakan ${purchaseNo} (${supplierName})`
-        });
+      purchaseId = result.lastID;
+
+      // 2. If DP or full payment made, record to supplier_payments (always record cash outflow even without registered supplier)
+      if (paidAmount > 0) {
+        let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
+        if (!targetShiftId) {
+          const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
+          if (activeShift) targetShiftId = activeShift.id;
+        }
+
+        await dbQuery.run(
+          `INSERT INTO supplier_payments 
+           (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
+           VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
+          [
+            purchaseId,
+            supplier_id || null,
+            targetShiftId,
+            paidAmount,
+            payment_method,
+            finalPaymentStatus === 'lunas' ? 'Pembayaran Lunas Saat Kulakan' : 'Uang Muka / DP Kulakan',
+            req.user.id
+          ]
+        );
+
+        // If paid from safe cash, record in safe cash transactions
+        if (payment_method === 'safe') {
+          await recordSafeCashTransaction({
+            user_id: req.user.id,
+            shift_id: targetShiftId,
+            type: 'supplier_pay',
+            amount: paidAmount,
+            source: 'safe',
+            reference_no: purchaseNo,
+            notes: `Bayar Kulakan ${purchaseNo} (${supplierName})`
+          });
+        }
       }
+
+      // 3. Update product physical stock and cost_price
+      // Safety check: protect master cost_price if unitCost is extraordinarily higher than retail price (e.g. user entered batch total instead of price/kg)
+      newStock = Math.round((Number(product.stock_qty) + qty) * 100) / 100;
+      const isCostReasonable = !product.retail_price || unitCost <= Number(product.retail_price) * 3;
+      const appliedCostPrice = isCostReasonable ? unitCost : Number(product.cost_price || unitCost);
+
+      await dbQuery.run(
+        'UPDATE products SET stock_qty = ?, cost_price = ? WHERE id = ?',
+        [newStock, appliedCostPrice, product_id]
+      );
+
+      // 4. Record stock adjustment audit trail
+      await dbQuery.run(
+        `INSERT INTO stock_adjustments (product_id, shift_id, user_id, type, qty_kg, notes, photo_url, created_at)
+         VALUES (?, NULL, ?, 'opname', ?, ?, '', datetime('now', 'localtime'))`,
+        [
+          product_id,
+          req.user.id,
+          qty,
+          `[KULAKAN ${purchaseNo}] Dari ${supplierName}: +${qty} kg @ Rp ${unitCost.toLocaleString('id-ID')}`
+        ]
+      );
+
+      await dbQuery.exec('COMMIT;');
+    } catch (err) {
+      await dbQuery.exec('ROLLBACK;');
+      throw err;
     }
-
-    // 3. Update product physical stock and cost_price
-    const newStock = Math.round((Number(product.stock_qty) + qty) * 100) / 100;
-    await dbQuery.run(
-      'UPDATE products SET stock_qty = ?, cost_price = ? WHERE id = ?',
-      [newStock, unitCost, product_id]
-    );
-
-    // 4. Record stock adjustment audit trail
-    await dbQuery.run(
-      `INSERT INTO stock_adjustments (product_id, shift_id, user_id, type, qty_kg, notes, photo_url, created_at)
-       VALUES (?, NULL, ?, 'opname', ?, ?, '', datetime('now', 'localtime'))`,
-      [
-        product_id,
-        req.user.id,
-        qty,
-        `[KULAKAN ${purchaseNo}] Dari ${supplierName}: +${qty} kg @ Rp ${unitCost.toLocaleString('id-ID')}`
-      ]
-    );
 
     // 5. Log audit
     await logAudit(req.user.id, 'PURCHASE_RESTOCK_CREATED', {
@@ -671,45 +686,55 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
       }
     }
 
-    // 1. Update purchase
-    await dbQuery.run(
-      'UPDATE purchases SET paid_amount = ?, remaining_amount = ?, payment_status = ? WHERE id = ?',
-      [newPaid, newRemaining, newStatus, id]
-    );
+    await dbQuery.exec('BEGIN IMMEDIATE;');
 
-    // 2. Insert into supplier_payments
-    let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
-    if (!targetShiftId) {
-      const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
-      if (activeShift) targetShiftId = activeShift.id;
-    }
+    let payResult;
+    try {
+      // 1. Update purchase
+      await dbQuery.run(
+        'UPDATE purchases SET paid_amount = ?, remaining_amount = ?, payment_status = ? WHERE id = ?',
+        [newPaid, newRemaining, newStatus, id]
+      );
 
-    const payResult = await dbQuery.run(
-      `INSERT INTO supplier_payments 
-       (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
-       VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
-      [
-        id,
-        purchase.supplier_id,
-        targetShiftId,
-        payAmount,
-        payment_method,
-        notes || (newRemaining === 0 ? 'Pelunasan Hutang Kulakan' : 'Cicilan Hutang Kulakan'),
-        req.user.id
-      ]
-    );
+      // 2. Insert into supplier_payments
+      let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
+      if (!targetShiftId) {
+        const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
+        if (activeShift) targetShiftId = activeShift.id;
+      }
 
-    // If paid from safe cash, record in safe cash transactions
-    if (payment_method === 'safe') {
-      await recordSafeCashTransaction({
-        user_id: req.user.id,
-        shift_id: targetShiftId,
-        type: 'supplier_pay',
-        amount: payAmount,
-        source: 'safe',
-        reference_no: purchase.purchase_no,
-        notes: `Bayar Hutang Kulakan ${purchase.purchase_no} (${purchase.supplier_name || 'Supplier'})`
-      });
+      payResult = await dbQuery.run(
+        `INSERT INTO supplier_payments 
+         (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
+         VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
+        [
+          id,
+          purchase.supplier_id || null,
+          targetShiftId,
+          payAmount,
+          payment_method,
+          notes || (newRemaining === 0 ? 'Pelunasan Hutang Kulakan' : 'Cicilan Hutang Kulakan'),
+          req.user.id
+        ]
+      );
+
+      // If paid from safe cash, record in safe cash transactions
+      if (payment_method === 'safe') {
+        await recordSafeCashTransaction({
+          user_id: req.user.id,
+          shift_id: targetShiftId,
+          type: 'supplier_pay',
+          amount: payAmount,
+          source: 'safe',
+          reference_no: purchase.purchase_no,
+          notes: `Bayar Hutang Kulakan ${purchase.purchase_no} (${purchase.supplier_name || 'Supplier'})`
+        });
+      }
+
+      await dbQuery.exec('COMMIT;');
+    } catch (err) {
+      await dbQuery.exec('ROLLBACK;');
+      throw err;
     }
 
     // 3. Log audit

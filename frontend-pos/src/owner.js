@@ -594,8 +594,10 @@ const el = {
   btnCancelOwnerRecordPurchase: document.getElementById('btnCancelOwnerRecordPurchase'),
   ownerPurchaseSupplierSelect: document.getElementById('ownerPurchaseSupplierSelect'),
   ownerPurchaseProductSelect: document.getElementById('ownerPurchaseProductSelect'),
+  ownerPurchaseProductHint: document.getElementById('ownerPurchaseProductHint'),
   ownerPurchaseQtyInput: document.getElementById('ownerPurchaseQtyInput'),
   ownerPurchaseCostInput: document.getElementById('ownerPurchaseCostInput'),
+  ownerPurchaseCostWarning: document.getElementById('ownerPurchaseCostWarning'),
   ownerPurchaseTotalVal: document.getElementById('ownerPurchaseTotalVal'),
   ownerPurchasePaymentStatus: document.getElementById('ownerPurchasePaymentStatus'),
   ownerPurchaseTempoFields: document.getElementById('ownerPurchaseTempoFields'),
@@ -1765,6 +1767,7 @@ function switchTab(tabId) {
       if (opt && opt.dataset.cost && el.ownerPurchaseCostInput) {
         el.ownerPurchaseCostInput.value = opt.dataset.cost;
       }
+      updateOwnerPurchaseProductHint();
       updateOwnerPurchaseTotal();
     });
   }
@@ -5932,6 +5935,8 @@ async function handleSubmitSupplierPay() {
       if (el.modalSupplierPay) el.modalSupplierPay.style.display = 'none';
       await loadSuppliersData();
       await loadPurchasesData();
+      await loadDashboardData();
+      await loadSafeCashData();
     } else {
       showToast('Gagal: ' + res.message, 'error');
     }
@@ -5943,6 +5948,20 @@ async function handleSubmitSupplierPay() {
       el.btnSubmitSupplierPay.textContent = 'Simpan Pembayaran';
     }
   }
+}
+
+function updateOwnerPurchaseProductHint() {
+  if (!el.ownerPurchaseProductSelect || !el.ownerPurchaseProductHint) return;
+  const opt = el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex];
+  if (!opt || !opt.value) {
+    el.ownerPurchaseProductHint.style.display = 'none';
+    return;
+  }
+  const retail = parseFloat(opt.dataset.retail || 0);
+  const cost = parseFloat(opt.dataset.cost || 0);
+  const unit = opt.dataset.unit || 'kg';
+  el.ownerPurchaseProductHint.innerHTML = `💡 Panduan Harga: Eceran <strong>${formatRupiah(retail)}/${unit}</strong> • Modal Terakhir: <strong>${formatRupiah(cost)}/${unit}</strong>`;
+  el.ownerPurchaseProductHint.style.display = 'block';
 }
 
 function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
@@ -5961,7 +5980,7 @@ function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
   // Populate products select
   if (el.ownerPurchaseProductSelect) {
     el.ownerPurchaseProductSelect.innerHTML = state.products.map(p => `
-      <option value="${p.id}" data-cost="${p.cost_price || 0}" data-unit="${p.unit || 'kg'}">
+      <option value="${p.id}" data-cost="${p.cost_price || 0}" data-retail="${p.retail_price || 0}" data-unit="${p.unit || 'kg'}">
         ${p.image_emoji || '🥔'} ${p.name} (Stok: ${p.stock} ${p.unit || 'kg'})
       </option>
     `).join('');
@@ -5970,6 +5989,7 @@ function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
     if (firstProduct && el.ownerPurchaseCostInput) {
       el.ownerPurchaseCostInput.value = firstProduct.cost_price || 0;
     }
+    updateOwnerPurchaseProductHint();
   }
 
   if (el.ownerPurchaseQtyInput) el.ownerPurchaseQtyInput.value = '';
@@ -5997,6 +6017,18 @@ function updateOwnerPurchaseTotal() {
   if (el.ownerPurchaseTotalVal) {
     el.ownerPurchaseTotalVal.textContent = formatRupiah(total);
   }
+
+  // Sanity check warning if cost_price is significantly higher than retail price
+  if (el.ownerPurchaseCostWarning && el.ownerPurchaseProductSelect) {
+    const opt = el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex];
+    const retail = opt ? parseFloat(opt.dataset.retail || 0) : 0;
+    if (retail > 0 && cost > retail * 2.5) {
+      el.ownerPurchaseCostWarning.innerHTML = `⚠️ <strong>PERIKSA KEMBALI:</strong> Harga modal (${formatRupiah(cost)}/kg) jauh lebih tinggi dari harga jual (${formatRupiah(retail)}/kg)! Pastikan Anda mengisi <strong>HARGA PER 1 KG</strong>, bukan total keseluruhan faktur borongan.`;
+      el.ownerPurchaseCostWarning.style.display = 'block';
+    } else {
+      el.ownerPurchaseCostWarning.style.display = 'none';
+    }
+  }
 }
 
 async function handleSubmitOwnerRecordPurchase() {
@@ -6022,6 +6054,21 @@ async function handleSubmitOwnerRecordPurchase() {
     showToast('Harga modal kulakan harus lebih dari Rp 0!', 'error');
     if (el.ownerPurchaseCostInput) el.ownerPurchaseCostInput.focus();
     return;
+  }
+
+  // Safety confirmation dialog if cost_price exceeds 2.5x retail price
+  const opt = el.ownerPurchaseProductSelect ? el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex] : null;
+  const retail = opt ? parseFloat(opt.dataset.retail || 0) : 0;
+  if (retail > 0 && cost > retail * 2.5) {
+    const isConfirmed = confirm(
+      `⚠️ PERINGATAN SALAH INPUT HARGA MODAL:\n\n` +
+      `Anda memasukkan Harga Modal: ${formatRupiah(cost)}/kg\n` +
+      `Sedangkan Harga Jual Eceran Toko: ${formatRupiah(retail)}/kg\n\n` +
+      `Apakah Anda yakin ${formatRupiah(cost)} adalah harga per 1 kg?\n` +
+      `(Jika angka tersebut adalah TOTAL FAKTUR 1 TRUK/PARTAI, silakan bagi dulu Total dengan Berat ${qty} kg agar laba rugi toko tidak rusak minus miliaran).\n\n` +
+      `Tetap lanjutkan simpan?`
+    );
+    if (!isConfirmed) return;
   }
 
   const paymentMethod = el.ownerPurchasePaymentMethodSelect ? el.ownerPurchasePaymentMethodSelect.value : 'safe';
@@ -6051,6 +6098,8 @@ async function handleSubmitOwnerRecordPurchase() {
       await loadAllData();
       await loadSuppliersData();
       await loadPurchasesData();
+      await loadDashboardData();
+      await loadSafeCashData();
     } else {
       showToast('Gagal: ' + res.message, 'error');
     }
