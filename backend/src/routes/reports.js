@@ -180,6 +180,15 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        WHERE remaining_amount > 0`
     );
 
+    const purchasesMonthRow = await dbQuery.get(
+      `SELECT 
+         COALESCE(SUM(total_cost), 0) as total_purchases_month,
+         COUNT(id) as total_purchases_count_month,
+         COALESCE(SUM(paid_amount), 0) as total_purchases_paid_month
+       FROM purchases
+       WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime')`
+    );
+
     // 4h. Detailed void transactions (Default: 7 hari terakhir, dapat diubah ke 30 hari atau semua)
     let voidDateFilter = "date(o.created_at) >= date('now', 'localtime', '-6 days')";
     if (activeVoidPeriod === '30days') {
@@ -389,6 +398,8 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         total_expenses_today: totalStoreExpenses,
         total_supplier_paid_today: totalSupplierPaidToday,
         total_cash_outflow_today: totalCashOutflow,
+        total_purchases_month: Number(purchasesMonthRow ? purchasesMonthRow.total_purchases_month : 0) || 0,
+        total_purchases_count_month: Number(purchasesMonthRow ? purchasesMonthRow.total_purchases_count_month : 0) || 0,
         net_profit_today: netProfitToday,
         gross_profit_today: grossProfit,
         gross_margin_pct: grossMarginPct,
@@ -434,7 +445,9 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
         total_customer_debts: Number(customerDebtsRow ? customerDebtsRow.total_customer_debts : 0) || 0,
         total_debtors: Number(customerDebtsRow ? customerDebtsRow.total_debtors : 0) || 0,
         total_supplier_debt: Number(supplierPayablesRow ? supplierPayablesRow.total_supplier_debt : 0) || 0,
-        total_suppliers_debt: Number(supplierPayablesRow ? supplierPayablesRow.total_suppliers_debt : 0) || 0
+        total_suppliers_debt: Number(supplierPayablesRow ? supplierPayablesRow.total_suppliers_debt : 0) || 0,
+        total_purchases_month: Number(purchasesMonthRow ? purchasesMonthRow.total_purchases_month : 0) || 0,
+        total_purchases_count_month: Number(purchasesMonthRow ? purchasesMonthRow.total_purchases_count_month : 0) || 0
       },
       anti_fraud: {
         retail_percentage: retailPercentage,

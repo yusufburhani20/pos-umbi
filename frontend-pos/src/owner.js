@@ -5405,6 +5405,13 @@ async function loadSuppliersData() {
     }
     if (el.kpiMonthlyPurchases) {
       el.kpiMonthlyPurchases.textContent = formatRupiah(state.supplierSummary.total_purchases_month || 0);
+      const subEl = document.getElementById('kpiMonthlyPurchasesSub');
+      if (subEl) {
+        const count = state.supplierSummary.total_purchases_count_month || (state.purchases ? state.purchases.length : 0);
+        const lunas = state.supplierSummary.total_purchases_lunas_count || 0;
+        const tempo = state.supplierSummary.total_tempo_count || 0;
+        subEl.textContent = `${count} nota masuk (${lunas} Lunas, ${tempo} Tempo)`;
+      }
     }
     if (el.kpiTotalSupplierDebt) {
       el.kpiTotalSupplierDebt.textContent = formatRupiah(state.supplierSummary.total_debt_outstanding || 0);

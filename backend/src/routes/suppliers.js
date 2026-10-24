@@ -82,6 +82,21 @@ router.get('/', authenticateToken, async (req, res) => {
           WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime')
         ) as total_purchases_month,
         (
+          SELECT COUNT(*) 
+          FROM purchases 
+          WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime')
+        ) as total_purchases_count_month,
+        (
+          SELECT COALESCE(SUM(paid_amount), 0) 
+          FROM purchases 
+          WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime')
+        ) as total_purchases_paid_month,
+        (
+          SELECT COUNT(*) 
+          FROM purchases 
+          WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', 'localtime') AND payment_status = 'lunas'
+        ) as total_purchases_lunas_count,
+        (
           SELECT COALESCE(SUM(remaining_amount), 0) 
           FROM purchases 
           WHERE remaining_amount > 0
@@ -91,6 +106,11 @@ router.get('/', authenticateToken, async (req, res) => {
           FROM purchases 
           WHERE remaining_amount > 0
         ) as total_suppliers_with_debt,
+        (
+          SELECT COUNT(*) 
+          FROM purchases 
+          WHERE remaining_amount > 0
+        ) as total_tempo_count,
         (
           SELECT COALESCE(SUM(remaining_amount), 0) 
           FROM purchases 
@@ -103,8 +123,12 @@ router.get('/', authenticateToken, async (req, res) => {
       summary: {
         total_suppliers: summary.total_suppliers || 0,
         total_purchases_month: summary.total_purchases_month || 0,
+        total_purchases_count_month: summary.total_purchases_count_month || 0,
+        total_purchases_paid_month: summary.total_purchases_paid_month || 0,
+        total_purchases_lunas_count: summary.total_purchases_lunas_count || 0,
         total_debt_outstanding: summary.total_debt_outstanding || 0,
         total_suppliers_with_debt: summary.total_suppliers_with_debt || 0,
+        total_tempo_count: summary.total_tempo_count || 0,
         total_overdue_debt: summary.total_overdue_debt || 0
       },
       suppliers

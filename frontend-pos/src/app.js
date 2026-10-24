@@ -187,6 +187,13 @@ const el = {
   btnDebtFilterOverdue: document.getElementById('btnDebtFilterOverdue'),
   btnDebtFilterPaid: document.getElementById('btnDebtFilterPaid'),
   btnDebtFilterAll: document.getElementById('btnDebtFilterAll'),
+  kpiCashierDebtTotalRemaining: document.getElementById('kpiCashierDebtTotalRemaining'),
+  kpiCashierDebtCountSubtitle: document.getElementById('kpiCashierDebtCountSubtitle'),
+  kpiCashierDebtTotalOverdue: document.getElementById('kpiCashierDebtTotalOverdue'),
+  kpiCashierDebtTotalPaid: document.getElementById('kpiCashierDebtTotalPaid'),
+  cashierDebtTableTotalKasbon: document.getElementById('cashierDebtTableTotalKasbon'),
+  cashierDebtTableTotalRemaining: document.getElementById('cashierDebtTableTotalRemaining'),
+  cashierDebtTableSummaryCount: document.getElementById('cashierDebtTableSummaryCount'),
 
   // Manual Debt Modal Elements
   modalManualDebt: document.getElementById('modalManualDebt'),
@@ -5205,6 +5212,30 @@ async function loadCashierDebts() {
 
     state.cashierDebts = res.debts || [];
 
+    // Update KPI Summary Cards
+    if (res.summary) {
+      if (el.kpiCashierDebtTotalRemaining) {
+        el.kpiCashierDebtTotalRemaining.textContent = formatRupiah(res.summary.total_outstanding || 0);
+      }
+      if (el.kpiCashierDebtCountSubtitle) {
+        el.kpiCashierDebtCountSubtitle.textContent = `${res.summary.total_debtors || 0} Pelanggan Kasbon`;
+      }
+      if (el.kpiCashierDebtTotalOverdue) {
+        el.kpiCashierDebtTotalOverdue.textContent = formatRupiah(res.summary.total_overdue || 0);
+      }
+      if (el.kpiCashierDebtTotalPaid) {
+        el.kpiCashierDebtTotalPaid.textContent = formatRupiah(res.summary.total_paid || 0);
+      }
+    }
+
+    // Update Table Footer Totals
+    const totalKasbon = state.cashierDebts.reduce((sum, d) => sum + (Number(d.total_amount) || 0), 0);
+    const totalRemaining = state.cashierDebts.reduce((sum, d) => sum + (Number(d.remaining_amount) || 0), 0);
+
+    if (el.cashierDebtTableTotalKasbon) el.cashierDebtTableTotalKasbon.textContent = formatRupiah(totalKasbon);
+    if (el.cashierDebtTableTotalRemaining) el.cashierDebtTableTotalRemaining.textContent = formatRupiah(totalRemaining);
+    if (el.cashierDebtTableSummaryCount) el.cashierDebtTableSummaryCount.textContent = `${state.cashierDebts.length} Tagihan`;
+
     if (state.cashierDebts.length === 0) {
       el.cashierDebtsTableBody.innerHTML = `
         <tr>
@@ -6441,6 +6472,13 @@ async function loadCashierSuppliers() {
       }
       if (el.kpiCashierMonthlyPurchases) {
         el.kpiCashierMonthlyPurchases.textContent = formatRupiah(summary.total_purchases_month || 0);
+        const subPurchases = document.getElementById('kpiCashierMonthlyPurchasesSub');
+        if (subPurchases) {
+          const count = summary.total_purchases_count_month || (state.purchases ? state.purchases.length : 0);
+          const lunas = summary.total_purchases_lunas_count || 0;
+          const tempo = summary.total_tempo_count || 0;
+          subPurchases.textContent = `${count} nota masuk (${lunas} Lunas, ${tempo} Tempo)`;
+        }
       }
       if (el.kpiCashierTotalDebt) {
         el.kpiCashierTotalDebt.textContent = formatRupiah(summary.total_debt_outstanding || 0);
