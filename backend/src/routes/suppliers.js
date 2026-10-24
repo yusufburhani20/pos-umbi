@@ -758,6 +758,8 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
     console.error('Error paying supplier debt:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
+});
+
 // DELETE /api/suppliers/purchases/:id
 // Cancel / Delete a purchase (kulakan) record & unpaid tempo debt manually
 router.delete('/purchases/:id', authenticateToken, async (req, res) => {
