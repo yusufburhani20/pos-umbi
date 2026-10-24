@@ -82,7 +82,9 @@ const state = {
   activePurchaseForPayment: null,
   ownerExpenses: [],
   ownerExpenseSummary: {},
-  ownerExpenseCategories: []
+  ownerExpenseCategories: [],
+  ownerPurchaseMode: 'manual',
+  ownerRestockModalMode: 'manual'
 };
 
 // DOM Elements
@@ -360,6 +362,14 @@ const el = {
   inpRestockQty: document.getElementById('inpRestockQty'),
   inpRestockCost: document.getElementById('inpRestockCost'),
   inpRestockNotes: document.getElementById('inpRestockNotes'),
+  btnOwnerRestockModeManual: document.getElementById('btnOwnerRestockModeManual'),
+  btnOwnerRestockModeKg: document.getElementById('btnOwnerRestockModeKg'),
+  inpRestockManualGroup: document.getElementById('inpRestockManualGroup'),
+  inpRestockKgGroup: document.getElementById('inpRestockKgGroup'),
+  inpRestockManualTotal: document.getElementById('inpRestockManualTotal'),
+  ownerRestockSummarySub: document.getElementById('ownerRestockSummarySub'),
+  ownerRestockTotalVal: document.getElementById('ownerRestockTotalVal'),
+  ownerRestockDerivedPerKg: document.getElementById('ownerRestockDerivedPerKg'),
 
   modalEditPrice: document.getElementById('modalEditPrice'),
   btnCloseModalEditPrice: document.getElementById('btnCloseModalEditPrice'),
@@ -595,6 +605,13 @@ const el = {
   ownerPurchaseSupplierSelect: document.getElementById('ownerPurchaseSupplierSelect'),
   ownerPurchaseProductSelect: document.getElementById('ownerPurchaseProductSelect'),
   ownerPurchaseProductHint: document.getElementById('ownerPurchaseProductHint'),
+  btnOwnerPurModeManual: document.getElementById('btnOwnerPurModeManual'),
+  btnOwnerPurModeKg: document.getElementById('btnOwnerPurModeKg'),
+  ownerPurchaseManualGroup: document.getElementById('ownerPurchaseManualGroup'),
+  ownerPurchaseKgGroup: document.getElementById('ownerPurchaseKgGroup'),
+  ownerPurchaseManualTotalInput: document.getElementById('ownerPurchaseManualTotalInput'),
+  ownerPurchaseSummarySub: document.getElementById('ownerPurchaseSummarySub'),
+  ownerPurchaseDerivedPerKg: document.getElementById('ownerPurchaseDerivedPerKg'),
   ownerPurchaseQtyInput: document.getElementById('ownerPurchaseQtyInput'),
   ownerPurchaseCostInput: document.getElementById('ownerPurchaseCostInput'),
   ownerPurchaseCostWarning: document.getElementById('ownerPurchaseCostWarning'),
@@ -1496,7 +1513,7 @@ function switchTab(tabId) {
 
   
   // Currency auto-formatting for owner pricing inputs
-  ['inpProdCost', 'inpProdRetail', 'inpProdReseller', 'inpRestockCost', 'editPriceCost', 'editPriceRetail', 'editPriceReseller'].forEach(id => {
+  ['inpProdCost', 'inpProdRetail', 'inpProdReseller', 'inpRestockCost', 'editPriceCost', 'editPriceRetail', 'editPriceReseller', 'safeActionAmount', 'ownerIncomeAmountInput', 'supPayAmountInput'].forEach(id => {
     const elInput = document.getElementById(id);
     if (elInput) attachCurrencyAutoFormat(elInput);
   });
@@ -1556,6 +1573,21 @@ function switchTab(tabId) {
   el.btnCloseModalRestock.addEventListener('click', () => el.modalRestock.style.display = 'none');
   el.btnCancelModalRestock.addEventListener('click', () => el.modalRestock.style.display = 'none');
   el.inpRestockProductSelect.addEventListener('change', updateRestockCurrentStock);
+  if (el.btnOwnerRestockModeManual) {
+    el.btnOwnerRestockModeManual.addEventListener('click', () => switchOwnerRestockModalMode('manual'));
+  }
+  if (el.btnOwnerRestockModeKg) {
+    el.btnOwnerRestockModeKg.addEventListener('click', () => switchOwnerRestockModalMode('kg'));
+  }
+  if (el.inpRestockQty) {
+    el.inpRestockQty.addEventListener('input', updateOwnerRestockModalCalculation);
+  }
+  if (el.inpRestockCost) {
+    el.inpRestockCost.addEventListener('input', updateOwnerRestockModalCalculation);
+  }
+  if (el.inpRestockManualTotal) {
+    attachCurrencyAutoFormat(el.inpRestockManualTotal, () => updateOwnerRestockModalCalculation());
+  }
   el.btnSaveModalRestock.addEventListener('click', handleSaveRestock);
 
   el.btnCloseModalEditPrice.addEventListener('click', () => el.modalEditPrice.style.display = 'none');
@@ -1743,7 +1775,7 @@ function switchTab(tabId) {
   if (el.btnSupPayFull) {
     el.btnSupPayFull.addEventListener('click', () => {
       if (state.activePurchaseForPayment && el.supPayAmountInput) {
-        el.supPayAmountInput.value = state.activePurchaseForPayment.remaining_amount;
+        el.supPayAmountInput.value = formatRupiahNumber(state.activePurchaseForPayment.remaining_amount);
       }
     });
   }
@@ -1765,17 +1797,29 @@ function switchTab(tabId) {
     el.ownerPurchaseProductSelect.addEventListener('change', () => {
       const opt = el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex];
       if (opt && opt.dataset.cost && el.ownerPurchaseCostInput) {
-        el.ownerPurchaseCostInput.value = opt.dataset.cost;
+        el.ownerPurchaseCostInput.value = formatRupiahNumber(opt.dataset.cost);
       }
       updateOwnerPurchaseProductHint();
       updateOwnerPurchaseTotal();
     });
   }
+  if (el.btnOwnerPurModeManual) {
+    el.btnOwnerPurModeManual.addEventListener('click', () => switchOwnerPurchaseMode('manual'));
+  }
+  if (el.btnOwnerPurModeKg) {
+    el.btnOwnerPurModeKg.addEventListener('click', () => switchOwnerPurchaseMode('kg'));
+  }
+  if (el.ownerPurchaseManualTotalInput) {
+    attachCurrencyAutoFormat(el.ownerPurchaseManualTotalInput, () => updateOwnerPurchaseTotal());
+  }
   if (el.ownerPurchaseQtyInput) {
     el.ownerPurchaseQtyInput.addEventListener('input', updateOwnerPurchaseTotal);
   }
   if (el.ownerPurchaseCostInput) {
-    el.ownerPurchaseCostInput.addEventListener('input', updateOwnerPurchaseTotal);
+    attachCurrencyAutoFormat(el.ownerPurchaseCostInput, () => updateOwnerPurchaseTotal());
+  }
+  if (el.ownerPurchaseDpAmount) {
+    attachCurrencyAutoFormat(el.ownerPurchaseDpAmount);
   }
   if (el.ownerPurchasePaymentStatus) {
     el.ownerPurchasePaymentStatus.addEventListener('change', () => {
@@ -1807,7 +1851,7 @@ function switchTab(tabId) {
     });
   }
   if (el.ownerExpenseAmountInput) {
-    el.ownerExpenseAmountInput.addEventListener('input', checkOwnerExpenseSufficiency);
+    attachCurrencyAutoFormat(el.ownerExpenseAmountInput, () => checkOwnerExpenseSufficiency());
   }
   if (el.ownerSourceCash) {
     el.ownerSourceCash.addEventListener('change', checkOwnerExpenseSufficiency);
@@ -1820,12 +1864,12 @@ function switchTab(tabId) {
   }
   if (el.btnOwnerQuickAddIncomeFromAlert) {
     el.btnOwnerQuickAddIncomeFromAlert.addEventListener('click', () => {
-      const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0) || 0;
+      const amount = parseRupiahInput(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0);
       const drawerCash = Number(state.currentDrawerCash) || 0;
       const shortage = Math.max(50000, amount - drawerCash);
       if (el.modalOwnerAddExpense) el.modalOwnerAddExpense.style.display = 'none';
       if (el.modalOwnerAddIncome) el.modalOwnerAddIncome.style.display = 'flex';
-      if (el.ownerIncomeAmountInput) el.ownerIncomeAmountInput.value = shortage;
+      if (el.ownerIncomeAmountInput) el.ownerIncomeAmountInput.value = formatRupiahNumber(shortage);
       if (el.ownerIncomeNotesInput) el.ownerIncomeNotesInput.value = 'Tambah modal kas laci toko';
     });
   }
@@ -3937,6 +3981,50 @@ async function handleSaveNewProduct() {
   }
 }
 
+function switchOwnerRestockModalMode(mode) {
+  state.ownerRestockModalMode = mode;
+  if (mode === 'manual') {
+    if (el.btnOwnerRestockModeManual) el.btnOwnerRestockModeManual.classList.add('active');
+    if (el.btnOwnerRestockModeKg) el.btnOwnerRestockModeKg.classList.remove('active');
+    if (el.inpRestockManualGroup) el.inpRestockManualGroup.style.display = 'block';
+    if (el.inpRestockKgGroup) el.inpRestockKgGroup.style.display = 'none';
+    if (el.inpRestockManualTotal) el.inpRestockManualTotal.focus();
+  } else {
+    if (el.btnOwnerRestockModeManual) el.btnOwnerRestockModeManual.classList.remove('active');
+    if (el.btnOwnerRestockModeKg) el.btnOwnerRestockModeKg.classList.add('active');
+    if (el.inpRestockManualGroup) el.inpRestockManualGroup.style.display = 'none';
+    if (el.inpRestockKgGroup) el.inpRestockKgGroup.style.display = 'block';
+    if (el.inpRestockCost) el.inpRestockCost.focus();
+  }
+  updateOwnerRestockModalCalculation();
+}
+
+function updateOwnerRestockModalCalculation() {
+  const isManual = state.ownerRestockModalMode === 'manual';
+  const qty = parseFloat(el.inpRestockQty ? el.inpRestockQty.value : 0) || 0;
+
+  if (isManual) {
+    const total = parseRupiahInput(el.inpRestockManualTotal ? el.inpRestockManualTotal.value : 0) || 0;
+    if (el.ownerRestockTotalVal) el.ownerRestockTotalVal.textContent = formatRupiah(total);
+    if (el.ownerRestockSummarySub) el.ownerRestockSummarySub.textContent = 'Nominal faktur manual';
+    if (el.ownerRestockDerivedPerKg) {
+      if (qty > 0 && total > 0) {
+        const perKg = Math.round((total / qty) * 100) / 100;
+        el.ownerRestockDerivedPerKg.textContent = `💡 Estimasi modal: ${formatRupiah(perKg)}/kg`;
+        el.ownerRestockDerivedPerKg.style.display = 'block';
+      } else {
+        el.ownerRestockDerivedPerKg.style.display = 'none';
+      }
+    }
+  } else {
+    const cost = el.inpRestockCost && el.inpRestockCost.value ? parseRupiahInput(el.inpRestockCost.value) : 0;
+    const total = Math.round(qty * cost);
+    if (el.ownerRestockTotalVal) el.ownerRestockTotalVal.textContent = formatRupiah(total);
+    if (el.ownerRestockSummarySub) el.ownerRestockSummarySub.textContent = `(${formatStockDisplay(qty)} kg × ${formatRupiah(cost)}/kg)`;
+    if (el.ownerRestockDerivedPerKg) el.ownerRestockDerivedPerKg.style.display = 'none';
+  }
+}
+
 function openRestockModal(targetProductId = null) {
   if (state.products.length === 0) return;
   el.inpRestockProductSelect.innerHTML = state.products.map(p => `
@@ -3949,7 +4037,9 @@ function openRestockModal(targetProductId = null) {
   updateRestockCurrentStock();
   el.inpRestockQty.value = '';
   el.inpRestockCost.value = '';
+  if (el.inpRestockManualTotal) el.inpRestockManualTotal.value = '';
   el.inpRestockNotes.value = '';
+  switchOwnerRestockModalMode(state.ownerRestockModalMode || 'manual');
   el.modalRestock.style.display = 'flex';
   el.inpRestockQty.focus();
 }
@@ -3961,12 +4051,12 @@ function updateRestockCurrentStock() {
     el.inpRestockCurrentStock.value = `${formatStockDisplay(prod.stock_qty)} ${prod.unit}`;
     el.inpRestockCost.placeholder = `Modal saat ini: Rp ${Number(prod.cost_price).toLocaleString('id-ID')}`;
   }
+  updateOwnerRestockModalCalculation();
 }
 
 async function handleSaveRestock() {
   const prodId = Number(el.inpRestockProductSelect.value);
   const qty = parseFloat(el.inpRestockQty.value);
-  const cost = el.inpRestockCost.value ? parseRupiahInput(el.inpRestockCost.value) : null;
   const notes = el.inpRestockNotes.value.trim();
 
   if (isNaN(qty) || qty <= 0) {
@@ -3974,11 +4064,28 @@ async function handleSaveRestock() {
     return;
   }
 
+  const isManual = state.ownerRestockModalMode === 'manual';
+  let totalCost = null;
+  let cost = null;
+
+  if (isManual) {
+    const manualTotal = parseRupiahInput(el.inpRestockManualTotal ? el.inpRestockManualTotal.value : 0);
+    if (manualTotal > 0) {
+      totalCost = manualTotal;
+      cost = qty > 0 ? Math.round((totalCost / qty) * 100) / 100 : null;
+    }
+  } else {
+    cost = el.inpRestockCost.value ? parseRupiahInput(el.inpRestockCost.value) : null;
+    if (cost && qty > 0) {
+      totalCost = Math.round(qty * cost);
+    }
+  }
+
   try {
     el.btnSaveModalRestock.disabled = true;
     el.btnSaveModalRestock.textContent = 'Menyimpan...';
 
-    const res = await api.restockProduct(prodId, qty, cost, notes);
+    const res = await api.restockProduct(prodId, qty, cost, notes, null, 'lunas', 0, null, totalCost);
     el.modalRestock.style.display = 'none';
     showToast(res.message, 'success');
     await loadAllData();
@@ -5924,7 +6031,7 @@ function openSupplierPayModal(purchase) {
     el.supPayNoteDetails.textContent = `Total nota: ${formatRupiah(purchase.total_cost)} • Sudah dibayar: ${formatRupiah(purchase.paid_amount || 0)}`;
   }
   if (el.supPayAmountInput) {
-    el.supPayAmountInput.value = purchase.remaining_amount;
+    el.supPayAmountInput.value = formatRupiahNumber(purchase.remaining_amount);
   }
   if (el.supPayNotesInput) {
     el.supPayNotesInput.value = '';
@@ -5937,7 +6044,7 @@ async function handleSubmitSupplierPay() {
 
   const purchaseId = state.activePurchaseForPayment.id;
   const remaining = Number(state.activePurchaseForPayment.remaining_amount);
-  const amount = Number(el.supPayAmountInput ? el.supPayAmountInput.value : 0);
+  const amount = parseRupiahInput(el.supPayAmountInput ? el.supPayAmountInput.value : 0);
   const method = el.supPayMethodSelect ? el.supPayMethodSelect.value : 'transfer';
   const notes = el.supPayNotesInput ? el.supPayNotesInput.value.trim() : '';
 
@@ -5998,6 +6105,39 @@ function updateOwnerPurchaseProductHint() {
   el.ownerPurchaseProductHint.style.display = 'block';
 }
 
+function switchOwnerPurchaseMode(mode) {
+  state.ownerPurchaseMode = mode;
+  if (mode === 'manual') {
+    if (el.btnOwnerPurModeManual) el.btnOwnerPurModeManual.classList.add('active');
+    if (el.btnOwnerPurModeKg) el.btnOwnerPurModeKg.classList.remove('active');
+    if (el.ownerPurchaseManualGroup) el.ownerPurchaseManualGroup.style.display = 'block';
+    if (el.ownerPurchaseKgGroup) el.ownerPurchaseKgGroup.style.display = 'none';
+    if (el.ownerPurchaseCostWarning) el.ownerPurchaseCostWarning.style.display = 'none';
+
+    // If manual input is empty but cost & qty had values, prepopulate manual total
+    const qty = parseFloat(el.ownerPurchaseQtyInput ? el.ownerPurchaseQtyInput.value : 0) || 0;
+    const cost = parseFloat(el.ownerPurchaseCostInput ? el.ownerPurchaseCostInput.value : 0) || 0;
+    if (el.ownerPurchaseManualTotalInput && !el.ownerPurchaseManualTotalInput.value && qty > 0 && cost > 0) {
+      el.ownerPurchaseManualTotalInput.value = formatRupiahNumber(Math.round(qty * cost));
+    }
+    if (el.ownerPurchaseManualTotalInput) el.ownerPurchaseManualTotalInput.focus();
+  } else {
+    if (el.btnOwnerPurModeManual) el.btnOwnerPurModeManual.classList.remove('active');
+    if (el.btnOwnerPurModeKg) el.btnOwnerPurModeKg.classList.add('active');
+    if (el.ownerPurchaseManualGroup) el.ownerPurchaseManualGroup.style.display = 'none';
+    if (el.ownerPurchaseKgGroup) el.ownerPurchaseKgGroup.style.display = 'block';
+
+    // If cost input is empty or 0, but manual total & qty exist, prepopulate cost
+    const qty = parseFloat(el.ownerPurchaseQtyInput ? el.ownerPurchaseQtyInput.value : 0) || 0;
+    const manualTotal = parseRupiahInput(el.ownerPurchaseManualTotalInput ? el.ownerPurchaseManualTotalInput.value : 0) || 0;
+    if (el.ownerPurchaseCostInput && (!el.ownerPurchaseCostInput.value || parseFloat(el.ownerPurchaseCostInput.value) <= 0) && qty > 0 && manualTotal > 0) {
+      el.ownerPurchaseCostInput.value = Math.round(manualTotal / qty);
+    }
+    if (el.ownerPurchaseCostInput) el.ownerPurchaseCostInput.focus();
+  }
+  updateOwnerPurchaseTotal();
+}
+
 function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
   // Populate supplier select
   if (el.ownerPurchaseSupplierSelect) {
@@ -6021,12 +6161,13 @@ function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
 
     const firstProduct = state.products[0];
     if (firstProduct && el.ownerPurchaseCostInput) {
-      el.ownerPurchaseCostInput.value = firstProduct.cost_price || 0;
+      el.ownerPurchaseCostInput.value = formatRupiahNumber(firstProduct.cost_price || 0);
     }
     updateOwnerPurchaseProductHint();
   }
 
   if (el.ownerPurchaseQtyInput) el.ownerPurchaseQtyInput.value = '';
+  if (el.ownerPurchaseManualTotalInput) el.ownerPurchaseManualTotalInput.value = '';
   if (el.ownerPurchasePaymentStatus) el.ownerPurchasePaymentStatus.value = 'lunas';
   if (el.ownerPurchaseTempoFields) el.ownerPurchaseTempoFields.style.display = 'none';
   if (el.ownerPurchaseDpAmount) el.ownerPurchaseDpAmount.value = '';
@@ -6039,28 +6180,59 @@ function openOwnerRecordPurchaseModal(preselectedSupplierId = null) {
     el.ownerPurchaseDueDate.value = getLocalDateStr(d);
   }
 
+  switchOwnerPurchaseMode(state.ownerPurchaseMode || 'manual');
   updateOwnerPurchaseTotal();
 
   if (el.modalOwnerRecordPurchase) el.modalOwnerRecordPurchase.style.display = 'flex';
 }
 
 function updateOwnerPurchaseTotal() {
+  const isManual = state.ownerPurchaseMode === 'manual';
   const qty = parseFloat(el.ownerPurchaseQtyInput ? el.ownerPurchaseQtyInput.value : 0) || 0;
-  const cost = parseFloat(el.ownerPurchaseCostInput ? el.ownerPurchaseCostInput.value : 0) || 0;
-  const total = qty * cost;
-  if (el.ownerPurchaseTotalVal) {
-    el.ownerPurchaseTotalVal.textContent = formatRupiah(total);
-  }
 
-  // Sanity check warning if cost_price is significantly higher than retail price
-  if (el.ownerPurchaseCostWarning && el.ownerPurchaseProductSelect) {
-    const opt = el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex];
-    const retail = opt ? parseFloat(opt.dataset.retail || 0) : 0;
-    if (retail > 0 && cost > retail * 2.5) {
-      el.ownerPurchaseCostWarning.innerHTML = `⚠️ <strong>PERIKSA KEMBALI:</strong> Harga modal (${formatRupiah(cost)}/kg) jauh lebih tinggi dari harga jual (${formatRupiah(retail)}/kg)! Pastikan Anda mengisi <strong>HARGA PER 1 KG</strong>, bukan total keseluruhan faktur borongan.`;
-      el.ownerPurchaseCostWarning.style.display = 'block';
-    } else {
+  if (isManual) {
+    const total = parseRupiahInput(el.ownerPurchaseManualTotalInput ? el.ownerPurchaseManualTotalInput.value : 0) || 0;
+    if (el.ownerPurchaseTotalVal) {
+      el.ownerPurchaseTotalVal.textContent = formatRupiah(total);
+    }
+    if (el.ownerPurchaseSummarySub) {
+      el.ownerPurchaseSummarySub.textContent = 'Nominal borongan / faktur manual';
+    }
+    if (el.ownerPurchaseDerivedPerKg) {
+      if (qty > 0 && total > 0) {
+        const perKg = Math.round((total / qty) * 100) / 100;
+        el.ownerPurchaseDerivedPerKg.textContent = `💡 Estimasi modal: ${formatRupiah(perKg)}/kg`;
+        el.ownerPurchaseDerivedPerKg.style.display = 'block';
+      } else {
+        el.ownerPurchaseDerivedPerKg.style.display = 'none';
+      }
+    }
+    if (el.ownerPurchaseCostWarning) {
       el.ownerPurchaseCostWarning.style.display = 'none';
+    }
+  } else {
+    const cost = parseRupiahInput(el.ownerPurchaseCostInput ? el.ownerPurchaseCostInput.value : 0);
+    const total = Math.round(qty * cost);
+    if (el.ownerPurchaseTotalVal) {
+      el.ownerPurchaseTotalVal.textContent = formatRupiah(total);
+    }
+    if (el.ownerPurchaseSummarySub) {
+      el.ownerPurchaseSummarySub.textContent = `(${formatStockDisplay(qty)} kg × ${formatRupiah(cost)}/kg)`;
+    }
+    if (el.ownerPurchaseDerivedPerKg) {
+      el.ownerPurchaseDerivedPerKg.style.display = 'none';
+    }
+
+    // Sanity check warning if cost_price is significantly higher than retail price
+    if (el.ownerPurchaseCostWarning && el.ownerPurchaseProductSelect) {
+      const opt = el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex];
+      const retail = opt ? parseFloat(opt.dataset.retail || 0) : 0;
+      if (retail > 0 && cost > retail * 2.5) {
+        el.ownerPurchaseCostWarning.innerHTML = `⚠️ <strong>PERIKSA KEMBALI:</strong> Harga modal (${formatRupiah(cost)}/kg) jauh lebih tinggi dari harga jual (${formatRupiah(retail)}/kg)! Jika Anda ingin menginput TOTAL NOMINAL BORONGAN, gunakan tab <strong>"Input Total Manual (Borongan)"</strong> di atas.`;
+        el.ownerPurchaseCostWarning.style.display = 'block';
+      } else {
+        el.ownerPurchaseCostWarning.style.display = 'none';
+      }
     }
   }
 }
@@ -6069,10 +6241,9 @@ async function handleSubmitOwnerRecordPurchase() {
   const supplierId = el.ownerPurchaseSupplierSelect ? el.ownerPurchaseSupplierSelect.value : '';
   const productId = el.ownerPurchaseProductSelect ? el.ownerPurchaseProductSelect.value : '';
   const qty = parseFloat(el.ownerPurchaseQtyInput ? el.ownerPurchaseQtyInput.value : 0);
-  const cost = parseFloat(el.ownerPurchaseCostInput ? el.ownerPurchaseCostInput.value : 0);
   const paymentStatus = el.ownerPurchasePaymentStatus ? el.ownerPurchasePaymentStatus.value : 'lunas';
   const dueDate = (paymentStatus === 'tempo' && el.ownerPurchaseDueDate) ? el.ownerPurchaseDueDate.value : null;
-  const dpAmount = (paymentStatus === 'tempo' && el.ownerPurchaseDpAmount) ? parseFloat(el.ownerPurchaseDpAmount.value || 0) : 0;
+  const dpAmount = (paymentStatus === 'tempo' && el.ownerPurchaseDpAmount) ? parseRupiahInput(el.ownerPurchaseDpAmount.value || 0) : 0;
   const notes = el.ownerPurchaseNotesInput ? el.ownerPurchaseNotesInput.value.trim() : '';
 
   if (!productId) {
@@ -6084,25 +6255,44 @@ async function handleSubmitOwnerRecordPurchase() {
     if (el.ownerPurchaseQtyInput) el.ownerPurchaseQtyInput.focus();
     return;
   }
-  if (!cost || cost <= 0) {
-    showToast('Harga modal kulakan harus lebih dari Rp 0!', 'error');
-    if (el.ownerPurchaseCostInput) el.ownerPurchaseCostInput.focus();
-    return;
-  }
 
-  // Safety confirmation dialog if cost_price exceeds 2.5x retail price
-  const opt = el.ownerPurchaseProductSelect ? el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex] : null;
-  const retail = opt ? parseFloat(opt.dataset.retail || 0) : 0;
-  if (retail > 0 && cost > retail * 2.5) {
-    const isConfirmed = confirm(
-      `⚠️ PERINGATAN SALAH INPUT HARGA MODAL:\n\n` +
-      `Anda memasukkan Harga Modal: ${formatRupiah(cost)}/kg\n` +
-      `Sedangkan Harga Jual Eceran Toko: ${formatRupiah(retail)}/kg\n\n` +
-      `Apakah Anda yakin ${formatRupiah(cost)} adalah harga per 1 kg?\n` +
-      `(Jika angka tersebut adalah TOTAL FAKTUR 1 TRUK/PARTAI, silakan bagi dulu Total dengan Berat ${qty} kg agar laba rugi toko tidak rusak minus miliaran).\n\n` +
-      `Tetap lanjutkan simpan?`
-    );
-    if (!isConfirmed) return;
+  const isManual = state.ownerPurchaseMode === 'manual';
+  let totalCost = 0;
+  let unitCost = 0;
+
+  if (isManual) {
+    const manualTotal = parseRupiahInput(el.ownerPurchaseManualTotalInput ? el.ownerPurchaseManualTotalInput.value : 0);
+    if (!manualTotal || manualTotal <= 0) {
+      showToast('Nominal total harga kulakan wajib diisi lebih dari Rp 0!', 'error');
+      if (el.ownerPurchaseManualTotalInput) el.ownerPurchaseManualTotalInput.focus();
+      return;
+    }
+    totalCost = manualTotal;
+    unitCost = qty > 0 ? Math.round((totalCost / qty) * 100) / 100 : 0;
+  } else {
+    const cost = parseRupiahInput(el.ownerPurchaseCostInput ? el.ownerPurchaseCostInput.value : 0);
+    if (!cost || cost <= 0) {
+      showToast('Harga modal kulakan per kg harus lebih dari Rp 0!', 'error');
+      if (el.ownerPurchaseCostInput) el.ownerPurchaseCostInput.focus();
+      return;
+    }
+    unitCost = cost;
+    totalCost = Math.round(qty * cost);
+
+    // Safety confirmation dialog if cost_price exceeds 2.5x retail price
+    const opt = el.ownerPurchaseProductSelect ? el.ownerPurchaseProductSelect.options[el.ownerPurchaseProductSelect.selectedIndex] : null;
+    const retail = opt ? parseFloat(opt.dataset.retail || 0) : 0;
+    if (retail > 0 && unitCost > retail * 2.5) {
+      const isConfirmed = confirm(
+        `⚠️ PERINGATAN SALAH INPUT HARGA MODAL:\n\n` +
+        `Anda memasukkan Harga Modal: ${formatRupiah(unitCost)}/kg\n` +
+        `Sedangkan Harga Jual Eceran Toko: ${formatRupiah(retail)}/kg\n\n` +
+        `Apakah Anda yakin ${formatRupiah(unitCost)} adalah harga per 1 kg?\n` +
+        `(Jika angka tersebut adalah TOTAL FAKTUR BORONGAN, silakan klik tab "Input Total Manual (Borongan)").\n\n` +
+        `Tetap lanjutkan simpan?`
+      );
+      if (!isConfirmed) return;
+    }
   }
 
   const paymentMethod = el.ownerPurchasePaymentMethodSelect ? el.ownerPurchasePaymentMethodSelect.value : 'safe';
@@ -6111,7 +6301,8 @@ async function handleSubmitOwnerRecordPurchase() {
     supplier_id: supplierId ? Number(supplierId) : null,
     product_id: Number(productId),
     qty_kg: qty,
-    cost_price: cost,
+    cost_price: unitCost,
+    total_cost: totalCost,
     payment_status: paymentStatus,
     payment_method: paymentMethod,
     due_date: dueDate,
@@ -6646,7 +6837,7 @@ function checkOwnerExpenseSufficiency() {
   if (!el.ownerExpenseShortageAlert) return;
   const isCash = el.ownerSourceCash && el.ownerSourceCash.checked;
   const isSafe = el.ownerSourceSafe && el.ownerSourceSafe.checked;
-  const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0) || 0;
+  const amount = parseRupiahInput(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0);
   const drawerCash = Number(state.currentDrawerCash) || 0;
   const safeCash = Number(state.safeCashBalance) || 0;
 
@@ -6804,7 +6995,7 @@ function renderOwnerExpensesTable() {
 
 async function handleSaveOwnerExpense() {
   const category = el.ownerExpenseCategorySelect ? el.ownerExpenseCategorySelect.value : 'makan_rokok';
-  const amount = Number(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0);
+  const amount = parseRupiahInput(el.ownerExpenseAmountInput ? el.ownerExpenseAmountInput.value : 0);
   const selectedSourceRadio = document.querySelector('input[name="ownerExpenseSource"]:checked');
   const source = selectedSourceRadio ? selectedSourceRadio.value : 'cash';
   const notes = el.ownerExpenseNotesInput ? el.ownerExpenseNotesInput.value.trim() : '';
@@ -6862,7 +7053,7 @@ async function handleSaveOwnerExpense() {
 
 async function handleSaveOwnerIncome() {
   const category = el.ownerIncomeCategorySelect ? el.ownerIncomeCategorySelect.value : 'kas_masuk_modal';
-  const amount = Number(el.ownerIncomeAmountInput ? el.ownerIncomeAmountInput.value : 0);
+  const amount = parseRupiahInput(el.ownerIncomeAmountInput ? el.ownerIncomeAmountInput.value : 0);
   const source = el.ownerIncomeSourceSelect ? el.ownerIncomeSourceSelect.value : 'cash';
   const notes = el.ownerIncomeNotesInput ? el.ownerIncomeNotesInput.value.trim() : '';
 
@@ -6999,8 +7190,8 @@ function switchSafeActionTab(action) {
 
 function addSafeQuickAmount(amt) {
   if (!el.safeActionAmount) return;
-  const current = Number(el.safeActionAmount.value) || 0;
-  el.safeActionAmount.value = current + amt;
+  const current = parseRupiahInput(el.safeActionAmount.value) || 0;
+  el.safeActionAmount.value = formatRupiahNumber(current + amt);
 }
 
 async function loadSafeCashData() {
@@ -7141,7 +7332,7 @@ async function handleSafeActionSubmit(e) {
   if (e) e.preventDefault();
 
   const action = el.safeActionType ? el.safeActionType.value : 'deposit';
-  const amount = Number(el.safeActionAmount ? el.safeActionAmount.value : 0);
+  const amount = parseRupiahInput(el.safeActionAmount ? el.safeActionAmount.value : 0);
   const source = el.safeActionSource ? el.safeActionSource.value : 'drawer';
   const notes = el.safeActionNotes ? el.safeActionNotes.value.trim() : '';
 

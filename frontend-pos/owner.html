@@ -1845,8 +1845,8 @@
                 <div class="head-left">
                   <span class="settings-icon-badge purple" style="font-size: 22px; padding: 8px 10px; background: #f3e8ff; border-radius: 10px;">💎</span>
                   <div>
-                    <h2 class="exec-card-title" style="margin: 0; font-size: 16px; font-weight: 800; color: #0f172a;">Status Lisensi & Biaya Langganan Aplikasi POS</h2>
-                    <p class="exec-card-subtitle" style="margin: 2px 0 0; font-size: 12px; color: #64748b;">Informasi masa aktif software, rekening pembayaran vendor, dan aktivasi perpanjangan.</p>
+                    <h2 class="exec-card-title" style="margin: 0; font-size: 16px; font-weight: 800; color: #0f172a;">Status Lisensi & Biaya Langganan Kuota Bulanan</h2>
+                    <p class="exec-card-subtitle" style="margin: 2px 0 0; font-size: 12px; color: #64748b;">Informasi masa aktif kuota bulanan, rekening pembayaran vendor, dan aktivasi perpanjangan.</p>
                   </div>
                 </div>
                 <div class="head-right">
@@ -2047,13 +2047,44 @@
           <label class="field-label">Stok Saat Ini:</label>
           <input type="text" id="inpRestockCurrentStock" readonly class="input-modern readonly">
         </div>
-        <div class="form-group">
-          <label class="field-label">Jumlah Berat Masuk (Kg):</label>
-          <input type="number" id="inpRestockQty" class="input-modern font-mono large-focus" step="0.5" min="0.5" placeholder="Contoh: 100">
+        <!-- Mode Penentuan Harga Kulakan -->
+        <div style="margin-bottom: 12px;">
+          <div class="pur-mode-container">
+            <button type="button" id="btnOwnerRestockModeManual" class="pur-mode-pill active">
+              <span>✍️</span> Total Manual (Borongan)
+            </button>
+            <button type="button" id="btnOwnerRestockModeKg" class="pur-mode-pill">
+              <span>🧮</span> Hitung per Kg
+            </button>
+          </div>
         </div>
         <div class="form-group">
+          <label class="field-label">Jumlah Berat Masuk (Kg): <span class="text-rose">*</span></label>
+          <input type="number" id="inpRestockQty" class="input-modern font-mono large-focus" step="0.5" min="0.5" placeholder="Contoh: 100">
+        </div>
+        <!-- Mode Manual Total -->
+        <div class="form-group" id="inpRestockManualGroup">
+          <label class="field-label" style="color: #047857; font-weight: 700;">Total Nominal Kulakan (Rp - Borongan / Nota):</label>
+          <div style="position: relative;">
+            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: #059669; font-size: 13px;">Rp</span>
+            <input type="text" inputmode="numeric" id="inpRestockManualTotal" class="input-modern font-mono font-bold" placeholder="Contoh: 2.500.000" style="padding-left: 38px; border: 1.5px solid #10b981; background: #f0fdf4; color: #065f46;">
+          </div>
+        </div>
+        <!-- Mode Per Kg -->
+        <div class="form-group" id="inpRestockKgGroup" style="display: none;">
           <label class="field-label">Harga Modal/Kulakan Baru (Rp/kg - Opsional):</label>
           <input type="text" inputmode="numeric" id="inpRestockCost" class="input-modern font-mono" placeholder="Kosongkan jika modal tetap (atau misal 12.000)">
+        </div>
+        <!-- Preview Total & Rp/kg -->
+        <div id="ownerRestockSummaryCard" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span style="font-weight: 700; color: #065f46; font-size: 12px; display: block;">Total Nilai Kulakan:</span>
+            <span id="ownerRestockSummarySub" style="font-size: 11px; color: #047857;">Nominal faktur manual</span>
+          </div>
+          <div style="text-align: right;">
+            <strong id="ownerRestockTotalVal" style="font-size: 18px; color: #059669; font-family: var(--font-mono); font-weight: 800; display: block;">Rp 0</strong>
+            <span id="ownerRestockDerivedPerKg" style="font-size: 11px; color: #0284c7; font-weight: 700; display: none;"></span>
+          </div>
         </div>
         <div class="form-group">
           <label class="field-label">Catatan Supplier / Asal Karung:</label>
@@ -2965,7 +2996,7 @@
 
         <div class="form-group">
           <label class="field-label">Nominal Pembayaran (Rp):</label>
-          <input type="number" id="supPayAmountInput" class="input-large font-mono font-bold" placeholder="0" style="color: #059669; font-size: 22px;">
+          <input type="text" inputmode="numeric" id="supPayAmountInput" class="input-large font-mono font-bold" placeholder="0" style="color: #059669; font-size: 22px;">
           <button type="button" class="btn-chip" id="btnSupPayFull" style="margin-top: 8px; padding: 6px 14px; font-size: 12px; border-radius: 8px; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-weight: 700; cursor: pointer;">
             ⚡ Bayar Lunas Penuh
           </button>
@@ -3018,25 +3049,52 @@
           </div>
         </div>
 
+        <!-- Mode Penentuan Harga Kulakan -->
+        <div style="margin-bottom: 14px;">
+          <label class="field-label" style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block;">Metode Penentuan Harga Kulakan:</label>
+          <div class="pur-mode-container">
+            <button type="button" id="btnOwnerPurModeManual" class="pur-mode-pill active">
+              <span>✍️</span> Input Total Manual (Borongan / Nego)
+            </button>
+            <button type="button" id="btnOwnerPurModeKg" class="pur-mode-pill">
+              <span>🧮</span> Hitung per Kg (Kg × Harga)
+            </button>
+          </div>
+        </div>
+
         <div class="form-grid-2">
           <div class="form-group">
             <label class="field-label">Berat Riil Masuk (Kg / Satuan): <span class="text-rose">*</span></label>
             <input type="number" id="ownerPurchaseQtyInput" class="input-large font-bold" step="0.5" min="0.5" placeholder="Contoh: 100">
           </div>
-          <div class="form-group">
+          
+          <!-- Mode 1: Manual Total Nominal -->
+          <div class="form-group" id="ownerPurchaseManualGroup">
+            <label class="field-label" style="color: #047857; font-weight: 700;">Total Nominal Kulakan (Rp): <span class="text-rose">*</span></label>
+            <div style="position: relative;">
+              <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: #059669; font-size: 14px;">Rp</span>
+              <input type="text" inputmode="numeric" id="ownerPurchaseManualTotalInput" class="input-large font-mono font-bold" placeholder="Contoh: 2.500.000" style="padding-left: 40px; border: 2px solid #10b981; background: #f0fdf4; color: #065f46;">
+            </div>
+          </div>
+
+          <!-- Mode 2: Per Kg Input -->
+          <div class="form-group" id="ownerPurchaseKgGroup" style="display: none;">
             <label class="field-label">Harga Modal Kulakan (Rp/kg): <span class="text-rose">*</span></label>
-            <input type="number" id="ownerPurchaseCostInput" class="input-large font-mono font-bold" placeholder="Contoh: 5000">
+            <input type="text" inputmode="numeric" id="ownerPurchaseCostInput" class="input-large font-mono font-bold" placeholder="Contoh: 5.000">
             <div id="ownerPurchaseCostWarning" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; border-radius: 8px; padding: 8px 10px; font-size: 11px; font-weight: 600; margin-top: 6px; line-height: 1.4;"></div>
           </div>
         </div>
 
-        <!-- Total Calculation Card -->
-        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
+        <!-- Total Calculation & Derived Per-Kg Info Card -->
+        <div id="ownerPurchaseSummaryCard" style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-weight: 700; color: #065f46; font-size: 13px; display: block;">Total Nilai Kulakan:</span>
-            <span style="font-size: 11px; color: #047857;">(Berat Riil Masuk × Harga Modal per Kg)</span>
+            <span id="ownerPurchaseSummarySub" style="font-size: 11px; color: #047857; font-weight: 600;">Nominal borongan / faktur manual</span>
           </div>
-          <strong id="ownerPurchaseTotalVal" style="font-size: 22px; color: #059669; font-family: var(--font-mono); font-weight: 800;">Rp 0</strong>
+          <div style="text-align: right;">
+            <strong id="ownerPurchaseTotalVal" style="font-size: 22px; color: #059669; font-family: var(--font-mono); font-weight: 800; display: block;">Rp 0</strong>
+            <span id="ownerPurchaseDerivedPerKg" style="font-size: 11.5px; color: #0284c7; font-weight: 700; display: none;"></span>
+          </div>
         </div>
 
         <div class="form-group">
@@ -3064,7 +3122,7 @@
             </div>
             <div class="form-group">
               <label class="field-label">Uang Muka / DP Dibayar (Rp):</label>
-              <input type="number" id="ownerPurchaseDpAmount" class="input-modern" placeholder="0 jika tanpa DP">
+              <input type="text" inputmode="numeric" id="ownerPurchaseDpAmount" class="input-modern font-mono font-bold" placeholder="0 jika tanpa DP">
             </div>
           </div>
         </div>
@@ -3213,7 +3271,7 @@
 
         <div class="form-group" style="margin-bottom: 14px;">
           <label class="field-label" style="font-weight: 700; font-size: 13px; color: #334155;">Nominal Pengeluaran (Rp): <span style="color: #e11d48;">*</span></label>
-          <input type="number" id="ownerExpenseAmountInput" class="input-large font-mono font-bold" placeholder="0" style="width: 100%; height: 46px; font-size: 22px; color: #dc2626; padding: 0 14px; border: 2px solid #fecdd3; border-radius: 10px; background: #fff1f2;">
+          <input type="text" inputmode="numeric" id="ownerExpenseAmountInput" class="input-large font-mono font-bold" placeholder="0" style="width: 100%; height: 46px; font-size: 22px; color: #dc2626; padding: 0 14px; border: 2px solid #fecdd3; border-radius: 10px; background: #fff1f2;">
 
           <!-- Real-time Insufficient Cash Warning & Prompt (Owner) -->
           <div id="ownerExpenseShortageAlert" style="display:none; margin-top: 10px; padding: 12px 14px; background: #fff1f2; border: 1.5px solid #fecdd3; border-radius: 10px;">
@@ -3273,7 +3331,7 @@
 
         <div class="form-group" style="margin-bottom: 14px;">
           <label class="field-label" style="font-weight: 700; font-size: 13px; color: #334155;">Nominal Kas Masuk (Rp):</label>
-          <input type="number" id="ownerIncomeAmountInput" class="input-large font-mono font-bold" placeholder="0" style="width: 100%; height: 46px; font-size: 22px; color: #059669; padding: 0 14px; border: 2px solid #a7f3d0; border-radius: 10px; background: #f0fdf4;">
+          <input type="text" inputmode="numeric" id="ownerIncomeAmountInput" class="input-large font-mono font-bold" placeholder="0" style="width: 100%; height: 46px; font-size: 22px; color: #059669; padding: 0 14px; border: 2px solid #a7f3d0; border-radius: 10px; background: #f0fdf4;">
         </div>
 
         <div class="form-group" style="margin-bottom: 14px;">
@@ -3612,7 +3670,7 @@
               <!-- Field 1: Nominal -->
               <div class="form-group" style="margin: 0;">
                 <label class="field-label" style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;" id="lblSafeAmount">Nominal Setoran (Rp):</label>
-                <input type="number" id="safeActionAmount" class="input-modern font-mono font-bold" placeholder="0" min="1000" step="1000" required style="font-size: 15px; color: #047857;">
+                <input type="text" inputmode="numeric" id="safeActionAmount" class="input-modern font-mono font-bold" placeholder="0" required style="font-size: 15px; color: #047857;">
               </div>
 
               <!-- Field 2: Sumber / Tujuan -->

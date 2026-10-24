@@ -232,7 +232,7 @@ router.get('/dashboard', authenticateToken, requireOwner, async (req, res) => {
        FROM stock_adjustments sa
        JOIN products p ON sa.product_id = p.id
        JOIN users u ON sa.user_id = u.id
-       WHERE ${wasteDateFilter}
+       WHERE sa.type = 'waste' AND ${wasteDateFilter}
        ORDER BY sa.id DESC LIMIT 200`
     );
 
@@ -626,7 +626,7 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
            COALESCE(SUM(sa.qty_kg * p.cost_price), 0) as total_waste_loss
          FROM stock_adjustments sa
          JOIN products p ON sa.product_id = p.id
-         WHERE sa.created_at >= ?`,
+         WHERE sa.type = 'waste' AND sa.created_at >= ?`,
         [targetShift.start_time]
       );
 
@@ -647,7 +647,7 @@ router.get('/sales', authenticateToken, requireOwner, async (req, res) => {
            COALESCE(SUM(sa.qty_kg * p.cost_price), 0) as total_waste_loss
          FROM stock_adjustments sa
          JOIN products p ON sa.product_id = p.id
-         WHERE date(sa.created_at) >= date(?) AND date(sa.created_at) <= date(?)`,
+         WHERE sa.type = 'waste' AND date(sa.created_at) >= date(?) AND date(sa.created_at) <= date(?)`,
         [startDate, endDate]
       );
 

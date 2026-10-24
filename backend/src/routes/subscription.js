@@ -103,7 +103,9 @@ router.get('/status', async (req, res) => {
     const waText = encodeURIComponent(
       `Halo Admin POS, saya dari *${storeName}* ingin konfirmasi pembayaran perpanjangan langganan sistem POS sebesar Rp ${amount.toLocaleString('id-ID')}. Mohon bantuannya untuk aktivasi. Terima kasih.`
     );
-    const waUrl = `https://wa.me/${contactWa.replace(/[^0-9]/g, '')}?text=${waText}`;
+    let cleanWa = contactWa.replace(/[^0-9]/g, '');
+    if (cleanWa.startsWith('0')) cleanWa = '62' + cleanWa.slice(1);
+    const waUrl = `https://wa.me/${cleanWa}?text=${waText}`;
 
     return res.json({
       success: true,

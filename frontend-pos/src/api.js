@@ -98,16 +98,18 @@ class ApiClient {
   }
 
   
-  restockProduct(productId, qtyKg, newCostPrice, notes, supplierId = null, paymentStatus = 'lunas', dpAmount = 0, dueDate = null) {
+  restockProduct(productId, qtyKg, newCostPrice, notes, supplierId = null, paymentStatus = 'lunas', dpAmount = 0, dueDate = null, totalCost = null, paymentMethod = 'cash') {
     return this.request('/products/restock', {
       method: 'POST',
       body: JSON.stringify({
         product_id: productId,
         qty_kg: qtyKg,
         new_cost_price: newCostPrice,
+        total_cost: totalCost,
         notes,
         supplier_id: supplierId,
         payment_status: paymentStatus,
+        payment_method: paymentMethod,
         dp_amount: dpAmount,
         due_date: dueDate
       })

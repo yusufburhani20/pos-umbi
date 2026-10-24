@@ -413,17 +413,29 @@ router.post('/purchases', authenticateToken, async (req, res) => {
       product_id,
       qty_kg,
       cost_price,
+      total_cost,
       payment_status = 'lunas', // 'lunas' or 'tempo'
-      payment_method = 'cash', // 'cash' or 'transfer'
+      payment_method = 'cash', // 'cash' or 'transfer' or 'safe'
       dp_amount = 0,
       due_date = null,
       notes = ''
     } = req.body;
 
-    if (!product_id || !qty_kg || Number(qty_kg) <= 0 || !cost_price || Number(cost_price) <= 0) {
+    const qty = parseFloat(qty_kg);
+    const manualTotal = (total_cost !== undefined && total_cost !== null && total_cost !== '') ? parseFloat(total_cost) : null;
+    const inputCostPrice = (cost_price !== undefined && cost_price !== null && cost_price !== '') ? parseFloat(cost_price) : null;
+
+    if (!product_id || isNaN(qty) || qty <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Komoditas, kuantiti masuk (kg > 0), dan harga modal kulakan (Rp/kg > 0) wajib diisi'
+        message: 'Komoditas dan kuantiti berat masuk (kg > 0) wajib diisi'
+      });
+    }
+
+    if ((manualTotal === null || manualTotal <= 0) && (inputCostPrice === null || inputCostPrice <= 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nominal total harga kulakan atau harga modal per kg wajib diisi lebih dari Rp 0'
       });
     }
 
@@ -438,9 +450,18 @@ router.post('/purchases', authenticateToken, async (req, res) => {
       if (sup) supplierName = sup.name;
     }
 
-    const qty = parseFloat(qty_kg);
-    const unitCost = parseFloat(cost_price);
-    const totalCost = qty * unitCost;
+    let totalCost = 0;
+    let unitCost = 0;
+
+    if (manualTotal !== null && manualTotal > 0) {
+      totalCost = Math.round(manualTotal);
+      unitCost = (inputCostPrice !== null && inputCostPrice > 0)
+        ? inputCostPrice
+        : (qty > 0 ? Math.round((totalCost / qty) * 100) / 100 : 0);
+    } else {
+      unitCost = inputCostPrice;
+      totalCost = Math.round(qty * unitCost);
+    }
 
     let finalPaymentStatus = payment_status === 'tempo' ? 'tempo' : 'lunas';
     let paidAmount = 0;

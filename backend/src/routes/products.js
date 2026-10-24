@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { dbQuery } = require('../db');
+const { dbQuery, getSafeCashBalance, getCurrentDrawerCash, recordSafeCashTransaction } = require('../db');
 const { authenticateToken, requireOwner, logAudit } = require('../middleware/auth');
 
 // GET /api/products/low-stock
@@ -396,7 +396,7 @@ router.post('/adjust-stock', authenticateToken, async (req, res) => {
 // POST /api/products/restock (Tambah Stok / Barang Masuk / Kulakan)
 router.post('/restock', authenticateToken, async (req, res) => {
   try {
-    const { product_id, qty_kg, new_cost_price, notes } = req.body;
+    const { product_id, qty_kg, new_cost_price, total_cost, notes } = req.body;
 
     if (!product_id || !qty_kg || Number(qty_kg) <= 0) {
       return res.status(400).json({ success: false, message: 'Produk dan kuantiti masuk (kg) wajib diisi' });
@@ -409,7 +409,28 @@ router.post('/restock', authenticateToken, async (req, res) => {
 
     const addedQty = Math.round(Number(qty_kg) * 100) / 100;
     const newStock = Math.round((Number(product.stock_qty) + addedQty) * 100) / 100;
-    const finalCostPrice = (new_cost_price && Number(new_cost_price) > 0) ? Number(new_cost_price) : product.cost_price;
+    
+    const manualTotal = (total_cost !== undefined && total_cost !== null && total_cost !== '') ? Number(total_cost) : null;
+    let inputCostPrice = (new_cost_price && Number(new_cost_price) > 0) ? Number(new_cost_price) : null;
+
+    let finalCostPrice = inputCostPrice;
+    let totalCost = 0;
+
+    if (manualTotal !== null && manualTotal > 0) {
+      totalCost = Math.round(manualTotal);
+      if (!finalCostPrice && addedQty > 0) {
+        finalCostPrice = Math.round((totalCost / addedQty) * 100) / 100;
+      }
+    } else {
+      if (!finalCostPrice) {
+        finalCostPrice = Number(product.cost_price || 0);
+      }
+      totalCost = Math.round(addedQty * finalCostPrice);
+    }
+
+    if (!finalCostPrice || finalCostPrice <= 0) {
+      finalCostPrice = Number(product.cost_price || 0);
+    }
 
     await dbQuery.run(
       'UPDATE products SET stock_qty = ?, cost_price = ? WHERE id = ?',
@@ -438,12 +459,38 @@ router.post('/restock', authenticateToken, async (req, res) => {
         if (parts.length >= 3) seq = parseInt(parts[2], 10) + 1;
       }
       const purchaseNo = `${prefix}${String(seq).padStart(4, '0')}`;
-      const totalCost = addedQty * finalCostPrice;
       const isTempo = req.body.payment_status === 'tempo';
       const dpVal = Math.max(0, Math.min(totalCost, Number(req.body.dp_amount) || 0));
       const paidAmt = isTempo ? dpVal : totalCost;
       const remAmt = isTempo ? Math.max(0, totalCost - dpVal) : 0;
       const pStatus = isTempo ? (remAmt === 0 ? 'lunas' : (paidAmt > 0 ? 'partial' : 'tempo')) : 'lunas';
+
+      const paymentMethod = req.body.payment_method || 'cash';
+
+      // Verify balance sufficiency for immediate payments (full / DP)
+      if (paidAmt > 0) {
+        if (paymentMethod === 'safe') {
+          const safeStats = await getSafeCashBalance();
+          if (safeStats.balance < paidAmt) {
+            const shortage = paidAmt - safeStats.balance;
+            return res.status(400).json({
+              success: false,
+              code: 'INSUFFICIENT_SAFE_CASH',
+              message: `Saldo kas brankas tidak mencukupi untuk bayar kulakan! Saldo brankas saat ini hanya Rp ${safeStats.balance.toLocaleString('id-ID')}, sedangkan pembayaran Rp ${paidAmt.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Harap setor kas ke brankas terlebih dahulu atau pilih metode lain.`
+            });
+          }
+        } else if (paymentMethod === 'cash') {
+          const drawerState = await getCurrentDrawerCash();
+          if (drawerState.has_active_shift && drawerState.current_drawer_cash < paidAmt) {
+            const shortage = paidAmt - drawerState.current_drawer_cash;
+            return res.status(400).json({
+              success: false,
+              code: 'INSUFFICIENT_DRAWER_CASH',
+              message: `Saldo kas laci tidak mencukupi untuk bayar kulakan tunai! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pembayaran tunai Rp ${paidAmt.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Harap gunakan Kas Brankas Toko / Transfer Bank / Tempo.`
+            });
+          }
+        }
+      }
 
       const pResult = await dbQuery.run(
         `INSERT INTO purchases (purchase_no, supplier_id, product_id, qty_kg, cost_price, total_cost, payment_status, paid_amount, remaining_amount, due_date, notes, recorded_by, created_at)
@@ -464,7 +511,7 @@ router.post('/restock', authenticateToken, async (req, res) => {
         ]
       );
 
-      if (paidAmt > 0 && req.body.supplier_id) {
+      if (paidAmt > 0) {
         let targetShiftId = req.body.shift_id ? Number(req.body.shift_id) : null;
         if (!targetShiftId) {
           const actShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
@@ -473,9 +520,21 @@ router.post('/restock', authenticateToken, async (req, res) => {
 
         await dbQuery.run(
           `INSERT INTO supplier_payments (purchase_id, supplier_id, shift_id, amount_paid, payment_method, payment_date, notes, recorded_by)
-           VALUES (?, ?, ?, ?, 'cash', datetime('now', 'localtime'), ?, ?)`,
-          [pResult.lastID, Number(req.body.supplier_id), targetShiftId, paidAmt, pStatus === 'lunas' ? 'Lunas saat kulakan' : 'DP Kulakan', req.user.id]
+           VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'), ?, ?)`,
+          [pResult.lastID, req.body.supplier_id ? Number(req.body.supplier_id) : null, targetShiftId, paidAmt, paymentMethod, pStatus === 'lunas' ? 'Lunas saat kulakan' : 'DP Kulakan', req.user.id]
         );
+
+        if (paymentMethod === 'safe') {
+          await recordSafeCashTransaction({
+            user_id: req.user.id,
+            shift_id: targetShiftId,
+            type: 'supplier_pay',
+            amount: paidAmt,
+            source: 'safe',
+            reference_no: purchaseNo,
+            notes: `Bayar Kulakan ${purchaseNo} (${product.name})`
+          });
+        }
       }
     } catch (pErr) {
       console.warn('[RESTOCK] Warning recording purchase entry:', pErr.message);

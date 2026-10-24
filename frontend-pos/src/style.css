@@ -6511,4 +6511,44 @@ body.is-embedded .in-app-splash-screen {
   }
 }
 
+/* Purchase & Kulakan Mode Switcher Pills */
+.pur-mode-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.pur-mode-pill {
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.18s ease;
+  user-select: none;
+  background: transparent;
+  color: #64748b;
+}
+
+.pur-mode-pill:hover {
+  color: #0f172a;
+}
+
+.pur-mode-pill.active {
+  background: #ffffff;
+  color: #065f46;
+  border-color: #10b981;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+
 
