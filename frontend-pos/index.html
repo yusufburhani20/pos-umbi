@@ -152,6 +152,12 @@
           <span class="nav-label">Buka Laci</span>
         </button>
 
+        <!-- Direct Quick Action: Kas Brankas Toko -->
+        <button class="btn-nav" id="btnQuickSafeCash" type="button" title="Kelola Kas Fisik di Brankas Toko">
+          <span class="icon">🔐</span>
+          <span class="nav-label">Brankas</span>
+        </button>
+
         <div class="nav-divider"></div>
 
         <!-- Menu Utama Profil & Manajemen Lengkap Kios Dropdown -->
@@ -263,6 +269,14 @@
               <div class="dropdown-item-text">
                 <span class="item-title">Biaya & Kas Operasional Toko</span>
                 <span class="item-desc">Uang makan, rokok, parkir, kuli, wifi, listrik laci</span>
+              </div>
+            </button>
+
+            <button class="header-dropdown-item" id="btnCashierSafeCashDropdownItem" type="button">
+              <span class="dropdown-item-icon icon-emerald" style="background: #ecfdf5; color: #059669;">🔐</span>
+              <div class="dropdown-item-text">
+                <span class="item-title">Kas Brankas Toko</span>
+                <span class="item-desc">Setor uang laci / modal ke brankas & cek saldo fisik</span>
               </div>
             </button>
 
@@ -2902,6 +2916,157 @@
         <button type="button" class="btn-primary" id="btnSubmitCashierIncome" style="background: #059669; padding: 8px 20px; border-radius: 8px; color: #fff; font-weight: 700; border: none; cursor: pointer;">
           Simpan & Cetak Kas Masuk
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Kelola Uang Kas Brankas Toko (Kasir POS) -->
+  <div class="modal-backdrop" id="modalCashierSafeCash" style="display:none; z-index: 10045;">
+    <div class="modal-dialog modal-md" style="max-width: 640px; width: 95vw; background: #ffffff; border-radius: 18px; border: 1.5px solid #cbd5e1; box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.4); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header" style="padding: 16px 22px; background: linear-gradient(135deg, #064e3b 0%, #0f766e 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #10b981; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 24px; background: rgba(255,255,255,0.18); width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px;">🔐</span>
+          <div>
+            <h2 style="margin: 0; font-size: 18px; font-weight: 800; color: #ffffff;">Kas Fisik Brankas Toko</h2>
+            <p style="margin: 2px 0 0 0; font-size: 12px; color: #ccfbf1;">Setor uang kas laci ke brankas atau tambah modal fisik toko.</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" id="btnCloseCashierSafeCash" style="background: rgba(255, 255, 255, 0.2); border: none; color: #ffffff; font-size: 18px; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="modal-body" style="padding: 18px 22px; overflow-y: auto; background: #f8fafc; flex: 1;">
+        
+        <!-- Saldo Ringkasan -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="background: #ffffff; border: 1.5px solid #10b981; border-radius: 12px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(16,185,129,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase;">🔐 Saldo Brankas</span>
+              <span style="font-size: 13px;">🛡️</span>
+            </div>
+            <strong id="cashierSafeBalanceDisplay" style="font-size: 22px; font-family: monospace; font-weight: 800; color: #065f46; display: block;">Rp 0</strong>
+            <span style="font-size: 11px; color: #059669;">Total kas fisik di brankas</span>
+          </div>
+
+          <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">💵 Kas Laci Shift</span>
+              <span style="font-size: 13px;">💰</span>
+            </div>
+            <strong id="cashierDrawerBalanceDisplay" style="font-size: 20px; font-family: monospace; font-weight: 800; color: #0f172a; display: block;">Rp 0</strong>
+            <span style="font-size: 11px; color: #64748b;">Saldo fisik laci kasir saat ini</span>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs: Setor vs Tarik -->
+        <div style="display: flex; gap: 8px; margin-bottom: 14px; background: #e2e8f0; padding: 4px; border-radius: 10px;">
+          <button type="button" class="btn-tab-safe active" id="tabCashierSafeDeposit" style="flex: 1; padding: 8px 12px; font-size: 12.5px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; background: #ffffff; color: #065f46; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            📥 Setor ke Brankas
+          </button>
+          <button type="button" class="btn-tab-safe" id="tabCashierSafeWithdraw" style="flex: 1; padding: 8px 12px; font-size: 12.5px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; background: transparent; color: #64748b;">
+            📤 Tarik ke Laci Kasir
+          </button>
+        </div>
+
+        <!-- VIEW 1: Form Setor ke Brankas -->
+        <div id="viewCashierSafeDeposit">
+          <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="field-label" style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 6px;">
+                Nominal Setoran ke Brankas (Rp): <span style="color:#e11d48;">*</span>
+              </label>
+              <input type="number" id="inpCashierSafeDepositAmount" placeholder="0" style="width: 100%; height: 46px; font-size: 22px; font-family: monospace; font-weight: 800; color: #047857; padding: 0 14px; border: 2px solid #a7f3d0; border-radius: 10px; background: #f0fdf4;">
+              <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;" id="quickDepositChips">
+                <button type="button" class="btn-safe-chip" data-add="100000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46; cursor: pointer;">+100rb</button>
+                <button type="button" class="btn-safe-chip" data-add="200000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46; cursor: pointer;">+200rb</button>
+                <button type="button" class="btn-safe-chip" data-add="500000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46; cursor: pointer;">+500rb</button>
+                <button type="button" class="btn-safe-chip" data-add="1000000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46; cursor: pointer;">+1 Jt</button>
+                <button type="button" class="btn-safe-chip" data-set="0" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #64748b; cursor: pointer;">C (Reset)</button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="field-label" style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 6px;">
+                Sumber Dana Setoran: <span style="color:#e11d48;">*</span>
+              </label>
+              <select id="selCashierSafeDepositSource" style="width: 100%; height: 42px; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 13px; font-weight: 600; color: #0f172a; background: #fff;">
+                <option value="drawer" selected>💵 Ambil dari Kas Laci Kasir (Otomatis kurangi uang laci)</option>
+                <option value="capital">💼 Suntikan Modal Baru / Uang Pemilik Toko</option>
+                <option value="bank">🏦 Pencairan dari Rekening Bank Toko</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="field-label" style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 6px;">
+                Catatan / Keterangan:
+              </label>
+              <input type="text" id="inpCashierSafeDepositNotes" placeholder="Misal: Pindahan kelebihan kas laci siang agar aman" style="width: 100%; height: 40px; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 13px;">
+            </div>
+
+            <button type="button" class="btn-primary" id="btnSubmitCashierSafeDeposit" style="width: 100%; height: 44px; background: #059669; border: none; border-radius: 10px; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">
+              📥 Simpan Setoran ke Brankas
+            </button>
+          </div>
+        </div>
+
+        <!-- VIEW 2: Form Tarik ke Laci Kasir -->
+        <div id="viewCashierSafeWithdraw" style="display: none;">
+          <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label class="field-label" style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 6px;">
+                Nominal Tarik dari Brankas ke Laci (Rp): <span style="color:#e11d48;">*</span>
+              </label>
+              <input type="number" id="inpCashierSafeWithdrawAmount" placeholder="0" style="width: 100%; height: 46px; font-size: 22px; font-family: monospace; font-weight: 800; color: #2563eb; padding: 0 14px; border: 2px solid #bfdbfe; border-radius: 10px; background: #eff6ff;">
+              <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;" id="quickWithdrawChips">
+                <button type="button" class="btn-safe-chip" data-add="50000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; cursor: pointer;">+50rb</button>
+                <button type="button" class="btn-safe-chip" data-add="100000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; cursor: pointer;">+100rb</button>
+                <button type="button" class="btn-safe-chip" data-add="200000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; cursor: pointer;">+200rb</button>
+                <button type="button" class="btn-safe-chip" data-add="500000" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; cursor: pointer;">+500rb</button>
+                <button type="button" class="btn-safe-chip" data-set="0" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #64748b; cursor: pointer;">C (Reset)</button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="field-label" style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 6px;">
+                Catatan / Alasan Penarikan:
+              </label>
+              <input type="text" id="inpCashierSafeWithdrawNotes" placeholder="Misal: Tambahan pecahan kecil uang kembalian kasir" style="width: 100%; height: 40px; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 0 12px; font-size: 13px;">
+            </div>
+
+            <button type="button" class="btn-primary" id="btnSubmitCashierSafeWithdraw" style="width: 100%; height: 44px; background: #2563eb; border: none; border-radius: 10px; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(37,99,235,0.3);">
+              📤 Pindahkan Uang ke Laci Kasir
+            </button>
+          </div>
+        </div>
+
+        <!-- Riwayat Mutasi Brankas Terakhir -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px;">
+          <span style="font-size: 12px; font-weight: 800; color: #475569; text-transform: uppercase; display: block; margin-bottom: 10px;">📜 Mutasi Terakhir Kas Brankas</span>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="border-bottom: 1.5px solid #cbd5e1; color: #64748b; text-align: left;">
+                  <th style="padding: 6px 8px;">Waktu</th>
+                  <th style="padding: 6px 8px;">Aksi</th>
+                  <th style="padding: 6px 8px; text-align: right;">Nominal</th>
+                  <th style="padding: 6px 8px; text-align: right;">Saldo Setelah</th>
+                  <th style="padding: 6px 8px;">Petugas</th>
+                </tr>
+              </thead>
+              <tbody id="cashierSafeHistoryTableBody">
+                <tr><td colspan="5" style="text-align: center; padding: 16px; color: #94a3b8;">Memuat riwayat brankas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="padding: 12px 22px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11.5px; color: #64748b;">💡 Kas brankas tersimpan aman dan terintegrasi otomatis ke pembukuan toko.</span>
+        <button type="button" class="btn-secondary" id="btnCloseCashierSafeCashFooter" style="padding: 7px 18px; border-radius: 8px;">Tutup</button>
       </div>
     </div>
   </div>

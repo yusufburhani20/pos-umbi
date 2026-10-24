@@ -583,6 +583,27 @@ const el = {
 
   // In-Cart Custom Price Edit Modal
   modalEditCartPrice: document.getElementById('modalEditCartPrice'),
+
+  // Cashier Safe Cash (Kas Brankas Toko) Modal
+  btnQuickSafeCash: document.getElementById('btnQuickSafeCash'),
+  btnCashierSafeCashDropdownItem: document.getElementById('btnCashierSafeCashDropdownItem'),
+  modalCashierSafeCash: document.getElementById('modalCashierSafeCash'),
+  btnCloseCashierSafeCash: document.getElementById('btnCloseCashierSafeCash'),
+  btnCloseCashierSafeCashFooter: document.getElementById('btnCloseCashierSafeCashFooter'),
+  cashierSafeBalanceDisplay: document.getElementById('cashierSafeBalanceDisplay'),
+  cashierDrawerBalanceDisplay: document.getElementById('cashierDrawerBalanceDisplay'),
+  tabCashierSafeDeposit: document.getElementById('tabCashierSafeDeposit'),
+  tabCashierSafeWithdraw: document.getElementById('tabCashierSafeWithdraw'),
+  viewCashierSafeDeposit: document.getElementById('viewCashierSafeDeposit'),
+  viewCashierSafeWithdraw: document.getElementById('viewCashierSafeWithdraw'),
+  inpCashierSafeDepositAmount: document.getElementById('inpCashierSafeDepositAmount'),
+  selCashierSafeDepositSource: document.getElementById('selCashierSafeDepositSource'),
+  inpCashierSafeDepositNotes: document.getElementById('inpCashierSafeDepositNotes'),
+  btnSubmitCashierSafeDeposit: document.getElementById('btnSubmitCashierSafeDeposit'),
+  inpCashierSafeWithdrawAmount: document.getElementById('inpCashierSafeWithdrawAmount'),
+  inpCashierSafeWithdrawNotes: document.getElementById('inpCashierSafeWithdrawNotes'),
+  btnSubmitCashierSafeWithdraw: document.getElementById('btnSubmitCashierSafeWithdraw'),
+  cashierSafeHistoryTableBody: document.getElementById('cashierSafeHistoryTableBody'),
   editCartItemName: document.getElementById('editCartItemName'),
   editCartItemSubtitle: document.getElementById('editCartItemSubtitle'),
   btnCloseEditCartPriceModal: document.getElementById('btnCloseEditCartPriceModal'),
@@ -1124,8 +1145,9 @@ async function initApp() {
   try {
     updateSplashProgress(60, 'Memeriksa perangkat kasir...');
     initHardwareSupport();
+    initCashierSafeCashSupport();
   } catch (e) {
-    console.warn('[Hardware] Inisialisasi hardware tertunda:', e);
+    console.warn('[Hardware/Safe] Inisialisasi modul tertunda:', e);
   }
 
   // Check if session exists in memory/storage
@@ -1215,6 +1237,9 @@ async function initApp() {
       else if (targetModal === 'identity') openEditIdentityModal();
       else if (targetModal === 'hardware') {
         if (el.hardwareModal) el.hardwareModal.style.display = 'flex';
+      }
+      else if (targetModal === 'safecash' || targetModal === 'safeCash') {
+        openCashierSafeCashModal();
       }
       if (isEmbedMode) {
         window.parent.postMessage({ action: 'modalReady' }, '*');
@@ -2248,11 +2273,14 @@ function bindEvents() {
       if (newRate === Number(item.product.retail_price)) {
         item.priceMode = 'eceran';
         item.customUnitPrice = null;
+        item.isCustomPrice = false;
       } else if (newRate === Number(item.product.reseller_price)) {
         item.priceMode = 'karungan';
         item.customUnitPrice = null;
+        item.isCustomPrice = false;
       } else {
         item.customUnitPrice = newRate;
+        item.isCustomPrice = true;
       }
 
       item.fixedMoney = null;
@@ -3364,21 +3392,28 @@ function renderCart() {
           </div>
         </div>
 
-        <!-- Pilihan 2 Harga Kasir: Eceran vs Karungan -->
+        <!-- Pilihan 3 Harga Kasir: Eceran vs Karungan vs Harga Nego Manual -->
         <div class="cart-price-mode-pills">
           <button type="button" 
-                  class="btn-price-mode ${item.priceMode !== 'karungan' ? 'active-eceran' : ''}" 
+                  class="btn-price-mode ${(!item.isCustomPrice && item.priceMode !== 'karungan') ? 'active-eceran' : ''}" 
                   data-set-mode="eceran" 
                   data-index="${index}"
-                  title="Gunakan Harga Eceran">
+                  title="Gunakan Harga Eceran Standar">
             🛒 Ecer: <strong>${formatRupiah(item.product.retail_price)}</strong>
           </button>
           <button type="button" 
-                  class="btn-price-mode ${item.priceMode === 'karungan' ? 'active-karungan' : ''}" 
+                  class="btn-price-mode ${(!item.isCustomPrice && item.priceMode === 'karungan') ? 'active-karungan' : ''}" 
                   data-set-mode="karungan" 
                   data-index="${index}"
                   title="Gunakan Harga Karungan & Isi Kuantitas">
             📦 Karung: <strong>${formatRupiah(item.product.reseller_price)}</strong>
+          </button>
+          <button type="button" 
+                  class="btn-price-mode btn-price-mode-manual ${item.isCustomPrice ? 'active-manual' : ''}" 
+                  data-set-mode="manual" 
+                  data-index="${index}"
+                  title="Ketik harga manual / nego per kg untuk komoditas ini">
+            ✍️ ${item.isCustomPrice ? `Nego: <strong>${formatRupiah(item.unitPrice)}</strong>` : 'Harga Nego'}
           </button>
         </div>
         ${item.priceMode === 'karungan' ? `
@@ -3547,7 +3582,7 @@ function renderCart() {
     });
   });
 
-  // 2-Harga Selector (Pilihan Kasir: Eceran vs Karungan)
+  // 3-Harga Selector (Pilihan Kasir: Eceran vs Karungan vs Nego Manual)
   el.cartItemsList.querySelectorAll('.btn-price-mode').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -3556,10 +3591,15 @@ function renderCart() {
       const item = state.cart[idx];
       if (!item) return;
 
-      const wasAlreadyKarung = item.priceMode === 'karungan';
+      if (mode === 'manual') {
+        openEditCartPriceModal(idx);
+        return;
+      }
+
       item.priceMode = mode;
       item.tier = mode === 'karungan' ? 'karungan' : 'retail';
       item.customUnitPrice = null; // Reset custom nego back to selected standard tier
+      item.isCustomPrice = false;
 
       if (mode === 'karungan') {
         // If it was currently at 1 kg (default), set to 25 kg
@@ -7489,6 +7529,281 @@ function initHardwareSupport() {
       if (el.hardwareModal) el.hardwareModal.style.display = 'none';
     });
   }
+}
+
+// -----------------------------------------------------------------------------
+// Cashier Safe Cash (Kas Fisik Brankas Toko) Functions & Event Listeners
+// -----------------------------------------------------------------------------
+async function openCashierSafeCashModal() {
+  if (!el.modalCashierSafeCash) return;
+  el.modalCashierSafeCash.style.display = 'flex';
+
+  // Reset input fields
+  if (el.inpCashierSafeDepositAmount) el.inpCashierSafeDepositAmount.value = '';
+  if (el.inpCashierSafeDepositNotes) el.inpCashierSafeDepositNotes.value = '';
+  if (el.inpCashierSafeWithdrawAmount) el.inpCashierSafeWithdrawAmount.value = '';
+  if (el.inpCashierSafeWithdrawNotes) el.inpCashierSafeWithdrawNotes.value = '';
+
+  switchCashierSafeTab('deposit');
+  await loadCashierSafeCashData();
+}
+
+function closeCashierSafeCashModal() {
+  if (el.modalCashierSafeCash) {
+    el.modalCashierSafeCash.style.display = 'none';
+  }
+}
+
+function switchCashierSafeTab(tab) {
+  if (!el.tabCashierSafeDeposit || !el.tabCashierSafeWithdraw) return;
+  if (tab === 'deposit') {
+    el.tabCashierSafeDeposit.classList.add('active');
+    el.tabCashierSafeDeposit.style.background = '#ffffff';
+    el.tabCashierSafeDeposit.style.color = '#065f46';
+    el.tabCashierSafeDeposit.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+    el.tabCashierSafeWithdraw.classList.remove('active');
+    el.tabCashierSafeWithdraw.style.background = 'transparent';
+    el.tabCashierSafeWithdraw.style.color = '#64748b';
+    el.tabCashierSafeWithdraw.style.boxShadow = 'none';
+
+    if (el.viewCashierSafeDeposit) el.viewCashierSafeDeposit.style.display = 'block';
+    if (el.viewCashierSafeWithdraw) el.viewCashierSafeWithdraw.style.display = 'none';
+  } else {
+    el.tabCashierSafeWithdraw.classList.add('active');
+    el.tabCashierSafeWithdraw.style.background = '#ffffff';
+    el.tabCashierSafeWithdraw.style.color = '#2563eb';
+    el.tabCashierSafeWithdraw.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+    el.tabCashierSafeDeposit.classList.remove('active');
+    el.tabCashierSafeDeposit.style.background = 'transparent';
+    el.tabCashierSafeDeposit.style.color = '#64748b';
+    el.tabCashierSafeDeposit.style.boxShadow = 'none';
+
+    if (el.viewCashierSafeDeposit) el.viewCashierSafeDeposit.style.display = 'none';
+    if (el.viewCashierSafeWithdraw) el.viewCashierSafeWithdraw.style.display = 'block';
+  }
+}
+
+async function loadCashierSafeCashData() {
+  try {
+    const [safeRes, shiftRes] = await Promise.all([
+      api.getSafeCash({ limit: 15 }).catch(() => null),
+      api.getCurrentShift().catch(() => null)
+    ]);
+
+    if (safeRes && safeRes.success) {
+      const balance = Number(safeRes.balance || 0);
+      if (el.cashierSafeBalanceDisplay) {
+        el.cashierSafeBalanceDisplay.textContent = formatRupiah(balance);
+      }
+
+      if (el.cashierSafeHistoryTableBody) {
+        const trxs = safeRes.transactions || [];
+        if (trxs.length === 0) {
+          el.cashierSafeHistoryTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 16px; color: #94a3b8;">Belum ada riwayat mutasi brankas.</td></tr>`;
+        } else {
+          el.cashierSafeHistoryTableBody.innerHTML = trxs.map(t => {
+            const isPlus = ['initial', 'deposit', 'transfer_in', 'income'].includes(t.type);
+            const badgeColor = isPlus ? '#059669' : '#dc2626';
+            const badgeBg = isPlus ? '#ecfdf5' : '#fef2f2';
+            const sign = isPlus ? '+' : '-';
+            const typeLabel = t.type === 'deposit' ? 'Setor' : (t.type === 'withdrawal' ? 'Tarik' : (t.type === 'initial' ? 'Saldo Awal' : (t.type === 'prive' ? 'Prive' : t.type)));
+            const dateStr = t.created_at ? new Date(t.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
+            return `
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px; color: #64748b;">${dateStr}</td>
+                <td style="padding: 8px;">
+                  <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: ${badgeBg}; color: ${badgeColor};">${typeLabel}</span>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${escapeHtml(t.notes || '')}</div>
+                </td>
+                <td style="padding: 8px; text-align: right; font-weight: 700; color: ${badgeColor};">${sign} ${formatRupiah(t.amount)}</td>
+                <td style="padding: 8px; text-align: right; font-family: monospace; color: #334155;">${formatRupiah(t.balance_after)}</td>
+                <td style="padding: 8px; color: #475569; font-size: 11.5px;">${escapeHtml(t.user_name || 'Petugas')}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+    }
+
+    if (shiftRes && shiftRes.shift) {
+      state.currentShiftCash = Number(shiftRes.shift.current_drawer_cash) || 0;
+      if (el.cashierDrawerBalanceDisplay) {
+        el.cashierDrawerBalanceDisplay.textContent = formatRupiah(state.currentShiftCash);
+      }
+    } else {
+      if (el.cashierDrawerBalanceDisplay) {
+        el.cashierDrawerBalanceDisplay.textContent = 'Shift Tutup';
+      }
+    }
+  } catch (err) {
+    console.error('Error loading cashier safe cash data:', err);
+    showToast('Gagal memuat saldo brankas: ' + err.message, 'error');
+  }
+}
+
+async function handleCashierSafeDeposit() {
+  const amount = Number(el.inpCashierSafeDepositAmount ? el.inpCashierSafeDepositAmount.value : 0) || 0;
+  const source = el.selCashierSafeDepositSource ? el.selCashierSafeDepositSource.value : 'drawer';
+  const notes = el.inpCashierSafeDepositNotes ? el.inpCashierSafeDepositNotes.value.trim() : '';
+
+  if (amount <= 0) {
+    showToast('Nominal setoran brankas harus lebih besar dari Rp 0', 'warning');
+    return;
+  }
+
+  if (source === 'drawer') {
+    if (!state.shift) {
+      showToast('Tidak dapat menyetor dari laci karena tidak ada shift kasir yang aktif!', 'error');
+      return;
+    }
+    if (state.currentShiftCash < amount) {
+      showToast(`Uang fisik di laci kasir tidak mencukupi (${formatRupiah(state.currentShiftCash)}) untuk disetor ${formatRupiah(amount)}!`, 'error');
+      return;
+    }
+  }
+
+  try {
+    if (el.btnSubmitCashierSafeDeposit) {
+      el.btnSubmitCashierSafeDeposit.disabled = true;
+      el.btnSubmitCashierSafeDeposit.textContent = 'Menyimpan...';
+    }
+
+    const res = await api.depositSafeCash({
+      amount,
+      source,
+      notes
+    });
+
+    if (res && res.success) {
+      showToast(res.message || `Berhasil menyetor ${formatRupiah(amount)} ke brankas!`, 'success');
+      if (el.inpCashierSafeDepositAmount) el.inpCashierSafeDepositAmount.value = '';
+      if (el.inpCashierSafeDepositNotes) el.inpCashierSafeDepositNotes.value = '';
+      await loadCashierSafeCashData();
+      await syncShift();
+    } else {
+      showToast(res.message || 'Gagal menyetor ke brankas', 'error');
+    }
+  } catch (err) {
+    showToast('Error setor brankas: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitCashierSafeDeposit) {
+      el.btnSubmitCashierSafeDeposit.disabled = false;
+      el.btnSubmitCashierSafeDeposit.textContent = '📥 Simpan Setoran ke Brankas';
+    }
+  }
+}
+
+async function handleCashierSafeWithdraw() {
+  const amount = Number(el.inpCashierSafeWithdrawAmount ? el.inpCashierSafeWithdrawAmount.value : 0) || 0;
+  const notes = el.inpCashierSafeWithdrawNotes ? el.inpCashierSafeWithdrawNotes.value.trim() : '';
+
+  if (amount <= 0) {
+    showToast('Nominal penarikan harus lebih besar dari Rp 0', 'warning');
+    return;
+  }
+
+  try {
+    if (el.btnSubmitCashierSafeWithdraw) {
+      el.btnSubmitCashierSafeWithdraw.disabled = true;
+      el.btnSubmitCashierSafeWithdraw.textContent = 'Memproses...';
+    }
+
+    const res = await api.withdrawSafeCash({
+      amount,
+      destination: 'drawer',
+      notes
+    });
+
+    if (res && res.success) {
+      showToast(res.message || `Berhasil memindahkan ${formatRupiah(amount)} ke laci kasir!`, 'success');
+      if (el.inpCashierSafeWithdrawAmount) el.inpCashierSafeWithdrawAmount.value = '';
+      if (el.inpCashierSafeWithdrawNotes) el.inpCashierSafeWithdrawNotes.value = '';
+      await loadCashierSafeCashData();
+      await syncShift();
+    } else {
+      showToast(res.message || 'Gagal menarik uang dari brankas', 'error');
+    }
+  } catch (err) {
+    showToast('Error tarik brankas: ' + err.message, 'error');
+  } finally {
+    if (el.btnSubmitCashierSafeWithdraw) {
+      el.btnSubmitCashierSafeWithdraw.disabled = false;
+      el.btnSubmitCashierSafeWithdraw.textContent = '📤 Pindahkan Uang ke Laci Kasir';
+    }
+  }
+}
+
+function initCashierSafeCashSupport() {
+  if (el.btnQuickSafeCash) {
+    el.btnQuickSafeCash.addEventListener('click', openCashierSafeCashModal);
+  }
+
+  if (el.btnCashierSafeCashDropdownItem) {
+    el.btnCashierSafeCashDropdownItem.addEventListener('click', () => {
+      const userDropdown = document.getElementById('userMenuDropdown');
+      if (userDropdown) userDropdown.classList.remove('active', 'open');
+      const backdrop = document.getElementById('headerDropdownBackdrop');
+      if (backdrop) backdrop.classList.remove('active');
+      openCashierSafeCashModal();
+    });
+  }
+
+  if (el.btnCloseCashierSafeCash) {
+    el.btnCloseCashierSafeCash.addEventListener('click', closeCashierSafeCashModal);
+  }
+
+  if (el.btnCloseCashierSafeCashFooter) {
+    el.btnCloseCashierSafeCashFooter.addEventListener('click', closeCashierSafeCashModal);
+  }
+
+  if (el.modalCashierSafeCash) {
+    el.modalCashierSafeCash.addEventListener('click', (e) => {
+      if (e.target === el.modalCashierSafeCash) closeCashierSafeCashModal();
+    });
+  }
+
+  if (el.tabCashierSafeDeposit) {
+    el.tabCashierSafeDeposit.addEventListener('click', () => switchCashierSafeTab('deposit'));
+  }
+
+  if (el.tabCashierSafeWithdraw) {
+    el.tabCashierSafeWithdraw.addEventListener('click', () => switchCashierSafeTab('withdraw'));
+  }
+
+  if (el.btnSubmitCashierSafeDeposit) {
+    el.btnSubmitCashierSafeDeposit.addEventListener('click', handleCashierSafeDeposit);
+  }
+
+  if (el.btnSubmitCashierSafeWithdraw) {
+    el.btnSubmitCashierSafeWithdraw.addEventListener('click', handleCashierSafeWithdraw);
+  }
+
+  // Quick Amount Chips for Safe Deposit & Withdrawal
+  document.querySelectorAll('#quickDepositChips .btn-safe-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!el.inpCashierSafeDepositAmount) return;
+      if (btn.dataset.set !== undefined) {
+        el.inpCashierSafeDepositAmount.value = '';
+      } else if (btn.dataset.add) {
+        const cur = Number(el.inpCashierSafeDepositAmount.value) || 0;
+        el.inpCashierSafeDepositAmount.value = cur + Number(btn.dataset.add);
+      }
+    });
+  });
+
+  document.querySelectorAll('#quickWithdrawChips .btn-safe-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!el.inpCashierSafeWithdrawAmount) return;
+      if (btn.dataset.set !== undefined) {
+        el.inpCashierSafeWithdrawAmount.value = '';
+      } else if (btn.dataset.add) {
+        const cur = Number(el.inpCashierSafeWithdrawAmount.value) || 0;
+        el.inpCashierSafeWithdrawAmount.value = cur + Number(btn.dataset.add);
+      }
+    });
+  });
 }
 
 // Cashier Expenses & Petty Cash Functions

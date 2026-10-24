@@ -1553,6 +1553,17 @@ input, select, textarea {
   color: #ecfdf5;
 }
 
+.btn-price-mode.active-manual {
+  background-color: #d97706;
+  color: #ffffff;
+  border-color: #b45309;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.28);
+}
+
+.btn-price-mode.active-manual strong {
+  color: #fef3c7;
+}
+
 .cart-item-top-right {
   display: flex;
   align-items: center;

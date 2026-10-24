@@ -4,8 +4,8 @@ const { dbQuery, getSafeCashBalance, recordSafeCashTransaction, getCurrentDrawer
 const { authenticateToken, requireOwner, requireStrictOwner, logAudit } = require('../middleware/auth');
 
 // GET /api/safe-cash
-// Get current safe cash balance, quick summary, and transaction mutation history
-router.get('/', authenticateToken, requireOwner, async (req, res) => {
+// Get current safe cash balance, quick summary, and transaction mutation history (Cashier & Owner)
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { start_date, end_date, type, limit = 100 } = req.query;
 
@@ -142,9 +142,9 @@ router.post('/set-initial', authenticateToken, requireStrictOwner, async (req, r
 });
 
 // POST /api/safe-cash/deposit
-// Deposit money into safe (Setor ke Brankas)
-// Source can be 'drawer' (Laci Kasir), 'capital' (Modal Tambahan Owner), or 'bank' (Tarik dari Rekening Bank)
-router.post('/deposit', authenticateToken, requireOwner, async (req, res) => {
+// Deposit money into safe (Setor ke Brankas - Cashier & Owner)
+// Source can be 'drawer' (Laci Kasir), 'capital' (Modal Tambahan), or 'bank' (Tarik dari Rekening Bank)
+router.post('/deposit', authenticateToken, async (req, res) => {
   try {
     const { amount, source = 'drawer', notes = '' } = req.body;
     const numAmount = Math.max(0, Math.round(Number(amount) || 0));
@@ -215,9 +215,9 @@ router.post('/deposit', authenticateToken, requireOwner, async (req, res) => {
 });
 
 // POST /api/safe-cash/withdraw
-// Withdraw cash from safe (Tarik Tunai dari Brankas)
+// Withdraw cash from safe (Tarik Tunai dari Brankas - Cashier & Owner)
 // Destination can be 'drawer' (Kembalian/Modal Laci), 'bank' (Setor Kas ke Bank), or 'other'
-router.post('/withdraw', authenticateToken, requireOwner, async (req, res) => {
+router.post('/withdraw', authenticateToken, async (req, res) => {
   try {
     const { amount, destination = 'drawer', notes = '' } = req.body;
     const numAmount = Math.max(0, Math.round(Number(amount) || 0));
