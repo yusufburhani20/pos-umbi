@@ -900,31 +900,55 @@
           <div class="denom-row">
             <span class="denom-label">Rp 100.000 :</span>
             <input type="number" class="denom-input" id="d100k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
             <span class="denom-subtotal" id="sub100k">Rp 0</span>
           </div>
           <div class="denom-row">
             <span class="denom-label">Rp 75.000 :</span>
             <input type="number" class="denom-input" id="d75k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
             <span class="denom-subtotal" id="sub75k">Rp 0</span>
           </div>
           <div class="denom-row">
             <span class="denom-label">Rp 50.000 :</span>
             <input type="number" class="denom-input" id="d50k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
             <span class="denom-subtotal" id="sub50k">Rp 0</span>
           </div>
           <div class="denom-row">
             <span class="denom-label">Rp 20.000 :</span>
             <input type="number" class="denom-input" id="d20k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
             <span class="denom-subtotal" id="sub20k">Rp 0</span>
           </div>
           <div class="denom-row">
             <span class="denom-label">Rp 10.000 :</span>
             <input type="number" class="denom-input" id="d10k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
             <span class="denom-subtotal" id="sub10k">Rp 0</span>
           </div>
           <div class="denom-row">
-            <span class="denom-label">Rp 5.000 / Koin:</span>
-            <input type="number" class="denom-input" id="dKoin" min="0" value="0" placeholder="0">
+            <span class="denom-label">Rp 5.000 :</span>
+            <input type="number" class="denom-input" id="d5k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
+            <span class="denom-subtotal" id="sub5k">Rp 0</span>
+          </div>
+          <div class="denom-row">
+            <span class="denom-label">Rp 2.000 :</span>
+            <input type="number" class="denom-input" id="d2k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
+            <span class="denom-subtotal" id="sub2k">Rp 0</span>
+          </div>
+          <div class="denom-row">
+            <span class="denom-label">Rp 1.000 :</span>
+            <input type="number" class="denom-input" id="d1k" min="0" value="0" placeholder="0">
+            <span class="denom-unit-pill">Lembar</span>
+            <span class="denom-subtotal" id="sub1k">Rp 0</span>
+          </div>
+          <div class="denom-row">
+            <span class="denom-label">Koin / Receh :</span>
+            <input type="number" class="denom-input" id="dKoin" min="0" value="0" placeholder="Rp">
+            <span class="denom-unit-pill koin">Rupiah</span>
             <span class="denom-subtotal" id="subKoin">Rp 0</span>
           </div>
         </div>
@@ -932,6 +956,9 @@
         <div class="total-cash-counted-banner">
           <span>Total Fisik Dihitung:</span>
           <strong id="totalCountedText">Rp 0</strong>
+        </div>
+        <div id="lblBlindCloseOverLimit" style="display:none; font-size:12px; font-weight:700; color:#b91c1c; background:#fef2f2; border:1.5px solid #f87171; border-radius:8px; padding:8px 12px; margin-top:8px; text-align:center;">
+          ⚠️ Peringatan: Terdapat jumlah lembar pecahan tidak wajar (&gt; 2.000 lembar). Masukkan JUMLAH LEMBAR, bukan nominal rupiah!
         </div>
         <div id="lblBlindCloseZeroNotice" style="display:block; font-size:12px; font-weight:700; color:#dc2626; background:#fef2f2; border:1.5px solid #fecaca; border-radius:8px; padding:7px 12px; margin-top:8px; text-align:center;">
           🔒 Tombol Tutup Kasir Terkunci: Wajib masukkan jumlah lembar uang kertas / koin riil di laci.

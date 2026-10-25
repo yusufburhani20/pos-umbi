@@ -2757,7 +2757,7 @@ function bindEvents() {
   el.btnCloseCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   el.btnCancelCloseShiftModal.addEventListener('click', () => el.closeShiftModal.style.display = 'none');
   
-  ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'dKoin'].forEach(id => {
+  ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'd5k', 'd2k', 'd1k', 'dKoin'].forEach(id => {
     const elInp = document.getElementById(id);
     if (elInp) elInp.addEventListener('input', recalculateBlindCashTotal);
   });
@@ -4501,14 +4501,28 @@ function renderThermalReceipt(order, isReprint = false) {
 // -----------------------------------------------------------------------------
 // BLIND CLOSE SHIFT
 // -----------------------------------------------------------------------------
+const BILL_DENOM_CONFIG = [
+  { id: 'd100k', name: 'Rp 100.000', mult: 100000, subId: 'sub100k' },
+  { id: 'd75k',  name: 'Rp 75.000',  mult: 75000,  subId: 'sub75k' },
+  { id: 'd50k',  name: 'Rp 50.000',  mult: 50000,  subId: 'sub50k' },
+  { id: 'd20k',  name: 'Rp 20.000',  mult: 20000,  subId: 'sub20k' },
+  { id: 'd10k',  name: 'Rp 10.000',  mult: 10000,  subId: 'sub10k' },
+  { id: 'd5k',   name: 'Rp 5.000',   mult: 5000,   subId: 'sub5k' },
+  { id: 'd2k',   name: 'Rp 2.000',   mult: 2000,   subId: 'sub2k' },
+  { id: 'd1k',   name: 'Rp 1.000',   mult: 1000,   subId: 'sub1k' }
+];
+
 function openCloseShiftModal() {
   if (!state.shift) {
     showToast('Tidak ada shift aktif yang bisa ditutup.', 'warning');
     return;
   }
-  ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'dKoin'].forEach(id => {
+  ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'd5k', 'd2k', 'd1k', 'dKoin'].forEach(id => {
     const elInp = document.getElementById(id);
-    if (elInp) elInp.value = '0';
+    if (elInp) {
+      elInp.value = '0';
+      elInp.classList.remove('input-danger');
+    }
   });
   el.closingNotes.value = '';
   recalculateBlindCashTotal();
@@ -4516,22 +4530,51 @@ function openCloseShiftModal() {
 }
 
 function recalculateBlindCashTotal() {
-  const d100 = (Number(document.getElementById('d100k')?.value) || 0) * 100000;
-  const d75 = (Number(document.getElementById('d75k')?.value) || 0) * 75000;
-  const d50 = (Number(document.getElementById('d50k')?.value) || 0) * 50000;
-  const d20 = (Number(document.getElementById('d20k')?.value) || 0) * 20000;
-  const d10 = (Number(document.getElementById('d10k')?.value) || 0) * 10000;
-  const dKoin = Number(document.getElementById('dKoin')?.value) || 0;
+  let total = 0;
+  const breakdown = {};
+  let overLimitFound = null;
 
-  if (document.getElementById('sub100k')) document.getElementById('sub100k').textContent = formatRupiah(d100);
-  if (document.getElementById('sub75k')) document.getElementById('sub75k').textContent = formatRupiah(d75);
-  if (document.getElementById('sub50k')) document.getElementById('sub50k').textContent = formatRupiah(d50);
-  if (document.getElementById('sub20k')) document.getElementById('sub20k').textContent = formatRupiah(d20);
-  if (document.getElementById('sub10k')) document.getElementById('sub10k').textContent = formatRupiah(d10);
-  if (document.getElementById('subKoin')) document.getElementById('subKoin').textContent = formatRupiah(dKoin);
+  BILL_DENOM_CONFIG.forEach(cfg => {
+    const inp = document.getElementById(cfg.id);
+    const count = Number(inp ? inp.value : 0) || 0;
+    const amount = count * cfg.mult;
+    breakdown[cfg.id] = amount;
+    total += amount;
 
-  const total = d100 + d75 + d50 + d20 + d10 + dKoin;
+    const subEl = document.getElementById(cfg.subId);
+    if (subEl) subEl.textContent = formatRupiah(amount);
+
+    if (inp) {
+      if (count > 2000) {
+        inp.classList.add('input-danger');
+        if (!overLimitFound) {
+          overLimitFound = { name: cfg.name, count };
+        }
+      } else {
+        inp.classList.remove('input-danger');
+      }
+    }
+  });
+
+  const koinInp = document.getElementById('dKoin');
+  const dKoin = Number(koinInp ? koinInp.value : 0) || 0;
+  breakdown.dKoin = dKoin;
+  total += dKoin;
+  const subKoin = document.getElementById('subKoin');
+  if (subKoin) subKoin.textContent = formatRupiah(dKoin);
+
   el.totalCountedText.textContent = formatRupiah(total);
+
+  // Warning banner for overlimit (> 2.000 lembar)
+  const overLimitEl = document.getElementById('lblBlindCloseOverLimit');
+  if (overLimitEl) {
+    if (overLimitFound) {
+      overLimitEl.style.display = 'block';
+      overLimitEl.innerHTML = `⚠️ <strong>Peringatan Batas Wajar:</strong> Anda memasukkan <strong>${overLimitFound.count.toLocaleString('id-ID')} lembar</strong> pada pecahan <strong>${overLimitFound.name}</strong>. Pastikan Anda memasukkan <strong>JUMLAH LEMBAR</strong>, bukan nominal rupiah!`;
+    } else {
+      overLimitEl.style.display = 'none';
+    }
+  }
 
   // Kunci tombol tutup kasir jika uang fisik masih Rp 0
   const noticeEl = document.getElementById('lblBlindCloseZeroNotice');
@@ -4551,10 +4594,47 @@ function recalculateBlindCashTotal() {
     }
   }
 
-  return { total, breakdown: { d100, d75, d50, d20, d10, dKoin } };
+  return { total, breakdown };
 }
 
 async function handleSubmitBlindClose() {
+  // Validasi Batas Wajar Jumlah Lembar (Sanity Check)
+  // Jika kasir memasukkan jumlah lembar > 2.000 lembar dalam satu pecahan
+  for (const cfg of BILL_DENOM_CONFIG) {
+    const inp = document.getElementById(cfg.id);
+    const count = Number(inp ? inp.value : 0) || 0;
+    if (count > 2000) {
+      let suggested;
+      if (count >= cfg.mult * 10 && count % cfg.mult === 0) {
+        suggested = count / cfg.mult;
+      } else if (count % 1000 === 0) {
+        suggested = count / 1000;
+      } else {
+        suggested = Math.round(count / 1000) || 1;
+      }
+
+      const suggestedNominal = suggested * cfg.mult;
+      const formattedCount = count.toLocaleString('id-ID');
+      const formattedSuggested = suggested.toLocaleString('id-ID');
+      const formattedNominal = formatRupiah(suggestedNominal);
+
+      const confirmMsg = `Perhatian: Anda memasukkan ${formattedCount} lembar pada pecahan ${cfg.name}.\n\nApakah maksud Anda ${formattedSuggested} lembar (${formattedNominal})?\n\n• Klik OK untuk memperbaiki otomatis menjadi ${formattedSuggested} lembar.\n• Klik Batal jika ingin mengetik ulang manual.`;
+
+      if (confirm(confirmMsg)) {
+        if (inp) inp.value = suggested;
+        recalculateBlindCashTotal();
+        showToast(`Pecahan ${cfg.name} otomatis disesuaikan ke ${formattedSuggested} lembar`, 'info');
+      } else {
+        if (inp) {
+          inp.focus();
+          inp.select();
+        }
+        showToast(`Silakan periksa dan perbaiki jumlah lembar pecahan ${cfg.name}`, 'warning');
+        return; // Batal submit!
+      }
+    }
+  }
+
   const { total, breakdown } = recalculateBlindCashTotal();
   if (total <= 0) {
     showToast('Uang fisik di laci tidak boleh Rp 0! Harap hitung dan masukkan lembaran uang di laci.', 'error');

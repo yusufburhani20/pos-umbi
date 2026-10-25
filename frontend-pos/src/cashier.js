@@ -836,6 +836,17 @@ async function loadActiveShiftData() {
 // -----------------------------------------------------------------------------
 // DENOMINATIONS & VARIANCE CALCULATION
 // -----------------------------------------------------------------------------
+const BILL_DENOM_CONFIG = [
+  { id: 'd100k', name: 'Rp 100.000', mult: 100000 },
+  { id: 'd75k',  name: 'Rp 75.000',  mult: 75000 },
+  { id: 'd50k',  name: 'Rp 50.000',  mult: 50000 },
+  { id: 'd20k',  name: 'Rp 20.000',  mult: 20000 },
+  { id: 'd10k',  name: 'Rp 10.000',  mult: 10000 },
+  { id: 'd5k',   name: 'Rp 5.000',   mult: 5000 },
+  { id: 'd2k',   name: 'Rp 2.000',   mult: 2000 },
+  { id: 'd1k',   name: 'Rp 1.000',   mult: 1000 }
+];
+
 function recalculateDenominations() {
   const d100 = (Number(el.d100k ? el.d100k.value : 0) || 0) * 100000;
   const d75 = (Number(el.d75k ? el.d75k.value : 0) || 0) * 75000;
@@ -856,6 +867,30 @@ function recalculateDenominations() {
   if (el.sub2k) el.sub2k.textContent = formatRupiah(d2);
   if (el.sub1k) el.sub1k.textContent = formatRupiah(d1);
   if (el.subKoin) el.subKoin.textContent = formatRupiah(dKoin);
+
+  let overLimitFound = null;
+  BILL_DENOM_CONFIG.forEach(cfg => {
+    const inp = document.getElementById(cfg.id);
+    const count = Number(inp ? inp.value : 0) || 0;
+    if (inp) {
+      if (count > 2000) {
+        inp.classList.add('input-danger');
+        if (!overLimitFound) overLimitFound = { name: cfg.name, count };
+      } else {
+        inp.classList.remove('input-danger');
+      }
+    }
+  });
+
+  const overLimitEl = document.getElementById('lblCashierDenomSanityWarning');
+  if (overLimitEl) {
+    if (overLimitFound) {
+      overLimitEl.style.display = 'block';
+      overLimitEl.innerHTML = `⚠️ <strong>Peringatan Batas Wajar:</strong> Anda memasukkan <strong>${overLimitFound.count.toLocaleString('id-ID')} lembar</strong> pada pecahan <strong>${overLimitFound.name}</strong>. Pastikan Anda memasukkan <strong>JUMLAH LEMBAR</strong>, bukan nominal rupiah!`;
+    } else {
+      overLimitEl.style.display = 'none';
+    }
+  }
 
   const total = d100 + d75 + d50 + d20 + d10 + d5 + d2 + d1 + dKoin;
   if (el.totalCounted) el.totalCounted.textContent = formatRupiah(total);
@@ -1093,6 +1128,42 @@ async function handleCloseShiftZ() {
   if (!state.shift) {
     showToast('Tidak ada shift aktif yang bisa ditutup.', 'warning');
     return;
+  }
+
+  // Validasi Batas Wajar Jumlah Lembar (Sanity Check)
+  for (const cfg of BILL_DENOM_CONFIG) {
+    const inp = document.getElementById(cfg.id);
+    const count = Number(inp ? inp.value : 0) || 0;
+    if (count > 2000) {
+      let suggested;
+      if (count >= cfg.mult * 10 && count % cfg.mult === 0) {
+        suggested = count / cfg.mult;
+      } else if (count % 1000 === 0) {
+        suggested = count / 1000;
+      } else {
+        suggested = Math.round(count / 1000) || 1;
+      }
+
+      const suggestedNominal = suggested * cfg.mult;
+      const formattedCount = count.toLocaleString('id-ID');
+      const formattedSuggested = suggested.toLocaleString('id-ID');
+      const formattedNominal = formatRupiah(suggestedNominal);
+
+      const confirmMsg = `Perhatian: Anda memasukkan ${formattedCount} lembar pada pecahan ${cfg.name}.\n\nApakah maksud Anda ${formattedSuggested} lembar (${formattedNominal})?\n\n• Klik OK untuk mengubah otomatis menjadi ${formattedSuggested} lembar.\n• Klik Batal jika ingin mengetik ulang manual.`;
+
+      if (confirm(confirmMsg)) {
+        if (inp) inp.value = suggested;
+        recalculateDenominations();
+        showToast(`Pecahan ${cfg.name} otomatis disesuaikan ke ${formattedSuggested} lembar`, 'info');
+      } else {
+        if (inp) {
+          inp.focus();
+          inp.select();
+        }
+        showToast(`Silakan periksa dan perbaiki jumlah lembar pecahan ${cfg.name}`, 'warning');
+        return; // Batal submit!
+      }
+    }
   }
 
   const { total, breakdown, diff, expected } = recalculateDenominations();

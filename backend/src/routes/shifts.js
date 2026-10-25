@@ -225,6 +225,42 @@ router.post('/close', authenticateToken, async (req, res) => {
       });
     }
 
+    // Validasi batas wajar jumlah lembar uang fisik (Sanity Check Backend)
+    // Maksimal 2.000 lembar per pecahan (misal 2.000 x 100.000 = Rp 200.000.000 di satu laci kasir)
+    if (breakdown && typeof breakdown === 'object') {
+      const billLimits = [
+        { key: 'd100k', mult: 100000, name: 'Rp 100.000' },
+        { key: 'd75k',  mult: 75000,  name: 'Rp 75.000' },
+        { key: 'd50k',  mult: 50000,  name: 'Rp 50.000' },
+        { key: 'd20k',  mult: 20000,  name: 'Rp 20.000' },
+        { key: 'd10k',  mult: 10000,  name: 'Rp 10.000' },
+        { key: 'd5k',   mult: 5000,   name: 'Rp 5.000' },
+        { key: 'd2k',   mult: 2000,   name: 'Rp 2.000' },
+        { key: 'd1k',   mult: 1000,   name: 'Rp 1.000' }
+      ];
+
+      for (const item of billLimits) {
+        const amount = Number(breakdown[item.key]) || 0;
+        const sheets = Math.round(amount / item.mult);
+        if (sheets > 2000) {
+          return res.status(400).json({
+            success: false,
+            code: 'UNREALISTIC_DENOMINATION_COUNT',
+            message: `Jumlah lembar pecahan ${item.name} tidak wajar (${sheets.toLocaleString('id-ID')} lembar). Masukkan JUMLAH LEMBAR, bukan nominal rupiah!`
+          });
+        }
+      }
+    }
+
+    // Batas wajar total kas laci: Maksimal Rp 250.000.000 per shift laci kios
+    if (numActualCash > 250000000) {
+      return res.status(400).json({
+        success: false,
+        code: 'UNREALISTIC_CASH_TOTAL',
+        message: `Total fisik uang kas laci (Rp ${numActualCash.toLocaleString('id-ID')}) melebihi batas wajar laci kasir (maks Rp 250.000.000). Harap periksa kembali input lembaran uang fisik!`
+      });
+    }
+
     // Cash expenses & cash income in this shift
     const cashExpensesRow = await dbQuery.get(
       `SELECT 
