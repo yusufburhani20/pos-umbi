@@ -1205,7 +1205,10 @@ class HardwareManager {
 
     append(COMMANDS.ALIGN_CENTER);
     append(COMMANDS.BOLD_ON);
-    if (difference === 0) {
+    if (expectedCash < 0) {
+      append('STATUS : [ 🚨 ANOMALI KAS SISTEM MINUS ]\n');
+      append('(PENGELUARAN LACI MELEBIHI PENERIMAAN)\n');
+    } else if (difference === 0) {
       append('STATUS : [ OK KAS BALANCE / SESUAI ]\n');
     } else if (difference < 0) {
       append(`STATUS : [ !! SELISIH KURANG ${formatCurrency(Math.abs(difference))} ]\n`);

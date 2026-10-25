@@ -496,7 +496,7 @@ router.post('/purchases', authenticateToken, async (req, res) => {
         return res.status(400).json({
           success: false,
           code: 'INSUFFICIENT_DRAWER_CASH',
-          message: `Saldo kas laci tidak mencukupi untuk bayar kulakan tunai! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pembayaran tunai Rp ${paidAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap tambah kas masuk/modal terlebih dahulu atau pilih metode Transfer Bank / Kas Brankas / Tempo.`,
+          message: `Saldo kas laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, tidak mencukupi untuk bayar kulakan Rp ${paidAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Silakan gunakan Kas Brankas / Transfer Bank.`,
           current_drawer_cash: drawerState.current_drawer_cash,
           required_amount: paidAmount,
           shortage
@@ -707,7 +707,7 @@ router.post('/purchases/:id/pay', authenticateToken, async (req, res) => {
         return res.status(400).json({
           success: false,
           code: 'INSUFFICIENT_DRAWER_CASH',
-          message: `Saldo kas laci tidak mencukupi untuk bayar hutang supplier! Saldo laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, sedangkan pembayaran tunai Rp ${payAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Transaksi dibatalkan agar saldo tidak minus. Harap tambah kas masuk/modal terlebih dahulu atau pilih metode Transfer Bank / Kas Brankas.`,
+          message: `Saldo kas laci saat ini hanya Rp ${drawerState.current_drawer_cash.toLocaleString('id-ID')}, tidak mencukupi untuk bayar hutang supplier Rp ${payAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Silakan gunakan Kas Brankas / Transfer Bank.`,
           current_drawer_cash: drawerState.current_drawer_cash,
           required_amount: payAmount,
           shortage

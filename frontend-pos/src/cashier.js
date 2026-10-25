@@ -1097,6 +1097,14 @@ async function handleCloseShiftZ() {
 
   const { total, breakdown, diff, expected } = recalculateDenominations();
 
+  // Wajibkan input fisik uang laci > 0 jika ada pergerakan kas
+  const hasCashActivity = (state.shift && (Number(state.shift.starting_cash) > 0 || Number(state.shift.cash_sales) > 0)) || expected > 0;
+  if (total <= 0 && hasCashActivity) {
+    showToast('Uang fisik di laci tidak boleh Rp 0! Masukkan lembaran uang kertas / koin riil di laci.', 'error');
+    alert('DILARANG TUTUP KASIR DENGAN FISIK RP 0!\n\nKasir wajib menghitung dan memasukkan jumlah lembaran uang fisik riil yang ada di laci kasir sebelum shift dapat ditutup.');
+    return;
+  }
+
   let confirmMsg = `Konfirmasi Tutup Shift #${state.shift.id}?\n\nTotal Fisik Dihitung: ${formatRupiah(total)}\nSaldo Seharusnya: ${formatRupiah(expected)}`;
   if (diff === 0) {
     confirmMsg += '\n\n✅ Status: KAS BALANCE (Rp 0)';
@@ -1137,7 +1145,9 @@ async function handleCloseShiftZ() {
     });
 
     let alertMsg = `Shift Kasir #${sum.shift_id} Berhasil Ditutup!\nTotal Fisik: ${formatRupiah(sum.actual_cash_input)}`;
-    if (sum.is_balanced) {
+    if (sum.is_anomalous || Number(sum.expected_system_cash) < 0) {
+      alertMsg += `\n🚨 PERHATIAN: ANOMALI SALDO KAS SISTEM MINUS (${formatRupiah(sum.expected_system_cash)})\nPengeluaran laci melebihi uang kas! Status dicatat khusus ke laporan Owner (BUKAN SURPLUS).`;
+    } else if (sum.is_balanced) {
       alertMsg += '\nStatus: KAS BALANCE (Sesuai Sistem)';
     } else if (sum.cash_difference < 0) {
       alertMsg += `\n⚠️ PERHATIAN: Selisih KURANG ${formatRupiah(Math.abs(sum.cash_difference))} (Tercatat ke Log Owner)`;

@@ -4532,15 +4532,34 @@ function recalculateBlindCashTotal() {
 
   const total = d100 + d75 + d50 + d20 + d10 + dKoin;
   el.totalCountedText.textContent = formatRupiah(total);
+
+  // Kunci tombol tutup kasir jika uang fisik masih Rp 0
+  const noticeEl = document.getElementById('lblBlindCloseZeroNotice');
+  if (el.btnSubmitBlindClose) {
+    if (total <= 0) {
+      el.btnSubmitBlindClose.disabled = true;
+      el.btnSubmitBlindClose.style.opacity = '0.5';
+      el.btnSubmitBlindClose.style.cursor = 'not-allowed';
+      el.btnSubmitBlindClose.title = 'Wajib mengisi pecahan uang fisik di laci kasir terlebih dahulu';
+      if (noticeEl) noticeEl.style.display = 'block';
+    } else {
+      el.btnSubmitBlindClose.disabled = false;
+      el.btnSubmitBlindClose.style.opacity = '1';
+      el.btnSubmitBlindClose.style.cursor = 'pointer';
+      el.btnSubmitBlindClose.title = '';
+      if (noticeEl) noticeEl.style.display = 'none';
+    }
+  }
+
   return { total, breakdown: { d100, d75, d50, d20, d10, dKoin } };
 }
 
 async function handleSubmitBlindClose() {
   const { total, breakdown } = recalculateBlindCashTotal();
   if (total <= 0) {
-    if (!confirm('Uang fisik dihitung Rp 0. Apakah Anda yakin ingin melanjutkan tutup kasir?')) {
-      return;
-    }
+    showToast('Uang fisik di laci tidak boleh Rp 0! Harap hitung dan masukkan lembaran uang di laci.', 'error');
+    alert('DILARANG TUTUP KASIR DENGAN FISIK RP 0!\n\nKasir wajib menghitung dan memasukkan jumlah lembaran uang fisik riil yang ada di laci kasir sebelum shift dapat ditutup.');
+    return;
   }
 
   try {
@@ -4569,7 +4588,9 @@ async function handleSubmitBlindClose() {
     }
 
     let alertMsg = `Shift Kasir Berhasil Ditutup!\nTotal Fisik Dihitung: ${formatRupiah(sum.actual_cash_input)}`;
-    if (isBalanced) {
+    if (sum.is_anomalous || Number(sum.expected_system_cash) < 0) {
+      alertMsg += `\n\n🚨 PERHATIAN: ANOMALI SALDO KAS SISTEM MINUS (${formatRupiah(sum.expected_system_cash)})\nPengeluaran kas laci melebihi penerimaan! Status dicatat khusus ke laporan Owner (BUKAN SURPLUS).`;
+    } else if (isBalanced) {
       alertMsg += '\n\nStatus: [ OK KAS BALANCE / SESUAI ]';
     } else if (diff < 0) {
       alertMsg += `\n\n⚠️ PERHATIAN: Selisih KURANG ${formatRupiah(Math.abs(diff))} (Tercatat ke Log Owner)`;
@@ -6986,6 +7007,18 @@ async function handleSaveCashierSupplierPayment() {
   if (amount > purchase.remaining_amount) {
     showToast(`Nominal bayar (${formatRupiah(amount)}) melebihi sisa hutang (${formatRupiah(purchase.remaining_amount)})!`, 'error');
     return;
+  }
+
+  // Proteksi saldo laci minus saat bayar hutang supplier
+  if (payment_method === 'cash') {
+    const curCash = Number(state.currentShiftCash) || 0;
+    if (amount > curCash) {
+      const shortage = amount - curCash;
+      const msg = "Saldo kas laci saat ini hanya Rp " + curCash.toLocaleString('id-ID') + ", tidak mencukupi untuk bayar hutang kulakan Rp " + amount.toLocaleString('id-ID') + " (kurang Rp " + shortage.toLocaleString('id-ID') + "). Silakan gunakan Kas Brankas / Transfer Bank.";
+      showToast(msg, 'error');
+      alert("SALDO KAS LACI TIDAK MENCUKUPI!\n\n" + msg);
+      return;
+    }
   }
 
   try {

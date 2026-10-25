@@ -2820,8 +2820,11 @@ function renderShifts() {
     const diff = Number(s.cash_difference) || 0;
     let badgeHtml = '';
 
+    const isAnomalous = s.is_anomalous || Number(s.system_cash) < 0;
     if (!isClosed) {
       badgeHtml = '<span class="status-pill-badge active">🟢 SEDANG AKTIF</span>';
+    } else if (isAnomalous) {
+      badgeHtml = '<span class="status-pill-badge shortage" style="background:#fff1f2; color:#be123c; border:1px solid #fda4af;">🚨 ANOMALI LACI MINUS</span>';
     } else if (diff === 0) {
       badgeHtml = '<span class="status-pill-badge balanced">✅ KAS BALANCE</span>';
     } else if (diff < 0) {
@@ -2896,10 +2899,17 @@ async function openShiftDetailModal(shiftId) {
   }
 
   // Status Badge
+  const isAnomalousShift = shift.is_anomalous || Number(shift.system_cash) < 0;
   if (el.sdModalStatusBadge) {
     if (!isClosed) {
       el.sdModalStatusBadge.className = 'status-pill-badge active';
       el.sdModalStatusBadge.textContent = '🟢 SEDANG AKTIF';
+    } else if (isAnomalousShift) {
+      el.sdModalStatusBadge.className = 'status-pill-badge shortage';
+      el.sdModalStatusBadge.style.background = '#fff1f2';
+      el.sdModalStatusBadge.style.color = '#be123c';
+      el.sdModalStatusBadge.style.border = '1px solid #fda4af';
+      el.sdModalStatusBadge.textContent = '🚨 ANOMALI SALDO LACI MINUS';
     } else if (diff === 0) {
       el.sdModalStatusBadge.className = 'status-pill-badge balanced';
       el.sdModalStatusBadge.textContent = '✅ KAS BALANCE';
@@ -2950,6 +2960,22 @@ async function openShiftDetailModal(shiftId) {
       if (el.sdModalVarianceDiff) {
         el.sdModalVarianceDiff.textContent = 'Selisih: Rp 0';
         el.sdModalVarianceDiff.style.color = '#047857';
+      }
+    } else if (isAnomalousShift) {
+      el.sdModalVarianceCard.style.background = '#fff1f2';
+      el.sdModalVarianceCard.style.borderColor = '#fda4af';
+      if (el.sdModalVarianceIcon) el.sdModalVarianceIcon.textContent = '🚨';
+      if (el.sdModalVarianceTitle) {
+        el.sdModalVarianceTitle.textContent = 'ANOMALI SALDO KAS SISTEM MINUS';
+        el.sdModalVarianceTitle.style.color = '#9f1239';
+      }
+      if (el.sdModalVarianceDesc) {
+        el.sdModalVarianceDesc.textContent = `Kas sistem minus ${formatRupiah(Math.abs(shift.system_cash))} karena pengeluaran kas laci / kulakan melebihi uang kas laci. Uang fisik dihitung ${formatRupiah(shift.actual_cash || 0)}. Bukan surplus riil!`;
+        el.sdModalVarianceDesc.style.color = '#be123c';
+      }
+      if (el.sdModalVarianceDiff) {
+        el.sdModalVarianceDiff.textContent = 'Status: Anomali Laci Minus';
+        el.sdModalVarianceDiff.style.color = '#9f1239';
       }
     } else if (diff < 0) {
       el.sdModalVarianceCard.style.background = '#fef2f2';
@@ -6309,6 +6335,19 @@ async function handleSubmitOwnerRecordPurchase() {
     dp_amount: dpAmount,
     notes
   };
+
+  // Proteksi saldo laci minus saat kulakan tunai
+  if (paymentMethod === 'cash') {
+    const paidAmount = paymentStatus === 'lunas' ? totalCost : (paymentStatus === 'dp' ? dpAmount : 0);
+    const curDrawer = Number(state.currentDrawerCash) || 0;
+    if (paidAmount > 0 && paidAmount > curDrawer) {
+      const shortage = paidAmount - curDrawer;
+      const msg = "Saldo kas laci saat ini hanya Rp " + curDrawer.toLocaleString('id-ID') + ", tidak mencukupi untuk bayar kulakan Rp " + paidAmount.toLocaleString('id-ID') + " (kurang Rp " + shortage.toLocaleString('id-ID') + "). Silakan gunakan Kas Brankas / Transfer Bank.";
+      showToast(msg, 'error');
+      alert("SALDO KAS LACI TIDAK MENCUKUPI!\n\n" + msg);
+      return;
+    }
+  }
 
   try {
     if (el.btnSubmitOwnerRecordPurchase) {

@@ -191,7 +191,8 @@ router.post('/close', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Shift ID wajib disertakan' });
     }
 
-    if (actual_cash === undefined || actual_cash === null || actual_cash < 0) {
+    const numActualCash = Number(actual_cash);
+    if (actual_cash === undefined || actual_cash === null || isNaN(numActualCash) || numActualCash < 0) {
       return res.status(400).json({ success: false, message: 'Total fisik uang kas wajib diisi' });
     }
 
@@ -213,6 +214,16 @@ router.post('/close', authenticateToken, async (req, res) => {
        WHERE shift_id = ?`,
       [shift_id]
     );
+
+    // Validasi ketat: Kunci penutupan jika kasir menginput uang fisik Rp 0 padahal ada pergerakan kas laci
+    const hasCashMovement = Number(shift.starting_cash) > 0 || (ordersStatsRow && Number(ordersStatsRow.total_cash_sales) > 0);
+    if (numActualCash === 0 && hasCashMovement) {
+      return res.status(400).json({
+        success: false,
+        code: 'PHYSICAL_CASH_REQUIRED',
+        message: 'DILARANG TUTUP KASIR DENGAN FISIK RP 0! Kasir wajib menghitung dan mengisi pecahan lembaran uang riil di laci kasir sebelum shift dapat ditutup.'
+      });
+    }
 
     // Cash expenses & cash income in this shift
     const cashExpensesRow = await dbQuery.get(
@@ -301,9 +312,22 @@ router.post('/close', authenticateToken, async (req, res) => {
       );
     }
 
-    const auditAction = cashDifference === 0 
-      ? 'SHIFT_CLOSED_BALANCED' 
-      : (cashDifference < 0 ? 'SHIFT_CLOSED_SHORTAGE' : 'SHIFT_CLOSED_SURPLUS');
+    // Logika penentuan status audit & selisih:
+    // Jika expectedSystemCash < 0, ini adalah ANOMALI (saldo laci tersedot minus karena pengeluaran melebihi uang laci).
+    // DILARANG menandainya sebagai SURPLUS!
+    let auditAction;
+    let isAnomalousNegative = false;
+
+    if (expectedSystemCash < 0) {
+      isAnomalousNegative = true;
+      auditAction = 'SHIFT_CLOSED_ANOMALOUS_NEGATIVE_DRAWER';
+    } else if (cashDifference === 0) {
+      auditAction = 'SHIFT_CLOSED_BALANCED';
+    } else if (cashDifference < 0) {
+      auditAction = 'SHIFT_CLOSED_SHORTAGE';
+    } else {
+      auditAction = 'SHIFT_CLOSED_SURPLUS';
+    }
 
     await logAudit(req.user.id, auditAction, {
       shift_id,
@@ -314,7 +338,8 @@ router.post('/close', authenticateToken, async (req, res) => {
       total_cash_supplier_paid: totalCashSupplierPaid,
       expected: expectedSystemCash,
       actual: actual_cash,
-      difference: cashDifference
+      difference: cashDifference,
+      is_anomalous: isAnomalousNegative
     });
 
     return res.json({
@@ -339,7 +364,11 @@ router.post('/close', authenticateToken, async (req, res) => {
         expected_system_cash: expectedSystemCash,
         actual_cash_input: actual_cash,
         cash_difference: cashDifference,
-        is_balanced: cashDifference === 0,
+        is_balanced: !isAnomalousNegative && cashDifference === 0,
+        is_anomalous: isAnomalousNegative,
+        status_label: isAnomalousNegative 
+          ? 'ANOMALOUS_NEGATIVE_DRAWER' 
+          : (cashDifference === 0 ? 'BALANCED' : (cashDifference < 0 ? 'SHORTAGE' : 'SURPLUS')),
         breakdown: breakdown || null,
         closing_notes: cleanNotes
       }
@@ -385,8 +414,14 @@ router.get('/history', authenticateToken, async (req, res) => {
         }
       }
       cNotes = cNotes.replace(/^Breakdown\s*:\s*\{[\s\S]*?\}\s*(\.|\;)?\s*/i, '').trim();
+      const isNegativeSystem = Number(s.system_cash) < 0;
+      const statusLabel = isNegativeSystem
+        ? 'ANOMALOUS_NEGATIVE_DRAWER'
+        : (s.cash_difference === 0 ? 'BALANCED' : (s.cash_difference < 0 ? 'SHORTAGE' : 'SURPLUS'));
       return {
         ...s,
+        is_anomalous: isNegativeSystem,
+        status_label: statusLabel,
         breakdown: bObj,
         closing_notes: cNotes
       };
@@ -482,10 +517,17 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
     cNotes = cNotes.replace(/^Breakdown\s*:\s*\{[\s\S]*?\}\s*(\.|\;)?\s*/i, '').trim();
 
+    const isNegativeSystem = Number(shift.system_cash) < 0;
+    const statusLabel = isNegativeSystem
+      ? 'ANOMALOUS_NEGATIVE_DRAWER'
+      : (shift.cash_difference === 0 ? 'BALANCED' : (shift.cash_difference < 0 ? 'SHORTAGE' : 'SURPLUS'));
+
     return res.json({
       success: true,
       shift: {
         ...shift,
+        is_anomalous: isNegativeSystem,
+        status_label: statusLabel,
         breakdown: bObj,
         closing_notes: cNotes,
         stats: ordersStats || {},
