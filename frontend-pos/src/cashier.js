@@ -788,6 +788,8 @@ async function loadActiveShiftData() {
       el.expectedCashValue.textContent = formatRupiah(expected);
     }
 
+    renderDenominationRecommendation(expected);
+
     // Transactions breakdown
     if (el.badgeTotalOrders) el.badgeTotalOrders.textContent = `${s.total_orders || 0} Nota Transaksi`;
     if (el.salesCash) el.salesCash.textContent = formatRupiah(cashSales);
@@ -953,6 +955,121 @@ Apakah Anda yakin ingin membatalkan transaksi ${expNo} senilai ${formatRupiah(ex
 // -----------------------------------------------------------------------------
 // DENOMINATIONS & VARIANCE CALCULATION
 // -----------------------------------------------------------------------------
+function getDenominationRecommendation(targetAmount) {
+  let rem = Math.max(0, Math.round(Number(targetAmount) || 0));
+
+  const denoms = [
+    { key: 'd100k', name: 'Rp 100.000', value: 100000, color: '#e11d48', bg: '#ffe4e6' },
+    { key: 'd50k',  name: 'Rp 50.000',  value: 50000,  color: '#1d4ed8', bg: '#dbeafe' },
+    { key: 'd20k',  name: 'Rp 20.000',  value: 20000,  color: '#047857', bg: '#d1fae5' },
+    { key: 'd10k',  name: 'Rp 10.000',  value: 10000,  color: '#6d28d9', bg: '#ede9fe' },
+    { key: 'd5k',   name: 'Rp 5.000',   value: 5000,   color: '#c2410c', bg: '#ffedd5' },
+    { key: 'd2k',   name: 'Rp 2.000',   value: 2000,   color: '#475569', bg: '#f1f5f9' },
+    { key: 'd1k',   name: 'Rp 1.000',   value: 1000,   color: '#475569', bg: '#f1f5f9' }
+  ];
+
+  const breakdown = {
+    d100k: 0,
+    d75k: 0,
+    d50k: 0,
+    d20k: 0,
+    d10k: 0,
+    d5k: 0,
+    d2k: 0,
+    d1k: 0,
+    dKoin: 0
+  };
+
+  const chips = [];
+  let totalLembar = 0;
+
+  for (const d of denoms) {
+    if (rem >= d.value) {
+      const count = Math.floor(rem / d.value);
+      rem %= d.value;
+      breakdown[d.key] = count;
+      totalLembar += count;
+      chips.push({
+        name: d.name,
+        count,
+        subtotal: count * d.value,
+        color: d.color,
+        bg: d.bg,
+        isCoin: false
+      });
+    }
+  }
+
+  if (rem > 0) {
+    breakdown.dKoin = rem;
+    chips.push({
+      name: 'Koin / Receh',
+      count: formatRupiah(rem),
+      subtotal: rem,
+      color: '#475569',
+      bg: '#f1f5f9',
+      isCoin: true
+    });
+  }
+
+  return { breakdown, chips, totalLembar, targetAmount };
+}
+
+function renderDenominationRecommendation(expectedAmount) {
+  const container = document.getElementById('denomRecommendationCard');
+  const chipsContainer = document.getElementById('denomRecommendationChips');
+  const badgeTotal = document.getElementById('recTotalBadge');
+  const btnApply = document.getElementById('btnApplyDenomRecommendation');
+
+  if (!container || !chipsContainer) return;
+
+  if (expectedAmount <= 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  if (badgeTotal) badgeTotal.textContent = formatRupiah(expectedAmount);
+
+  const recom = getDenominationRecommendation(expectedAmount);
+
+  if (recom.chips.length === 0) {
+    chipsContainer.innerHTML = '<span style="font-size: 12px; color: #64748b;">Tidak ada pecahan yang direkomendasikan.</span>';
+    return;
+  }
+
+  chipsContainer.innerHTML = recom.chips.map(c => `
+    <div style="background: #ffffff; border: 1.5px solid ${c.color}; border-radius: 8px; padding: 5px 10px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+      <span style="font-size: 11.5px; font-weight: 700; color: ${c.color};">${c.name}:</span>
+      <strong style="font-size: 13px; font-weight: 800; color: #0f172a; font-family: 'JetBrains Mono', monospace;">${c.isCoin ? c.count : c.count + ' Lembar'}</strong>
+      <span style="font-size: 11px; color: #64748b;">(${formatRupiah(c.subtotal)})</span>
+    </div>
+  `).join('') + `
+    <div style="margin-left: auto; display: flex; align-items: center; font-size: 11.5px; font-weight: 700; color: #166534; padding: 4px 10px; background: #dcfce7; border-radius: 6px; border: 1px solid #bbf7d0;">
+      ✨ Total Lembaran: ${recom.totalLembar} lembar
+    </div>
+  `;
+
+  if (btnApply) {
+    btnApply.onclick = () => {
+      const b = recom.breakdown;
+      if (el.d100k) el.d100k.value = b.d100k || 0;
+      if (el.d75k) el.d75k.value = b.d75k || 0;
+      if (el.d50k) el.d50k.value = b.d50k || 0;
+      if (el.d20k) el.d20k.value = b.d20k || 0;
+      if (el.d10k) el.d10k.value = b.d10k || 0;
+      if (el.d5k) el.d5k.value = b.d5k || 0;
+      if (el.d2k) el.d2k.value = b.d2k || 0;
+      if (el.d1k) el.d1k.value = b.d1k || 0;
+      if (el.dKoin) el.dKoin.value = b.dKoin || 0;
+
+      recalculateDenominations();
+
+      showToast(`⚡ Rekomendasi pecahan diterapkan (Total: ${formatRupiah(expectedAmount)}). Silakan cocokkan dengan fisik uang di laci.`, 'success');
+    };
+  }
+}
+
 const BILL_DENOM_CONFIG = [
   { id: 'd100k', name: 'Rp 100.000', mult: 100000 },
   { id: 'd75k',  name: 'Rp 75.000',  mult: 75000 },

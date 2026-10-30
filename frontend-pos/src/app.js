@@ -4550,6 +4550,99 @@ const BILL_DENOM_CONFIG = [
   { id: 'd1k',   name: 'Rp 1.000',   mult: 1000,   subId: 'sub1k' }
 ];
 
+function getDenominationRecommendation(targetAmount) {
+  let rem = Math.max(0, Math.round(Number(targetAmount) || 0));
+
+  const denoms = [
+    { key: 'd100k', name: 'Rp 100.000', value: 100000, color: '#e11d48' },
+    { key: 'd50k',  name: 'Rp 50.000',  value: 50000,  color: '#1d4ed8' },
+    { key: 'd20k',  name: 'Rp 20.000',  value: 20000,  color: '#047857' },
+    { key: 'd10k',  name: 'Rp 10.000',  value: 10000,  color: '#6d28d9' },
+    { key: 'd5k',   name: 'Rp 5.000',   value: 5000,   color: '#c2410c' },
+    { key: 'd2k',   name: 'Rp 2.000',   value: 2000,   color: '#475569' },
+    { key: 'd1k',   name: 'Rp 1.000',   value: 1000,   color: '#475569' }
+  ];
+
+  const breakdown = {
+    d100k: 0, d75k: 0, d50k: 0, d20k: 0, d10k: 0, d5k: 0, d2k: 0, d1k: 0, dKoin: 0
+  };
+
+  const chips = [];
+  let totalLembar = 0;
+
+  for (const d of denoms) {
+    if (rem >= d.value) {
+      const count = Math.floor(rem / d.value);
+      rem %= d.value;
+      breakdown[d.key] = count;
+      totalLembar += count;
+      chips.push({
+        name: d.name,
+        count,
+        subtotal: count * d.value,
+        color: d.color,
+        isCoin: false
+      });
+    }
+  }
+
+  if (rem > 0) {
+    breakdown.dKoin = rem;
+    chips.push({
+      name: 'Koin',
+      count: formatRupiah(rem),
+      subtotal: rem,
+      color: '#475569',
+      isCoin: true
+    });
+  }
+
+  return { breakdown, chips, totalLembar, targetAmount };
+}
+
+function renderModalCloseShiftRecommendation(targetAmt) {
+  const box = document.getElementById('modalCloseShiftRecomBox');
+  const targetLabel = document.getElementById('lblModalCloseShiftTarget');
+  const chipsContainer = document.getElementById('modalCloseShiftChips');
+  const btnApply = document.getElementById('btnApplyModalCloseShiftRecom');
+
+  if (!box || !chipsContainer) return;
+
+  if (targetAmt <= 0) {
+    box.style.display = 'none';
+    return;
+  }
+
+  box.style.display = 'block';
+  if (targetLabel) targetLabel.textContent = formatRupiah(targetAmt);
+
+  const recom = getDenominationRecommendation(targetAmt);
+
+  chipsContainer.innerHTML = recom.chips.map(c => `
+    <span style="background: #ffffff; border: 1px solid ${c.color}; border-radius: 6px; padding: 2px 7px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+      <span style="font-weight: 700; color: ${c.color};">${c.name}:</span>
+      <strong style="color: #0f172a; font-family: monospace;">${c.isCoin ? c.count : c.count + ' lbr'}</strong>
+    </span>
+  `).join('') + `
+    <span style="font-size: 10.5px; font-weight: 700; color: #166534; padding: 2px 6px; background: #dcfce7; border-radius: 4px;">
+      Total: ${recom.totalLembar} lbr
+    </span>
+  `;
+
+  if (btnApply) {
+    btnApply.onclick = () => {
+      const b = recom.breakdown;
+      ['d100k', 'd75k', 'd50k', 'd20k', 'd10k', 'd5k', 'd2k', 'd1k', 'dKoin'].forEach(id => {
+        const inp = document.getElementById(id);
+        if (inp) inp.value = b[id] || 0;
+      });
+
+      recalculateBlindCashTotal();
+      showToast(`⚡ Rekomendasi pecahan diterapkan (Total: ${formatRupiah(targetAmt)})!`, 'success');
+    };
+  }
+}
+
 function openCloseShiftModal() {
   if (!state.shift) {
     showToast('Tidak ada shift aktif yang bisa ditutup.', 'warning');
@@ -4576,6 +4669,19 @@ function openCloseShiftModal() {
       kulNoticeEl.style.display = 'none';
     }
   }
+
+  // Hitung target saldo laci seharusnya & tampilkan rekomendasi pecahan
+  const s = state.shift || {};
+  const starting = Number(s.starting_cash || 0);
+  const cashSales = Number(s.cash_sales || 0);
+  const debtIn = Number(s.cash_debt_collected || 0);
+  const incIn = Number(s.cash_income || 0);
+  const expOut = Number(s.cash_expenses || 0);
+  const supOut = Number(s.cash_supplier_payments || 0);
+  const expected = starting + cashSales + debtIn + incIn - expOut - supOut;
+  const targetAmt = expected > 0 ? expected : Number(s.current_drawer_cash || 0);
+
+  renderModalCloseShiftRecommendation(targetAmt);
 
   recalculateBlindCashTotal();
   el.closeShiftModal.style.display = 'flex';
