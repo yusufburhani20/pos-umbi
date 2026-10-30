@@ -71,7 +71,7 @@ router.get('/current', optionalAuth, async (req, res) => {
     const safeTransferRow = await dbQuery.get(
       `SELECT 
          COALESCE(SUM(CASE WHEN type = 'deposit' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_deposited_to_safe,
-         COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
+         COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' AND (reference_no IS NULL OR reference_no NOT LIKE 'EXP-%') THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
        FROM safe_cash_transactions
        WHERE shift_id = ? OR (shift_id IS NULL AND created_at >= ?)`,
       [shift.id, shift.start_time]
@@ -79,10 +79,10 @@ router.get('/current', optionalAuth, async (req, res) => {
 
     // Recent cash expenses for cashier dashboard
     const recentExpenses = await dbQuery.all(
-      `SELECT id, expense_no, category, type, amount, notes, created_at
+      `SELECT id, expense_no, category, category_name, type, amount, source, fund_source, notes, created_at
        FROM store_expenses
        WHERE shift_id = ? AND source = 'cash'
-       ORDER BY id DESC LIMIT 20`,
+       ORDER BY id DESC LIMIT 50`,
       [shift.id]
     );
 
@@ -307,7 +307,7 @@ router.post('/close', authenticateToken, async (req, res) => {
     const safeTransferRow = await dbQuery.get(
       `SELECT 
          COALESCE(SUM(CASE WHEN type = 'deposit' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_deposited_to_safe,
-         COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
+         COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' AND (reference_no IS NULL OR reference_no NOT LIKE 'EXP-%') THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
        FROM safe_cash_transactions
        WHERE shift_id = ? OR (shift_id IS NULL AND created_at >= ?)`,
       [shift_id, shift.start_time]

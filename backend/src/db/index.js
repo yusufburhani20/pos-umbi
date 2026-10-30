@@ -307,6 +307,7 @@ async function initDatabase() {
       type TEXT DEFAULT 'expense' CHECK(type IN ('expense', 'income')),
       amount REAL NOT NULL,
       source TEXT DEFAULT 'cash' CHECK(source IN ('cash', 'transfer', 'safe')),
+      fund_source TEXT DEFAULT 'owner',
       notes TEXT,
       created_at DATETIME DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY(shift_id) REFERENCES shifts(id),
@@ -515,6 +516,18 @@ async function initDatabase() {
     console.warn("[DB] Migration error on supplier_payments safe method:", err.message);
   }
 
+  // Migration: Ensure fund_source column exists in store_expenses
+  try {
+    const expenseColumns = await dbQuery.all("PRAGMA table_info(store_expenses)");
+    const hasFundSource = expenseColumns.some(col => col.name === 'fund_source');
+    if (!hasFundSource) {
+      await dbQuery.exec("ALTER TABLE store_expenses ADD COLUMN fund_source TEXT DEFAULT 'owner';");
+      console.log("[DB] Added fund_source column to store_expenses");
+    }
+  } catch (err) {
+    console.warn("[DB] Migration error on store_expenses fund_source:", err.message);
+  }
+
   // Seed default data if empty
   await seedInitialData();
   await seedStoreSettings();
@@ -715,7 +728,7 @@ async function getCurrentDrawerCash(targetShiftId = null) {
   const safeTransferRow = await dbQuery.get(
     `SELECT 
        COALESCE(SUM(CASE WHEN type = 'deposit' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_deposited_to_safe,
-       COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
+       COALESCE(SUM(CASE WHEN type = 'withdrawal' AND source = 'drawer' AND (reference_no IS NULL OR reference_no NOT LIKE 'EXP-%') THEN amount ELSE 0 END), 0) as cash_withdrawn_from_safe
      FROM safe_cash_transactions
      WHERE shift_id = ? OR (shift_id IS NULL AND created_at >= ?)`,
     [shift.id, shift.start_time]

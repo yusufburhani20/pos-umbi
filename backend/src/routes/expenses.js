@@ -235,7 +235,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // Record a store expense or non-sales cash income
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { category, amount, source = 'cash', notes = '', type = 'expense' } = req.body;
+    const { category, amount, source = 'cash', fund_source = 'owner', notes = '', type = 'expense' } = req.body;
 
     if (!category) {
       return res.status(400).json({ success: false, message: 'Kategori pengeluaran wajib dipilih' });
@@ -252,6 +252,16 @@ router.post('/', authenticateToken, async (req, res) => {
 
     if (!['expense', 'income'].includes(type)) {
       return res.status(400).json({ success: false, message: 'Tipe transaksi harus pengeluaran atau kas masuk' });
+    }
+
+    // MANDATORY NOTES CHECK FOR INCOME:
+    if (type === 'income') {
+      if (!notes || !notes.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Keterangan wajib diisi! Harap jelaskan dari siapa atau untuk keperluan apa kas masuk ini sebelum disimpan.'
+        });
+      }
     }
 
     const categoryMeta = EXPENSE_CATEGORIES[category] || { name: category, icon: '📝' };
@@ -301,12 +311,28 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
+    // RULE 3: If type is income and fund_source is safe, verify safe cash balance
+    if (type === 'income' && fund_source === 'safe') {
+      const safeStats = await getSafeCashBalance();
+      if (safeStats.balance < numAmount) {
+        const shortage = numAmount - safeStats.balance;
+        return res.status(400).json({
+          success: false,
+          code: 'INSUFFICIENT_SAFE_CASH',
+          message: `Saldo kas brankas tidak mencukupi untuk disuntikkan ke laci! Saldo brankas saat ini hanya Rp ${safeStats.balance.toLocaleString('id-ID')}, sedangkan kas masuk yang diambil dari brankas Rp ${numAmount.toLocaleString('id-ID')} (kurang Rp ${shortage.toLocaleString('id-ID')}). Harap periksa fisik uang di brankas.`,
+          current_safe_cash: safeStats.balance,
+          required_amount: numAmount,
+          shortage
+        });
+      }
+    }
+
     const expense_no = await generateExpenseNo();
 
     const result = await dbQuery.run(`
       INSERT INTO store_expenses (
-        expense_no, shift_id, user_id, category, category_name, type, amount, source, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        expense_no, shift_id, user_id, category, category_name, type, amount, source, fund_source, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       expense_no,
       shift_id,
@@ -316,6 +342,7 @@ router.post('/', authenticateToken, async (req, res) => {
       type,
       numAmount,
       source,
+      fund_source,
       notes.trim()
     ]);
 
@@ -326,19 +353,34 @@ router.post('/', authenticateToken, async (req, res) => {
       category_name,
       amount: numAmount,
       source,
+      fund_source,
       shift_id
     });
 
-    // Auto-record in safe cash mutations if source is safe
-    if (source === 'safe') {
+    // Auto-record in safe cash mutations:
+    // A: Safe Expense (Pengeluaran langsung dari brankas)
+    if (type === 'expense' && source === 'safe') {
       await recordSafeCashTransaction({
         user_id: req.user.id,
         shift_id: shift_id || null,
-        type: type === 'expense' ? 'expense' : 'income',
+        type: 'expense',
         amount: numAmount,
         source: 'safe',
         reference_no: expense_no,
         notes: `Biaya Operasional: ${category_name} - ${notes.trim()}`
+      });
+    }
+
+    // B: Kas Masuk dari Brankas Toko (Penarikan dari brankas untuk laci kasir)
+    if (type === 'income' && fund_source === 'safe') {
+      await recordSafeCashTransaction({
+        user_id: req.user.id,
+        shift_id: shift_id || null,
+        type: 'withdrawal',
+        amount: numAmount,
+        source: 'drawer',
+        reference_no: expense_no,
+        notes: `Suntik Kas Laci (Shift #${shift_id || '-'}): ${notes.trim()}`
       });
     }
 
@@ -354,7 +396,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     return res.json({
       success: true,
-      message: `${type === 'expense' ? 'Biaya operasional' : 'Kas masuk'} sebesar Rp ${numAmount.toLocaleString('id-ID')} berhasil dicatat!`,
+      message: `${type === 'expense' ? 'Biaya operasional' : 'Kas masuk'} sebesar Rp ${numAmount.toLocaleString('id-ID')} berhasil dicatat!${fund_source === 'safe' ? ' (Saldo brankas otomatis dipotong).' : ''}`,
       expense: created
     });
   } catch (err) {
@@ -364,51 +406,68 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/expenses/:id
-// Void or remove mistake expense (Owner only)
-router.delete('/:id', authenticateToken, requireStrictOwner, async (req, res) => {
+// Void or remove mistake expense or income (Owner OR Cashier for active shift)
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const expenseId = Number(req.params.id);
     const existing = await dbQuery.get('SELECT * FROM store_expenses WHERE id = ?', [expenseId]);
 
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Data pengeluaran tidak ditemukan' });
+      return res.status(404).json({ success: false, message: 'Data transaksi kas tidak ditemukan' });
     }
 
-    await dbQuery.run('DELETE FROM store_expenses WHERE id = ?', [expenseId]);
-
-    // Revert safe cash mutation if it was paid from safe
-    if (existing.source === 'safe') {
-      if (existing.type === 'expense') {
-        await recordSafeCashTransaction({
-          user_id: req.user.id,
-          type: 'deposit',
-          amount: existing.amount,
-          source: 'safe',
-          reference_no: existing.expense_no,
-          notes: `Pembatalan / Reversal pengeluaran ${existing.expense_no}`
-        });
-      } else if (existing.type === 'income') {
-        await recordSafeCashTransaction({
-          user_id: req.user.id,
-          type: 'withdrawal',
-          amount: existing.amount,
-          source: 'safe',
-          reference_no: existing.expense_no,
-          notes: `Pembatalan / Reversal kas masuk ${existing.expense_no}`
+    // Permission check: Owner can delete any expense; Cashier can only delete if it belongs to active open shift
+    if (req.user.role !== 'owner') {
+      const activeShift = await dbQuery.get("SELECT id FROM shifts WHERE status = 'open' ORDER BY id DESC LIMIT 1");
+      if (!activeShift || existing.shift_id !== activeShift.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akses ditolak: Hanya transaksi pada shift yang sedang aktif yang dapat dibatalkan oleh kasir. Transaksi shift lama hanya bisa dibatalkan oleh Owner.'
         });
       }
     }
 
-    await logAudit(req.user.id, 'EXPENSE_DELETED', {
+    // Revert safe cash mutation:
+    // Case A: Income taken from safe -> Reversal is DEPOSIT back to safe!
+    if (existing.type === 'income' && existing.fund_source === 'safe') {
+      await recordSafeCashTransaction({
+        user_id: req.user.id,
+        shift_id: existing.shift_id || null,
+        type: 'deposit',
+        amount: existing.amount,
+        source: 'drawer',
+        reference_no: existing.expense_no,
+        notes: `Pembatalan Kas Masuk Laci ${existing.expense_no} - Uang Rp ${Number(existing.amount).toLocaleString('id-ID')} dikembalikan ke Brankas`
+      });
+    }
+
+    // Case B: Expense paid from safe -> Reversal is DEPOSIT back to safe!
+    if (existing.type === 'expense' && existing.source === 'safe') {
+      await recordSafeCashTransaction({
+        user_id: req.user.id,
+        shift_id: existing.shift_id || null,
+        type: 'deposit',
+        amount: existing.amount,
+        source: 'safe',
+        reference_no: existing.expense_no,
+        notes: `Pembatalan / Reversal pengeluaran brankas ${existing.expense_no}`
+      });
+    }
+
+    await dbQuery.run('DELETE FROM store_expenses WHERE id = ?', [expenseId]);
+
+    await logAudit(req.user.id, existing.type === 'income' ? 'CASH_INCOME_DELETED' : 'EXPENSE_DELETED', {
       expense_id: expenseId,
       expense_no: existing.expense_no,
       category: existing.category,
-      amount: existing.amount
+      amount: existing.amount,
+      fund_source: existing.fund_source,
+      shift_id: existing.shift_id
     });
 
     return res.json({
       success: true,
-      message: `Catatan pengeluaran ${existing.expense_no} berhasil dihapus`
+      message: `Transaksi ${existing.expense_no} (${existing.type === 'income' ? 'Kas Masuk' : 'Biaya'}) sebesar Rp ${Number(existing.amount).toLocaleString('id-ID')} berhasil dibatalkan!${existing.fund_source === 'safe' ? ' (Saldo kas brankas otomatis dikembalikan).' : ''}`
     });
   } catch (err) {
     console.error('Error deleting expense:', err);

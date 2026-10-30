@@ -200,6 +200,8 @@ const el = {
   btnCloseAddIncome: document.getElementById('btnCloseAddIncome'),
   btnCancelAddIncome: document.getElementById('btnCancelAddIncome'),
   btnSubmitAddIncome: document.getElementById('btnSubmitAddIncome'),
+  selectIncomeFundSource: document.getElementById('selectIncomeFundSource'),
+  fundSourceHelpText: document.getElementById('fundSourceHelpText'),
   selectIncomeCategory: document.getElementById('selectIncomeCategory'),
   inputIncomeAmount: document.getElementById('inputIncomeAmount'),
   inputIncomeNotes: document.getElementById('inputIncomeNotes')
@@ -799,11 +801,21 @@ async function loadActiveShiftData() {
       const allMutations = [];
 
       (s.recent_expenses || []).forEach(e => {
+        let fundLabel = '';
+        if (e.type === 'income') {
+          if (e.fund_source === 'safe') fundLabel = '🏦 Brankas Toko';
+          else if (e.fund_source === 'owner') fundLabel = '💼 Owner / Bos';
+          else if (e.fund_source === 'cashier_personal') fundLabel = '👤 Talangan Kasir';
+          else if (e.fund_source === 'other') fundLabel = '📦 Hasil Lain-lain';
+          else fundLabel = '💵 Modal Laci';
+        }
         allMutations.push({
           source_type: 'expense',
           id: e.id,
           type: e.type,
-          title: e.category_name || e.category || (e.type === 'income' ? 'Kas Masuk Laci' : 'Biaya Operasional'),
+          fund_source: e.fund_source,
+          fund_label: fundLabel,
+          title: e.type === 'income' ? `Kas Masuk [${fundLabel}]` : (e.category_name || e.category || 'Biaya Operasional'),
           notes: e.notes || '-',
           amount: Number(e.amount) || 0,
           created_at: e.created_at,
@@ -845,23 +857,27 @@ async function loadActiveShiftData() {
           return `
             <div style="display: flex; justify-content: space-between; align-items: center; background: ${bgClr}; border: 1.5px solid ${borderClr}; border-radius: 10px; padding: 10px 14px; gap: 8px;">
               <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <strong style="color: ${textClr}; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     ${icon} ${escapeHtml(m.title)}
                   </strong>
                   ${isSup ? '<span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #ffedd5; color: #c2410c; font-weight: 800; text-transform: uppercase;">Kulakan</span>' : ''}
+                  ${isIncome && m.fund_label ? `<span style="font-size: 10.5px; padding: 2px 7px; border-radius: 5px; background: #dbeafe; color: #1e40af; font-weight: 800; border: 1px solid #bfdbfe;">${escapeHtml(m.fund_label)}</span>` : ''}
                 </div>
                 <span style="color: #64748b; font-size: 11.5px; display: block; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                   ${escapeHtml(m.notes)} • ${timeStr} WIB • 👤 ${escapeHtml(m.recorded_by_name)}
                 </span>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                 <strong style="font-family: 'JetBrains Mono', monospace; color: ${amountClr}; font-size: 14px; font-weight: 800;">
                   ${amountSign}${formatRupiah(m.amount)}
                 </strong>
                 ${!isSup ? `
-                  <button type="button" class="btn-preview-expense" data-id="${m.id}" style="padding: 5px 10px; border-radius: 6px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; font-weight: 700; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Pratinjau & Cetak Struk Bukti Kas">
+                  <button type="button" class="btn-preview-expense" data-id="${m.id}" style="padding: 5px 9px; border-radius: 6px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; font-weight: 700; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;" title="Pratinjau & Cetak Struk Bukti Kas">
                     <span>🖨️</span> Cetak
+                  </button>
+                  <button type="button" class="btn-cancel-expense" data-id="${m.id}" data-type="${m.type}" data-amount="${m.amount}" data-fund="${m.fund_source || ''}" data-no="${m.raw.expense_no || ''}" style="padding: 5px 9px; border-radius: 6px; background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; font-weight: 700; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;" title="Batalkan Transaksi Ini">
+                    <span>❌</span> Batalkan
                   </button>
                 ` : ''}
               </div>
@@ -876,6 +892,40 @@ async function loadActiveShiftData() {
             const exp = (state.shift.recent_expenses || []).find(x => x.id === expId);
             if (exp) {
               openReceiptPreview(exp.type === 'income' ? 'income' : 'expense', exp);
+            }
+          });
+        });
+
+        // Wire event listener on Batalkan button
+        el.expensesListContainer.querySelectorAll('.btn-cancel-expense').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const expId = Number(btn.dataset.id);
+            const expType = btn.dataset.type;
+            const expAmount = Number(btn.dataset.amount) || 0;
+            const fundSource = btn.dataset.fund;
+            const expNo = btn.dataset.no || `ID #${expId}`;
+
+            const isIncome = expType === 'income';
+            const isSafe = fundSource === 'safe';
+
+            let confirmMsg = `Konfirmasi Pembatalan:
+Apakah Anda yakin ingin membatalkan transaksi ${expNo} senilai ${formatRupiah(expAmount)}?`;
+            if (isIncome && isSafe) {
+              confirmMsg += `\n\n⚠️ PERHATIAN: Transaksi ini diambil dari KAS BRANKAS TOKO.\nJika dibatalkan, saldo Rp ${formatRupiah(expAmount)} akan otomatis DIKEMBALIKAN ke brankas toko!`;
+            }
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+              btn.disabled = true;
+              btn.textContent = 'Membatalkan...';
+              const res = await api.deleteExpense(expId);
+              showToast(res.message || 'Transaksi berhasil dibatalkan!', 'success');
+              await loadActiveShiftData();
+            } catch (err) {
+              showToast('Gagal membatalkan transaksi: ' + err.message, 'error');
+              btn.disabled = false;
+              btn.innerHTML = '<span>❌</span> Batalkan';
             }
           });
         });
@@ -1837,15 +1887,69 @@ window.addEventListener('DOMContentLoaded', () => {
       if (e.target === el.modalAddIncome) el.modalAddIncome.style.display = 'none';
     });
   }
+  // Dynamic help text for Fund Source
+  if (el.selectIncomeFundSource) {
+    el.selectIncomeFundSource.addEventListener('change', () => {
+      const val = el.selectIncomeFundSource.value;
+      if (el.fundSourceHelpText) {
+        if (val === 'safe') {
+          el.fundSourceHelpText.style.background = '#eff6ff';
+          el.fundSourceHelpText.style.borderColor = '#bfdbfe';
+          el.fundSourceHelpText.style.color = '#1e40af';
+          el.fundSourceHelpText.innerHTML = '🏦 <strong>Otomatis Memotong Kas Brankas Toko:</strong> Saldo brankas berkurang dan mutasi penarikan kas brankas langsung tercatat untuk audit.';
+        } else if (val === 'owner') {
+          el.fundSourceHelpText.style.background = '#f0fdf4';
+          el.fundSourceHelpText.style.borderColor = '#bbf7d0';
+          el.fundSourceHelpText.style.color = '#166534';
+          el.fundSourceHelpText.innerHTML = '💼 <strong>Suntikan Modal Langsung Owner / Bos:</strong> Saldo kas laci bertambah sebagai modal kerja baru tanpa memotong brankas fisik.';
+        } else if (val === 'cashier_personal') {
+          el.fundSourceHelpText.style.background = '#fefce8';
+          el.fundSourceHelpText.style.borderColor = '#fef08a';
+          el.fundSourceHelpText.style.color = '#854d0e';
+          el.fundSourceHelpText.innerHTML = '👤 <strong>Uang Talangan Pribadi Kasir:</strong> Kasir menalangi uang pribadi sementara ke kas laci (misal untuk pecahan kembalian mendesak).';
+        } else if (val === 'other') {
+          el.fundSourceHelpText.style.background = '#f8fafc';
+          el.fundSourceHelpText.style.borderColor = '#cbd5e1';
+          el.fundSourceHelpText.style.color = '#334155';
+          el.fundSourceHelpText.innerHTML = '📦 <strong>Hasil Non-Penjualan Umbi:</strong> Pemasukan dari penjualan karung goni, kardus bekas, atau pendapatan sampingan kios.';
+        }
+      }
+    });
+  }
+
+  // Remove red border when user types in notes
+  if (el.inputIncomeNotes) {
+    el.inputIncomeNotes.addEventListener('input', () => {
+      if (el.inputIncomeNotes.value.trim().length > 0) {
+        el.inputIncomeNotes.style.borderColor = '#cbd5e1';
+        const errEl = document.getElementById('incomeNotesError');
+        if (errEl) errEl.style.display = 'none';
+      }
+    });
+  }
+
   if (el.btnSubmitAddIncome) {
     el.btnSubmitAddIncome.addEventListener('click', async () => {
-      const category = el.selectIncomeCategory ? el.selectIncomeCategory.value : 'kas_masuk_modal';
+      const fund_source = el.selectIncomeFundSource ? el.selectIncomeFundSource.value : 'safe';
+      const category = fund_source === 'other' ? 'lain_lain' : 'kas_masuk_modal';
       const amount = Number(el.inputIncomeAmount ? el.inputIncomeAmount.value : 0);
       const notes = el.inputIncomeNotes ? el.inputIncomeNotes.value.trim() : '';
 
       if (isNaN(amount) || amount <= 0) {
         showToast('Masukkan nominal kas masuk yang valid!', 'error');
         if (el.inputIncomeAmount) el.inputIncomeAmount.focus();
+        return;
+      }
+
+      // STRICT VALIDATION: Description cannot be empty!
+      if (!notes || notes.length === 0) {
+        showToast('Keterangan Wajib Diisi! Harap jelaskan dari siapa / untuk keperluan apa kas masuk ini.', 'error');
+        if (el.inputIncomeNotes) {
+          el.inputIncomeNotes.style.borderColor = '#dc2626';
+          el.inputIncomeNotes.focus();
+        }
+        const errEl = document.getElementById('incomeNotesError');
+        if (errEl) errEl.style.display = 'block';
         return;
       }
 
@@ -1857,11 +1961,12 @@ window.addEventListener('DOMContentLoaded', () => {
           category,
           amount,
           source: 'cash',
+          fund_source,
           notes,
           type: 'income'
         });
 
-        showToast('📥 Kas masuk berhasil dicatat!', 'success');
+        showToast(`📥 Kas masuk Rp ${formatRupiahNumber(amount)} berhasil dicatat!${fund_source === 'safe' ? ' (Saldo brankas otomatis terpotong)' : ''}`, 'success');
         if (el.modalAddIncome) el.modalAddIncome.style.display = 'none';
 
         // Reload shift data and open receipt preview

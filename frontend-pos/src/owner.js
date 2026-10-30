@@ -673,6 +673,8 @@ const el = {
   btnCloseOwnerAddIncome: document.getElementById('btnCloseOwnerAddIncome'),
   btnCancelOwnerAddIncome: document.getElementById('btnCancelOwnerAddIncome'),
   btnSubmitOwnerAddIncome: document.getElementById('btnSubmitOwnerAddIncome'),
+  ownerIncomeFundSourceSelect: document.getElementById('ownerIncomeFundSourceSelect'),
+  ownerFundSourceHelp: document.getElementById('ownerFundSourceHelp'),
   ownerIncomeCategorySelect: document.getElementById('ownerIncomeCategorySelect'),
   ownerIncomeAmountInput: document.getElementById('ownerIncomeAmountInput'),
   ownerIncomeSourceSelect: document.getElementById('ownerIncomeSourceSelect'),
@@ -1929,6 +1931,41 @@ function switchTab(tabId) {
       if (el.modalOwnerAddIncome) el.modalOwnerAddIncome.style.display = 'none';
     });
   }
+  if (el.ownerIncomeFundSourceSelect) {
+    el.ownerIncomeFundSourceSelect.addEventListener('change', () => {
+      const val = el.ownerIncomeFundSourceSelect.value;
+      if (el.ownerFundSourceHelp) {
+        if (val === 'safe') {
+          el.ownerFundSourceHelp.style.background = '#ecfdf5';
+          el.ownerFundSourceHelp.style.color = '#047857';
+          el.ownerFundSourceHelp.innerHTML = '🏦 <strong>Otomatis Memotong Kas Brankas:</strong> Saldo kas brankas toko berkurang dan mutasi penarikan kas brankas tercatat rapi untuk audit.';
+        } else if (val === 'owner') {
+          el.ownerFundSourceHelp.style.background = '#f0fdf4';
+          el.ownerFundSourceHelp.style.color = '#166534';
+          el.ownerFundSourceHelp.innerHTML = '💼 <strong>Suntikan Modal Langsung Owner:</strong> Saldo laci bertambah sebagai modal kerja baru tanpa memotong brankas fisik.';
+        } else if (val === 'cashier_personal') {
+          el.ownerFundSourceHelp.style.background = '#fefce8';
+          el.ownerFundSourceHelp.style.color = '#854d0e';
+          el.ownerFundSourceHelp.innerHTML = '👤 <strong>Uang Talangan Pribadi Kasir:</strong> Kasir menalangi uang pribadi sementara ke laci kasir.';
+        } else if (val === 'other') {
+          el.ownerFundSourceHelp.style.background = '#f8fafc';
+          el.ownerFundSourceHelp.style.color = '#334155';
+          el.ownerFundSourceHelp.innerHTML = '📦 <strong>Hasil Non-Penjualan Umbi:</strong> Pemasukan dari penjualan karung goni, kardus bekas, dsb.';
+        }
+      }
+    });
+  }
+
+  if (el.ownerIncomeNotesInput) {
+    el.ownerIncomeNotesInput.addEventListener('input', () => {
+      if (el.ownerIncomeNotesInput.value.trim().length > 0) {
+        el.ownerIncomeNotesInput.style.borderColor = '#cbd5e1';
+        const errEl = document.getElementById('ownerIncomeNotesError');
+        if (errEl) errEl.style.display = 'none';
+      }
+    });
+  }
+
   if (el.btnSubmitOwnerAddIncome) {
     el.btnSubmitOwnerAddIncome.addEventListener('click', handleSaveOwnerIncome);
   }
@@ -6980,9 +7017,15 @@ function renderOwnerExpensesTable() {
           ${isIncome ? '+' : '-'}${formatRupiah(e.amount)}
         </td>
         <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
-          <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: ${isCash ? '#fee2e2' : '#eff6ff'}; color: ${isCash ? '#dc2626' : '#2563eb'}; font-weight: 700;">
-            ${isCash ? '💵 Kas Laci' : '🏦 Transfer'}
-          </span>
+          ${isIncome ? `
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: ${e.fund_source === 'safe' ? '#eff6ff' : '#ecfdf5'}; color: ${e.fund_source === 'safe' ? '#1d4ed8' : '#047857'}; font-weight: 700; border: 1px solid ${e.fund_source === 'safe' ? '#bfdbfe' : '#a7f3d0'};">
+              ${e.fund_source === 'safe' ? '🏦 Dari Brankas' : (e.fund_source === 'owner' ? '💼 Dari Owner' : (e.fund_source === 'cashier_personal' ? '👤 Talangan Kasir' : (e.fund_source === 'other' ? '📦 Hasil Lain' : '💵 Modal Laci')))}
+            </span>
+          ` : `
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: ${isCash ? '#fee2e2' : (e.source === 'safe' ? '#eff6ff' : '#eff6ff')}; color: ${isCash ? '#dc2626' : (e.source === 'safe' ? '#1d4ed8' : '#2563eb')}; font-weight: 700;">
+              ${e.source === 'safe' ? '🔐 Kas Brankas' : (isCash ? '💵 Kas Laci' : '🏦 Transfer')}
+            </span>
+          `}
         </td>
         <td style="padding: 10px 12px; color: #334155; font-size: 12px;">
           ${escapeHtml(e.notes || '-')}
@@ -7091,7 +7134,8 @@ async function handleSaveOwnerExpense() {
 }
 
 async function handleSaveOwnerIncome() {
-  const category = el.ownerIncomeCategorySelect ? el.ownerIncomeCategorySelect.value : 'kas_masuk_modal';
+  const fund_source = el.ownerIncomeFundSourceSelect ? el.ownerIncomeFundSourceSelect.value : 'safe';
+  const category = fund_source === 'other' ? 'lain_lain' : 'kas_masuk_modal';
   const amount = parseRupiahInput(el.ownerIncomeAmountInput ? el.ownerIncomeAmountInput.value : 0);
   const source = el.ownerIncomeSourceSelect ? el.ownerIncomeSourceSelect.value : 'cash';
   const notes = el.ownerIncomeNotesInput ? el.ownerIncomeNotesInput.value.trim() : '';
@@ -7099,6 +7143,18 @@ async function handleSaveOwnerIncome() {
   if (isNaN(amount) || amount <= 0) {
     showToast('Masukkan nominal kas masuk yang valid!', 'error');
     if (el.ownerIncomeAmountInput) el.ownerIncomeAmountInput.focus();
+    return;
+  }
+
+  // STRICT VALIDATION: Keterangan wajib diisi!
+  if (!notes || notes.length === 0) {
+    showToast('Keterangan Wajib Diisi! Harap sebutkan dari siapa atau untuk apa kas masuk ini.', 'error');
+    if (el.ownerIncomeNotesInput) {
+      el.ownerIncomeNotesInput.style.borderColor = '#dc2626';
+      el.ownerIncomeNotesInput.focus();
+    }
+    const errEl = document.getElementById('ownerIncomeNotesError');
+    if (errEl) errEl.style.display = 'block';
     return;
   }
 
@@ -7112,6 +7168,7 @@ async function handleSaveOwnerIncome() {
       category,
       amount,
       source,
+      fund_source,
       notes,
       type: 'income'
     });
@@ -7121,6 +7178,9 @@ async function handleSaveOwnerIncome() {
 
     await loadOwnerExpensesData();
     await loadDashboardData();
+    if (typeof loadSafeCashData === 'function') {
+      await loadSafeCashData();
+    }
   } catch (err) {
     showToast('Gagal mencatat kas masuk: ' + err.message, 'error');
   } finally {
@@ -7132,12 +7192,28 @@ async function handleSaveOwnerIncome() {
 }
 
 async function handleDeleteOwnerExpense(id) {
-  if (!confirm('Yakin ingin menghapus catatan biaya ini?')) return;
+  const existing = (state.ownerExpenses || []).find(x => x.id === id);
+  let confirmMsg = 'Yakin ingin menghapus / membatalkan catatan kas ini?';
+  if (existing) {
+    const isIncome = existing.type === 'income';
+    const isSafe = existing.fund_source === 'safe';
+    confirmMsg = `Konfirmasi Pembatalan:
+Apakah Anda yakin ingin membatalkan transaksi ${existing.expense_no} senilai ${formatRupiah(existing.amount)}?`;
+    if (isIncome && isSafe) {
+      confirmMsg += `\n\n⚠️ PERHATIAN: Transaksi ini diambil dari KAS BRANKAS TOKO.\nSaldo Rp ${formatRupiah(existing.amount)} akan otomatis DIKEMBALIKAN ke brankas toko!`;
+    }
+  }
+
+  if (!confirm(confirmMsg)) return;
+
   try {
     const res = await api.deleteExpense(id);
-    showToast(res.message || 'Catatan biaya berhasil dihapus', 'success');
+    showToast(res.message || 'Catatan transaksi berhasil dibatalkan', 'success');
     await loadOwnerExpensesData();
     await loadDashboardData();
+    if (typeof loadSafeCashData === 'function') {
+      await loadSafeCashData();
+    }
   } catch (err) {
     showToast('Gagal menghapus biaya: ' + err.message, 'error');
   }
