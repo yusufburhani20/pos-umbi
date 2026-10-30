@@ -2897,6 +2897,119 @@ function renderShifts() {
   });
 }
 
+function renderShiftDetailDenominations(rawBreakdown, actualCash, closingNotes = '') {
+  if (!el.sdModalBreakdownWrap || !el.sdModalBreakdownGrid) return;
+
+  let breakdown = rawBreakdown;
+  if (typeof breakdown === 'string') {
+    try {
+      breakdown = JSON.parse(breakdown);
+    } catch (e) {
+      breakdown = null;
+    }
+  }
+
+  // Fallback parsing from closingNotes if stored as JSON string
+  if (!breakdown && closingNotes) {
+    const match = String(closingNotes).match(/Breakdown\s*:\s*(\{[\s\S]*?\})/i);
+    if (match) {
+      try {
+        breakdown = JSON.parse(match[1]);
+      } catch (e) {
+        breakdown = null;
+      }
+    }
+  }
+
+  if (breakdown && typeof breakdown === 'object' && Object.keys(breakdown).length > 0) {
+    el.sdModalBreakdownWrap.style.display = 'block';
+
+    const DENOM_SPECS = [
+      { key: 'd100k', altKeys: ['100000', '100k'], mult: 100000, name: 'Rp 100.000', color: '#e11d48' },
+      { key: 'd75k',  altKeys: ['75000', '75k'],   mult: 75000,  name: 'Rp 75.000',  color: '#c026d3' },
+      { key: 'd50k',  altKeys: ['50000', '50k'],   mult: 50000,  name: 'Rp 50.000',  color: '#1d4ed8' },
+      { key: 'd20k',  altKeys: ['20000', '20k'],   mult: 20000,  name: 'Rp 20.000',  color: '#047857' },
+      { key: 'd10k',  altKeys: ['10000', '10k'],   mult: 10000,  name: 'Rp 10.000',  color: '#7c3aed' },
+      { key: 'd5k',   altKeys: ['5000', '5k'],     mult: 5000,   name: 'Rp 5.000',   color: '#ea580c' },
+      { key: 'd2k',   altKeys: ['2000', '2k'],     mult: 2000,   name: 'Rp 2.000',   color: '#475569' },
+      { key: 'd1k',   altKeys: ['1000', '1k'],     mult: 1000,   name: 'Rp 1.000',   color: '#475569' },
+      { key: 'dKoin', altKeys: ['coin', 'koin', 'receh'], mult: 1, name: 'Koin / Logam', isCoin: true, color: '#0f766e' }
+    ];
+
+    let totalLembar = 0;
+    let totalPecahanRp = 0;
+
+    const renderedChips = DENOM_SPECS.map(spec => {
+      let rawVal = breakdown[spec.key];
+      if (rawVal === undefined || rawVal === null) {
+        for (const ak of spec.altKeys) {
+          if (breakdown[ak] !== undefined && breakdown[ak] !== null) {
+            rawVal = breakdown[ak];
+            break;
+          }
+        }
+      }
+
+      const numVal = Number(rawVal) || 0;
+      let subtotal = 0;
+      let sheets = 0;
+
+      if (spec.isCoin) {
+        subtotal = numVal;
+        sheets = 0;
+      } else {
+        // Jika nilai >= mult dan kelipatan mult, artinya tersimpan nominal subtotal rupiah
+        // Contoh: d100k = 1100000 -> 11 lembar, subtotal 1.100.000
+        if (numVal >= spec.mult && numVal % spec.mult === 0) {
+          subtotal = numVal;
+          sheets = Math.round(numVal / spec.mult);
+        } else {
+          // Jika tersimpan langsung jumlah lembar
+          sheets = numVal;
+          subtotal = numVal * spec.mult;
+        }
+        if (sheets > 0) {
+          totalLembar += sheets;
+        }
+      }
+
+      totalPecahanRp += subtotal;
+
+      const hasValue = subtotal > 0;
+      const qtyDisplay = spec.isCoin ? `${formatRupiah(subtotal)}` : `${sheets.toLocaleString('id-ID')} Lembar`;
+
+      return `
+        <div class="sd-breakdown-chip" style="${hasValue ? `background: #ffffff; border: 1.5px solid ${spec.color}45; box-shadow: 0 1px 3px rgba(0,0,0,0.04);` : 'opacity: 0.45; background: #f8fafc; border: 1px dashed #cbd5e1;'}">
+          <span class="chip-label" style="font-weight: 700; font-size: 11px; color: ${hasValue ? spec.color : '#64748b'};">${spec.name}</span>
+          <span class="chip-qty" style="font-weight: 800; font-size: 12.5px; color: ${hasValue ? '#0f172a' : '#94a3b8'}; margin: 1px 0;">${qtyDisplay}</span>
+          <span class="chip-subtotal" style="font-weight: 700; font-family: var(--font-mono); font-size: 11px; color: ${hasValue ? '#059669' : '#94a3b8'};">${formatRupiah(subtotal)}</span>
+        </div>
+      `;
+    }).join('');
+
+    el.sdModalBreakdownGrid.innerHTML = renderedChips;
+    if (el.sdModalBreakdownBadge) {
+      el.sdModalBreakdownBadge.textContent = totalLembar > 0 ? `Tercatat: ${totalLembar} Lembar (${formatRupiah(totalPecahanRp)})` : 'Tercatat Lengkap';
+      el.sdModalBreakdownBadge.style.background = '#dcfce7';
+      el.sdModalBreakdownBadge.style.color = '#15803d';
+      el.sdModalBreakdownBadge.style.border = '1px solid #86efac';
+    }
+  } else {
+    el.sdModalBreakdownWrap.style.display = 'block';
+    if (el.sdModalBreakdownBadge) {
+      el.sdModalBreakdownBadge.textContent = 'Fisik Langsung';
+      el.sdModalBreakdownBadge.style.background = '#f1f5f9';
+      el.sdModalBreakdownBadge.style.color = '#475569';
+      el.sdModalBreakdownBadge.style.border = 'none';
+    }
+    el.sdModalBreakdownGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; color: #64748b; font-size: 11.5px; padding: 8px; text-align: center; background: #f8fafc; border-radius: 6px;">
+        Kasir menginput total fisik laci secara langsung (${formatRupiah(actualCash || 0)}) tanpa rincian lembaran pecahan uang.
+      </div>
+    `;
+  }
+}
+
 async function openShiftDetailModal(shiftId) {
   const idNum = Number(shiftId);
   const shift = (state.shifts || []).find(s => Number(s.id) === idNum);
@@ -3050,41 +3163,7 @@ async function openShiftDetailModal(shiftId) {
   }
 
   // Denominations breakdown (Blind drop paper)
-  const breakdown = shift.breakdown;
-  if (el.sdModalBreakdownWrap && el.sdModalBreakdownGrid) {
-    if (breakdown && typeof breakdown === 'object' && Object.keys(breakdown).length > 0) {
-      el.sdModalBreakdownWrap.style.display = 'block';
-      if (el.sdModalBreakdownBadge) el.sdModalBreakdownBadge.textContent = 'Tercatat Lengkap';
-      
-      const denomOrder = ['100000', '50000', '20000', '10000', '5000', '2000', '1000', 'coin'];
-      const allKeys = Object.keys(breakdown);
-      const sortedKeys = [...new Set([...denomOrder.filter(k => allKeys.includes(k)), ...allKeys])];
-
-      el.sdModalBreakdownGrid.innerHTML = sortedKeys.map(key => {
-        const qty = Number(breakdown[key]) || 0;
-        const nominal = key === 'coin' ? 1 : Number(key);
-        const subtotal = key === 'coin' ? qty : qty * nominal;
-        const label = key === 'coin' ? 'Koin / Logam' : `Rp ${formatRupiah(nominal).replace('Rp ', '')}`;
-        const qtyLabel = key === 'coin' ? `${formatRupiah(qty)}` : `${qty} Lembar`;
-
-        return `
-          <div class="sd-breakdown-chip" style="${qty > 0 ? 'background: #ffffff; border-color: #cbd5e1;' : 'opacity: 0.55;'}">
-            <span class="chip-label">${label}</span>
-            <span class="chip-qty">${qtyLabel}</span>
-            <span class="chip-subtotal">${formatRupiah(subtotal)}</span>
-          </div>
-        `;
-      }).join('');
-    } else {
-      el.sdModalBreakdownWrap.style.display = 'block';
-      if (el.sdModalBreakdownBadge) el.sdModalBreakdownBadge.textContent = 'Fisik Langsung';
-      el.sdModalBreakdownGrid.innerHTML = `
-        <div style="grid-column: 1 / -1; color: #64748b; font-size: 11.5px; padding: 6px; text-align: center;">
-          Kasir menginput total fisik laci secara langsung (${formatRupiah(shift.actual_cash || 0)}) tanpa memasukkan rincian lembaran pecahan uang.
-        </div>
-      `;
-    }
-  }
+  renderShiftDetailDenominations(shift.breakdown, shift.actual_cash, shift.closing_notes);
 
   // Closing notes
   if (el.sdModalClosingNotes) {
@@ -3115,6 +3194,10 @@ async function openShiftDetailModal(shiftId) {
     if (res && res.success && res.shift) {
       const sd = res.shift;
       const stats = sd.stats || {};
+
+      if (sd.breakdown) {
+        renderShiftDetailDenominations(sd.breakdown, sd.actual_cash, sd.closing_notes);
+      }
 
       if (el.sdModalCashSales) el.sdModalCashSales.textContent = `+ ${formatRupiah(stats.cash_sales || 0)}`;
       if (el.sdModalCashIncome) {
