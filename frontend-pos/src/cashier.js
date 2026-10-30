@@ -127,8 +127,12 @@ const el = {
   kpiIncomeDebtMeta: document.getElementById('kpiIncomeDebtMeta'),
   kpiExpensesCash: document.getElementById('kpiExpensesCash'),
   kpiExpensesCount: document.getElementById('kpiExpensesCount'),
+  kpiSupplierPaidCash: document.getElementById('kpiSupplierPaidCash'),
+  kpiSupplierPaidMeta: document.getElementById('kpiSupplierPaidMeta'),
 
   formulaExplanation: document.getElementById('formulaExplanation'),
+  formulaKulakanAlert: document.getElementById('formulaKulakanAlert'),
+  formulaKulakanAmount: document.getElementById('formulaKulakanAmount'),
   expectedCashValue: document.getElementById('expectedCashValue'),
 
   btnResetDenom: document.getElementById('btnResetDenom'),
@@ -740,7 +744,7 @@ async function loadActiveShiftData() {
     }
     if (el.kpiExpensesCount) {
       const expCount = (s.recent_expenses && s.recent_expenses.length) || 0;
-      el.kpiExpensesCount.textContent = `${expCount} pengeluaran laci shift ini`;
+      el.kpiExpensesCount.textContent = `${expCount} pengeluaran operasional laci`;
     }
 
     // Expected Cash Formula
@@ -752,8 +756,31 @@ async function loadActiveShiftData() {
     const supOut = Number(s.cash_supplier_payments || 0);
     const expected = starting + cashSales + debtIn + incIn - expOut - supOut;
 
+    // KPI 5: Kulakan Kas Laci
+    if (el.kpiSupplierPaidCash) {
+      el.kpiSupplierPaidCash.textContent = `-${formatRupiah(supOut)}`;
+    }
+    if (el.kpiSupplierPaidMeta) {
+      const supCount = (s.supplier_payments && s.supplier_payments.length) || 0;
+      el.kpiSupplierPaidMeta.textContent = `${supCount} kulakan tunai kas laci`;
+    }
+
     if (el.formulaExplanation) {
-      el.formulaExplanation.textContent = `Modal [${formatRupiah(starting)}] + Tunai [${formatRupiah(cashSales)}] + Bon [${formatRupiah(debtIn)}] + Kas Masuk [${formatRupiah(incIn)}] - Biaya [${formatRupiah(expOut)}] = Saldo Seharusnya`;
+      let expText = `Modal [${formatRupiah(starting)}] + Tunai [${formatRupiah(cashSales)}]`;
+      if (debtIn > 0) expText += ` + Bon [${formatRupiah(debtIn)}]`;
+      if (incIn > 0) expText += ` + Masuk [${formatRupiah(incIn)}]`;
+      if (expOut > 0) expText += ` - Biaya [${formatRupiah(expOut)}]`;
+      if (supOut > 0) expText += ` - Kulakan [${formatRupiah(supOut)}]`;
+      expText += ` = Saldo Seharusnya`;
+      el.formulaExplanation.textContent = expText;
+    }
+    if (el.formulaKulakanAlert && el.formulaKulakanAmount) {
+      if (supOut > 0) {
+        el.formulaKulakanAlert.style.display = 'block';
+        el.formulaKulakanAmount.textContent = formatRupiah(supOut);
+      } else {
+        el.formulaKulakanAlert.style.display = 'none';
+      }
     }
     if (el.expectedCashValue) {
       el.expectedCashValue.textContent = formatRupiah(expected);
@@ -767,36 +794,76 @@ async function loadActiveShiftData() {
     if (el.salesTempo) el.salesTempo.textContent = formatRupiah(s.tempo_sales || 0);
     if (el.totalOmset) el.totalOmset.textContent = formatRupiah(s.total_omset || 0);
 
-    // Recent Expenses List with Print buttons
+    // Recent Drawer Cash Flow (Expenses, Income & Supplier Payments)
     if (el.expensesListContainer) {
-      if (s.recent_expenses && s.recent_expenses.length > 0) {
-        el.expensesListContainer.innerHTML = s.recent_expenses.map(e => {
-          const isIncome = e.type === 'income';
-          const timeStr = parseSafeDate(e.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-          const catLabel = e.category_name || e.category || (isIncome ? 'Kas Masuk Laci' : 'Biaya Operasional');
-          const borderClr = isIncome ? '#bbf7d0' : '#fee2e2';
-          const bgClr = isIncome ? '#f0fdf4' : '#fff5f5';
-          const textClr = isIncome ? '#166534' : '#991b1b';
-          const amountSign = isIncome ? '+' : '-';
-          const amountClr = isIncome ? '#15803d' : '#b91c1c';
+      const allMutations = [];
+
+      (s.recent_expenses || []).forEach(e => {
+        allMutations.push({
+          source_type: 'expense',
+          id: e.id,
+          type: e.type,
+          title: e.category_name || e.category || (e.type === 'income' ? 'Kas Masuk Laci' : 'Biaya Operasional'),
+          notes: e.notes || '-',
+          amount: Number(e.amount) || 0,
+          created_at: e.created_at,
+          recorded_by_name: e.recorded_by_name || 'Kasir',
+          raw: e
+        });
+      });
+
+      (s.supplier_payments || []).forEach(sp => {
+        const pDesc = sp.product_name ? `${sp.product_name} (${sp.qty_kg ? sp.qty_kg + ' kg' : ''})` : (sp.purchase_no || 'Kulakan');
+        allMutations.push({
+          source_type: 'supplier_payment',
+          id: sp.id,
+          type: 'supplier_payment',
+          title: `Kulakan: ${sp.supplier_name || 'Pemasok'}`,
+          notes: `${pDesc} • ${sp.notes || 'Lunas Kas Laci'}`,
+          amount: Number(sp.amount_paid) || 0,
+          created_at: sp.payment_date,
+          recorded_by_name: 'Kasir',
+          raw: sp
+        });
+      });
+
+      allMutations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      if (allMutations.length > 0) {
+        el.expensesListContainer.innerHTML = allMutations.map(m => {
+          const isSup = m.source_type === 'supplier_payment';
+          const isIncome = m.type === 'income';
+          const timeStr = parseSafeDate(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          
+          let borderClr = isIncome ? '#bbf7d0' : (isSup ? '#fed7aa' : '#fee2e2');
+          let bgClr = isIncome ? '#f0fdf4' : (isSup ? '#fff7ed' : '#fff5f5');
+          let textClr = isIncome ? '#166534' : (isSup ? '#9a3412' : '#991b1b');
+          let amountSign = isIncome ? '+' : '-';
+          let amountClr = isIncome ? '#15803d' : (isSup ? '#c2410c' : '#b91c1c');
+          let icon = isIncome ? '📥' : (isSup ? '🚚' : '💸');
 
           return `
-            <div style="display: flex; justify-content: space-between; align-items: center; background: ${bgClr}; border: 1px solid ${borderClr}; border-radius: 10px; padding: 10px 14px; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: ${bgClr}; border: 1.5px solid ${borderClr}; border-radius: 10px; padding: 10px 14px; gap: 8px;">
               <div style="flex: 1; min-width: 0;">
-                <strong style="color: ${textClr}; display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                  ${isIncome ? '📥' : '💸'} ${escapeHtml(catLabel)}
-                </strong>
-                <span style="color: #64748b; font-size: 11.5px; display: block; margin-top: 2px;">
-                  ${escapeHtml(e.notes || '-')} • ${timeStr} WIB • 👤 ${escapeHtml(e.recorded_by_name || 'Kasir')}
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <strong style="color: ${textClr}; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${icon} ${escapeHtml(m.title)}
+                  </strong>
+                  ${isSup ? '<span style="font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #ffedd5; color: #c2410c; font-weight: 800; text-transform: uppercase;">Kulakan</span>' : ''}
+                </div>
+                <span style="color: #64748b; font-size: 11.5px; display: block; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${escapeHtml(m.notes)} • ${timeStr} WIB • 👤 ${escapeHtml(m.recorded_by_name)}
                 </span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                <strong style="font-family: 'JetBrains Mono', monospace; color: ${amountClr}; font-size: 14px;">
-                  ${amountSign}${formatRupiah(e.amount)}
+                <strong style="font-family: 'JetBrains Mono', monospace; color: ${amountClr}; font-size: 14px; font-weight: 800;">
+                  ${amountSign}${formatRupiah(m.amount)}
                 </strong>
-                <button type="button" class="btn-preview-expense" data-id="${e.id}" style="padding: 5px 10px; border-radius: 6px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; font-weight: 700; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Pratinjau & Cetak Struk Bukti Kas">
-                  <span>🖨️</span> Cetak
-                </button>
+                ${!isSup ? `
+                  <button type="button" class="btn-preview-expense" data-id="${m.id}" style="padding: 5px 10px; border-radius: 6px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; font-weight: 700; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Pratinjau & Cetak Struk Bukti Kas">
+                    <span>🖨️</span> Cetak
+                  </button>
+                ` : ''}
               </div>
             </div>
           `;
@@ -815,7 +882,7 @@ async function loadActiveShiftData() {
       } else {
         el.expensesListContainer.innerHTML = `
           <div style="text-align: center; color: #94a3b8; font-size: 13px; padding: 24px;">
-            Belum ada pengeluaran kas laci pada shift ini.
+            Belum ada mutasi / pengeluaran kas laci pada shift ini.
           </div>
         `;
       }
@@ -1176,7 +1243,11 @@ async function handleCloseShiftZ() {
     return;
   }
 
-  let confirmMsg = `Konfirmasi Tutup Shift #${state.shift.id}?\n\nTotal Fisik Dihitung: ${formatRupiah(total)}\nSaldo Seharusnya: ${formatRupiah(expected)}`;
+  const supPaidCash = Number(state.shift?.cash_supplier_payments || 0);
+  let confirmMsg = `Konfirmasi Tutup Shift #${state.shift.id}?\n\nTotal Fisik Dihitung: ${formatRupiah(total)}\nSaldo Seharusnya di Laci: ${formatRupiah(expected)}`;
+  if (supPaidCash > 0) {
+    confirmMsg += `\n(⚠️ Termasuk pemotongan bayar kulakan tunai: -${formatRupiah(supPaidCash)})`;
+  }
   if (diff === 0) {
     confirmMsg += '\n\n✅ Status: KAS BALANCE (Rp 0)';
   } else if (diff < 0) {

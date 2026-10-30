@@ -79,11 +79,28 @@ router.get('/current', optionalAuth, async (req, res) => {
 
     // Recent cash expenses for cashier dashboard
     const recentExpenses = await dbQuery.all(
-      `SELECT id, expense_no, category, amount, notes, created_at
+      `SELECT id, expense_no, category, type, amount, notes, created_at
        FROM store_expenses
-       WHERE shift_id = ? AND source = 'cash' AND type = 'expense'
-       ORDER BY id DESC LIMIT 10`,
+       WHERE shift_id = ? AND source = 'cash'
+       ORDER BY id DESC LIMIT 20`,
       [shift.id]
+    );
+
+    // Recent supplier payments paid with cash in this shift
+    const recentSupplierPayments = await dbQuery.all(
+      `SELECT sp.id, sp.amount_paid, sp.payment_method, sp.payment_date, sp.notes,
+              COALESCE(s.name, 'Pemasok Umum') as supplier_name,
+              p.purchase_no,
+              pr.name as product_name,
+              p.qty_kg,
+              p.cost_price
+       FROM supplier_payments sp
+       LEFT JOIN suppliers s ON sp.supplier_id = s.id
+       LEFT JOIN purchases p ON sp.purchase_id = p.id
+       LEFT JOIN products pr ON p.product_id = pr.id
+       WHERE sp.payment_method = 'cash' AND (sp.shift_id = ? OR (sp.shift_id IS NULL AND sp.payment_date >= ?))
+       ORDER BY sp.id DESC`,
+      [shift.id, shift.start_time]
     );
 
     const cashSales = ordersStatsRow.cash_sales || 0;
@@ -125,7 +142,8 @@ router.get('/current', optionalAuth, async (req, res) => {
         cash_debt_collected: cashDebt,
         cash_supplier_payments: cashSupplier,
         current_drawer_cash: currentDrawerCash,
-        recent_expenses: recentExpenses || []
+        recent_expenses: recentExpenses || [],
+        supplier_payments: recentSupplierPayments || []
       }
     });
   } catch (err) {
@@ -396,6 +414,7 @@ router.post('/close', authenticateToken, async (req, res) => {
         total_cash_expenses: totalCashExpenses,
         total_cash_income: totalCashIncome,
         total_cash_supplier_paid: totalCashSupplierPaid,
+        cash_supplier_payments: totalCashSupplierPaid,
         total_cash_debt_collected: totalCashDebtCollected,
         expected_system_cash: expectedSystemCash,
         actual_cash_input: actual_cash,

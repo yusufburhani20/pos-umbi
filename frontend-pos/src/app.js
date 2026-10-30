@@ -4525,6 +4525,20 @@ function openCloseShiftModal() {
     }
   });
   el.closingNotes.value = '';
+  
+  // Tampilkan peringatan kulakan jika ada pembayaran supplier dengan kas laci
+  const kulNoticeEl = document.getElementById('lblBlindCloseKulakanNotice');
+  const kulAmtEl = document.getElementById('lblBlindCloseKulakanAmount');
+  const supPaid = Number(state.shift?.cash_supplier_payments || 0);
+  if (kulNoticeEl && kulAmtEl) {
+    if (supPaid > 0) {
+      kulNoticeEl.style.display = 'block';
+      kulAmtEl.textContent = formatRupiah(supPaid);
+    } else {
+      kulNoticeEl.style.display = 'none';
+    }
+  }
+
   recalculateBlindCashTotal();
   el.closeShiftModal.style.display = 'flex';
 }
@@ -4668,6 +4682,10 @@ async function handleSubmitBlindClose() {
     }
 
     let alertMsg = `Shift Kasir Berhasil Ditutup!\nTotal Fisik Dihitung: ${formatRupiah(sum.actual_cash_input)}`;
+    const kulPaid = Number(sum.cash_supplier_payments || sum.total_cash_supplier_paid || 0);
+    if (kulPaid > 0) {
+      alertMsg += `\n🚚 Pengeluaran Kulakan Juragan (Cash Laci): -${formatRupiah(kulPaid)}`;
+    }
     if (sum.is_anomalous || Number(sum.expected_system_cash) < 0) {
       alertMsg += `\n\n🚨 PERHATIAN: ANOMALI SALDO KAS SISTEM MINUS (${formatRupiah(sum.expected_system_cash)})\nPengeluaran kas laci melebihi penerimaan! Status dicatat khusus ke laporan Owner (BUKAN SURPLUS).`;
     } else if (isBalanced) {

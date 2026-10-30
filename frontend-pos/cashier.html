@@ -85,9 +85,14 @@
 
     .kpi-row-4col {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
       margin-bottom: 20px;
+    }
+    @media (max-width: 1100px) {
+      .kpi-row-4col {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+      }
     }
 
     .c-kpi-card {
@@ -1148,6 +1153,16 @@
         <strong class="c-kpi-val" id="kpiExpensesCash" style="color: #b91c1c;">Rp 0</strong>
         <span class="c-kpi-sub" id="kpiExpensesCount" style="color: #991b1b;">0 catatan biaya laci</span>
       </div>
+
+      <!-- KPI 5: Bayar Kulakan Supplier -->
+      <div class="c-kpi-card" style="border-left: 4px solid #ea580c; background: #fff7ed;">
+        <div class="c-kpi-header">
+          <span class="c-kpi-title" style="color: #9a3412;">5. Bayar Kulakan (Cash)</span>
+          <span style="font-size: 18px;">🚚</span>
+        </div>
+        <strong class="c-kpi-val" id="kpiSupplierPaidCash" style="color: #c2410c;">Rp 0</strong>
+        <span class="c-kpi-sub" id="kpiSupplierPaidMeta" style="color: #9a3412;">0 kulakan tunai laci</span>
+      </div>
     </div>
 
     <!-- FORMULA BANNER (Navy & Blue POS Register Theme) -->
@@ -1158,7 +1173,10 @@
           <span>Rumus Kas Fisik Seharusnya di Laci:</span>
         </div>
         <div class="formula-math-text" id="formulaExplanation">
-          Modal Awal + Penjualan Tunai + Kas Masuk - Biaya Keluar = Kas Seharusnya
+          Modal Awal + Penjualan Tunai + Kas Masuk - Biaya Keluar - Bayar Kulakan = Kas Seharusnya
+        </div>
+        <div id="formulaKulakanAlert" style="display:none; margin-top:6px; font-size:12px; color:#fed7aa; font-weight:600;">
+          🚚 Termasuk pemotongan bayar kulakan tunai kas laci sebesar <strong id="formulaKulakanAmount" style="color:#ffffff; font-family:'JetBrains Mono', monospace;">Rp 0</strong>
         </div>
       </div>
       <div class="formula-right-val">
@@ -1333,9 +1351,9 @@
           <div class="section-card-header">
             <div>
               <h2 class="section-card-title">
-                <span>💸</span> Pengeluaran Kas Laci (Shift Ini)
+                <span>💸</span> Mutasi & Pengeluaran Kas Laci
               </h2>
-              <p class="section-card-desc">Uang fisik yang diambil dari laci untuk operasional</p>
+              <p class="section-card-desc">Biaya operasional & pembayaran kulakan dari kas laci</p>
             </div>
             <div style="display: flex; gap: 6px;">
               <button type="button" class="btn btn-secondary" id="btnQuickExpense" style="height: 32px; padding: 0 10px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 6px;">
