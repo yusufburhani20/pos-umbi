@@ -1379,75 +1379,91 @@ function updateStoreHeaderUI() {
 }
 
 async function loadInitialData() {
+  // 1. FAST LOCAL LOAD FIRST (Zero latency for cashier from offline DB cache)
+  let localProds = [], localCusts = [], localSettings = {};
   try {
-    // 1. FAST LOCAL LOAD FIRST (Zero latency for cashier)
-    const [localProds, localCusts, localSettings] = await Promise.all([
-      getProductsLocal(),
-      getCustomersLocal(),
-      getSettingsLocal()
+    const res = await Promise.all([
+      getProductsLocal().catch(() => []),
+      getCustomersLocal().catch(() => []),
+      getSettingsLocal().catch(() => ({}))
+    ]);
+    localProds = res[0] || [];
+    localCusts = res[1] || [];
+    localSettings = res[2] || {};
+  } catch (e) {
+    console.warn('Error reading local db cache:', e);
+  }
+
+  if (Array.isArray(localProds) && localProds.length > 0) {
+    const validProds = localProds.filter(p => p && (p.name || p.product_name)).map(p => {
+      if (p.stock_qty !== undefined && p.stock_qty !== null) {
+        p.stock_qty = Math.round((Number(p.stock_qty) + Number.EPSILON) * 100) / 100;
+      }
+      return p;
+    });
+    if (validProds.length > 0) {
+      state.products = validProds;
+      state.filteredProducts = [...state.products];
+      renderProductGrid();
+    }
+  }
+  if (Array.isArray(localCusts) && localCusts.length > 0) {
+    state.customers = localCusts;
+    renderCustomerSelect();
+  }
+  if (localSettings && Object.keys(localSettings).length > 0) {
+    state.settings = localSettings;
+    updateStoreHeaderUI();
+  }
+
+  // 2. NETWORK PULL (Fetch freshest catalog from server)
+  try {
+    const [prodRes, custRes, settingsRes] = await Promise.all([
+      api.getProducts().catch((err) => {
+        console.warn('API getProducts error:', err);
+        return null;
+      }),
+      api.getCustomers().catch(() => null),
+      api.getSettings().catch(() => null)
     ]);
 
-    if (localProds && localProds.length > 0) {
-      const validProds = localProds.filter(p => p && (p.name || p.product_name)).map(p => {
+    if (prodRes && Array.isArray(prodRes.products) && prodRes.products.length > 0) {
+      const serverProds = prodRes.products.filter(p => p && (p.name || p.product_name)).map(p => {
+        if (!p.name && p.product_name) p.name = p.product_name;
         if (p.stock_qty !== undefined && p.stock_qty !== null) {
           p.stock_qty = Math.round((Number(p.stock_qty) + Number.EPSILON) * 100) / 100;
         }
         return p;
       });
-      if (validProds.length > 0) {
-        state.products = validProds;
-        state.filteredProducts = [...state.products];
-        renderProductGrid();
-      }
+      state.products = serverProds;
+      state.filteredProducts = [...state.products];
+      saveProductsLocal(state.products).catch(() => {});
     }
-    if (localCusts && localCusts.length > 0) {
-      state.customers = localCusts;
-      renderCustomerSelect();
+    if (custRes && custRes.customers) {
+      state.customers = custRes.customers;
+      saveCustomersLocal(state.customers).catch(() => {});
     }
-    if (localSettings && Object.keys(localSettings).length > 0) {
-      state.settings = localSettings;
-      updateStoreHeaderUI();
+    if (settingsRes && settingsRes.settings) {
+      state.settings = settingsRes.settings;
+      saveSettingsLocal(state.settings).catch(() => {});
     }
 
-    // 2. NETWORK PULL IF ONLINE
-    if (navigator.onLine) {
-      const [prodRes, custRes, settingsRes] = await Promise.all([
-        api.getProducts().catch(() => null),
-        api.getCustomers().catch(() => null),
-        api.getSettings().catch(() => null)
-      ]);
+    updateStoreHeaderUI();
+    renderCustomerSelect();
+    loadCashierSuppliers().catch(() => {});
+  } catch (err) {
+    console.warn('Gagal memuat data komoditas dari server:', err);
+  } finally {
+    // 3. GUARANTEE GRID IS RENDERED AND NEVER STUCK IN LOADING STATE
+    renderProductGrid();
+  }
 
-      if (prodRes && prodRes.products && prodRes.products.length > 0) {
-        const serverProds = prodRes.products.map(p => {
-          if (!p.name && p.product_name) p.name = p.product_name;
-          if (p.stock_qty !== undefined && p.stock_qty !== null) {
-            p.stock_qty = Math.round((Number(p.stock_qty) + Number.EPSILON) * 100) / 100;
-          }
-          return p;
-        });
-        state.products = serverProds;
-        state.filteredProducts = [...state.products];
-        await saveProductsLocal(state.products);
-      }
-      if (custRes && custRes.customers) {
-        state.customers = custRes.customers;
-        await saveCustomersLocal(state.customers);
-      }
-      if (settingsRes && settingsRes.settings) {
-        state.settings = settingsRes.settings;
-        await saveSettingsLocal(state.settings);
-      }
-
-      updateStoreHeaderUI();
-      renderProductGrid();
-      renderCustomerSelect();
-      await loadCashierSuppliers();
-    }
-
-    // Update Low Stock alert badge on cashier category filter
-    const lowStockItems = state.products.filter(p => {
+  // Update Low Stock alert badge on cashier category filter
+  try {
+    const lowStockItems = (state.products || []).filter(p => {
+      if (!p) return false;
       const minAlert = p.min_stock_alert !== undefined && p.min_stock_alert !== null ? Number(p.min_stock_alert) : 15.0;
-      return Number(p.stock_qty) <= minAlert;
+      return Number(p.stock_qty || 0) <= minAlert;
     });
     const cashierDot = document.getElementById('cashierLowStockDot');
     if (cashierDot) {
@@ -1458,8 +1474,8 @@ async function loadInitialData() {
         cashierDot.style.display = 'none';
       }
     }
-  } catch (err) {
-    console.warn('Gagal memuat data komoditas (menggunakan cache lokal):', err);
+  } catch (e) {
+    console.warn('Low stock dot calculation error:', e);
   }
 }
 
@@ -3018,45 +3034,54 @@ async function handleOpenShift() {
 // CATALOG & PRODUCTS
 // -----------------------------------------------------------------------------
 function filterProducts() {
-  const search = el.searchProduct.value.toLowerCase().trim();
-  state.filteredProducts = state.products.filter(p => {
+  const searchInput = el.searchProduct || document.getElementById('searchProduct');
+  const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+  state.filteredProducts = (state.products || []).filter(p => {
+    if (!p) return false;
     let matchCategory = true;
     if (state.activeCategory === 'low_stock') {
       const minAlert = p.min_stock_alert !== undefined && p.min_stock_alert !== null ? Number(p.min_stock_alert) : 15.0;
-      matchCategory = Number(p.stock_qty) <= minAlert;
+      matchCategory = Number(p.stock_qty || 0) <= minAlert;
     } else if (state.activeCategory) {
       matchCategory = p.category === state.activeCategory;
     }
-    const matchSearch = !search || p.name.toLowerCase().includes(search);
+    const pName = (p.name || p.product_name || p.nama || '').toLowerCase();
+    const matchSearch = !search || pName.includes(search);
     return matchCategory && matchSearch;
   });
   renderProductGrid();
 }
 
 function renderProductGrid() {
+  const grid = el.productGrid || document.getElementById('productGrid');
+  if (!grid) return;
+
   if (el.tabletCatalogCount) {
-    el.tabletCatalogCount.textContent = state.filteredProducts.length;
+    el.tabletCatalogCount.textContent = (state.filteredProducts || []).length;
   }
 
-  if (state.filteredProducts.length === 0) {
-    el.productGrid.innerHTML = `<div class="empty-cart"><p>Tidak ada komoditas ditemukan</p></div>`;
+  if (!state.filteredProducts || state.filteredProducts.length === 0) {
+    grid.innerHTML = `<div class="empty-cart"><p>Tidak ada komoditas ditemukan</p></div>`;
     return;
   }
 
-  // Pre-calculate cart quantities for each product
+  // Pre-calculate cart quantities for each product (with bulletproof guards)
   const cartQtyMap = {};
-  if (state.cart && state.cart.length > 0) {
+  if (Array.isArray(state.cart) && state.cart.length > 0) {
     state.cart.forEach(item => {
-      const pid = item.product.id;
-      cartQtyMap[pid] = (cartQtyMap[pid] || 0) + item.qty;
+      if (!item) return;
+      const pid = item.product ? item.product.id : item.id;
+      if (pid) {
+        cartQtyMap[pid] = (cartQtyMap[pid] || 0) + (Number(item.qty) || 0);
+      }
     });
   }
 
-  el.productGrid.innerHTML = state.filteredProducts.map(p => {
+  grid.innerHTML = state.filteredProducts.filter(Boolean).map(p => {
     const productName = (p.name || p.product_name || p.nama || p.title || '').trim() || 'Komoditas';
     const minAlert = p.min_stock_alert !== undefined && p.min_stock_alert !== null ? Number(p.min_stock_alert) : 15.0;
-    const isOut = Number(p.stock_qty) <= 0;
-    const isLow = !isOut && Number(p.stock_qty) <= minAlert;
+    const isOut = Number(p.stock_qty || 0) <= 0;
+    const isLow = !isOut && Number(p.stock_qty || 0) <= minAlert;
 
     let tagHtml = '';
     let cardClass = '';
@@ -3064,16 +3089,16 @@ function renderProductGrid() {
       tagHtml = `<span class="stock-tag empty">🚨 Habis</span>`;
       cardClass = 'out-of-stock';
     } else if (isLow) {
-      tagHtml = `<span class="stock-tag low">⚠️ Sisa ${formatStockDisplay(p.stock_qty)} ${p.unit}</span>`;
+      tagHtml = `<span class="stock-tag low">⚠️ Sisa ${formatStockDisplay(p.stock_qty)} ${p.unit || 'kg'}</span>`;
       cardClass = 'low-stock-card';
     } else {
-      tagHtml = `<span class="stock-tag safe">🟢 ${formatStockDisplay(p.stock_qty)} ${p.unit}</span>`;
+      tagHtml = `<span class="stock-tag safe">🟢 ${formatStockDisplay(p.stock_qty)} ${p.unit || 'kg'}</span>`;
     }
 
     const qtyInCart = cartQtyMap[p.id];
     const displayQty = qtyInCart ? ((qtyInCart % 1 === 0) ? qtyInCart : qtyInCart.toFixed(1)) : 0;
     const inCartBadge = qtyInCart 
-      ? `<span class="card-in-cart-pill" title="${displayQty} ${p.unit} di keranjang">🛒 ${displayQty} ${p.unit}</span>` 
+      ? `<span class="card-in-cart-pill" title="${displayQty} ${p.unit || 'kg'} di keranjang">🛒 ${displayQty} ${p.unit || 'kg'}</span>` 
       : '';
     const inCartClass = qtyInCart ? 'in-cart-highlight' : '';
 
@@ -3100,10 +3125,10 @@ function renderProductGrid() {
   }).join('');
 
   // Add click listener with tactile pop animation
-  el.productGrid.querySelectorAll('.product-card').forEach(card => {
+  grid.querySelectorAll('.product-card').forEach(card => {
     card.addEventListener('click', () => {
       const id = Number(card.dataset.id);
-      const product = state.products.find(p => p.id === id);
+      const product = (state.products || []).find(p => p && p.id === id);
       if (product) {
         card.classList.remove('card-just-added');
         void card.offsetWidth;
@@ -3116,16 +3141,20 @@ function renderProductGrid() {
 }
 
 function updateProductCardInCartBadges() {
-  if (!el.productGrid) return;
+  const grid = el.productGrid || document.getElementById('productGrid');
+  if (!grid) return;
   const cartQtyMap = {};
-  if (state.cart && state.cart.length > 0) {
+  if (Array.isArray(state.cart) && state.cart.length > 0) {
     state.cart.forEach(item => {
-      const pid = item.product.id;
-      cartQtyMap[pid] = (cartQtyMap[pid] || 0) + item.qty;
+      if (!item) return;
+      const pid = item.product ? item.product.id : item.id;
+      if (pid) {
+        cartQtyMap[pid] = (cartQtyMap[pid] || 0) + (Number(item.qty) || 0);
+      }
     });
   }
 
-  el.productGrid.querySelectorAll('.product-card').forEach(card => {
+  grid.querySelectorAll('.product-card').forEach(card => {
     const id = Number(card.dataset.id);
     const qty = cartQtyMap[id];
     let badge = card.querySelector('.card-in-cart-pill');
@@ -3139,7 +3168,7 @@ function updateProductCardInCartBadges() {
       }
       const displayQty = (qty % 1 === 0) ? qty : qty.toFixed(1);
       badge.textContent = `🛒 ${displayQty} ${unit}`;
-      badge.style.display = 'inline-flex';
+      badge.title = `${displayQty} ${unit} di keranjang`;
     } else {
       card.classList.remove('in-cart-highlight');
       if (badge) badge.remove();
@@ -6252,7 +6281,11 @@ async function handleCashierPayDebtSubmit() {
   }
 }
 
-window.addEventListener('DOMContentLoaded', initApp);
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 
 // Owner DOM Elements

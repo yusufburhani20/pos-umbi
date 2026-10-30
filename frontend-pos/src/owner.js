@@ -7508,4 +7508,8 @@ async function handleSafeActionSubmit(e) {
   }
 }
 
-window.addEventListener('DOMContentLoaded', initOwnerApp);
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initOwnerApp);
+} else {
+  initOwnerApp();
+}

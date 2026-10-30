@@ -1727,7 +1727,7 @@ function renderThermalExpenseReceipt(expense, isReprint = false) {
 // -----------------------------------------------------------------------------
 // EVENT LISTENERS & MODAL WIRES
 // -----------------------------------------------------------------------------
-window.addEventListener('DOMContentLoaded', () => {
+function runInitCashier() {
   initCashierPage();
 
   // Fullscreen Mode Toggle & Auto-Fullscreen on first touch
@@ -2101,7 +2101,13 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', runInitCashier);
+} else {
+  runInitCashier();
+}
 
 // -----------------------------------------------------------------------------
 // INACTIVITY AUTO-LOCK & MANUAL LOCK SYSTEM (10 MENIT) - CASHIER DASHBOARD
