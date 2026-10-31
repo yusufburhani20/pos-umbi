@@ -664,59 +664,64 @@
           <span class="banner-amount" id="payModalTotal" style="font-size: 17px; font-weight: 800;">Rp 0</span>
         </div>
 
-        <!-- Penyesuaian Nego, Kompensasi Barang Busuk, & Diskon -->
-        <div class="checkout-adjustments-card" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 6px 10px; margin-bottom: 4px;">
+        <!-- 1. Isian Harga Nego Langsung di Bawah Total Tagihan -->
+        <div class="nego-input-container" style="background: rgba(245, 158, 11, 0.09); border: 1.5px solid #f59e0b; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+            <label for="inputManualNegoTotal" style="font-size: 11px; font-weight: 700; color: #f59e0b; margin: 0; display: flex; align-items: center; gap: 4px;">
+              <span>🏷️</span> Harga Nego / Total Pas (Rp):
+            </label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span id="negoDiffBadge" style="display: none; font-size: 9.5px; font-weight: 700; color: #34d399; background: rgba(52, 211, 153, 0.15); border: 1px solid rgba(52, 211, 153, 0.3); padding: 1px 6px; border-radius: 4px;">Hemat Rp 0</span>
+              <button type="button" id="btnResetManualNego" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(245,158,11,0.3); color: #cbd5e1; font-size: 10px; cursor: pointer; border-radius: 4px; padding: 1px 6px;">↺ Reset Normal</button>
+            </div>
+          </div>
+          <input type="text" inputmode="numeric" id="inputManualNegoTotal" class="input-modern font-mono" placeholder="Ketik harga pas / nego jika ada (cth: 18.000)" style="width: 100%; height: 34px; background: rgba(0,0,0,0.4); border: 1.5px solid #f59e0b; border-radius: 6px; color: #fef08a; font-size: 13.5px; font-weight: 800; padding: 0 10px; text-align: right;">
+        </div>
+
+        <!-- 2. Penyesuaian Ganti Barang Busuk & Diskon Tambahan (Accordion) -->
+        <div class="checkout-adjustments-card" style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 5px 10px; margin-bottom: 4px;">
           <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="btnToggleAdjustmentsSection">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span style="font-size: 13px;">🏷️</span>
-              <strong style="font-size: 11.5px; color: #f8fafc;">Nego, Ganti Busuk & Diskon</strong>
-              <span id="badgeAdjustmentActive" style="display:none; font-size: 9.5px; background: #f59e0b; color: #0f172a; font-weight: 800; padding: 1px 6px; border-radius: 10px;">Potongan Aktif</span>
+              <span style="font-size: 12px;">🥔</span>
+              <strong style="font-size: 11px; color: #cbd5e1;">Ganti Busuk & Diskon Tambahan</strong>
+              <span id="badgeAdjustmentActive" style="display:none; font-size: 9px; background: #ef4444; color: #fff; font-weight: 800; padding: 1px 6px; border-radius: 10px;">Potongan Aktif</span>
             </div>
             <span id="arrowAdjustmentsSection" style="font-size: 11px; color: #94a3b8; transition: transform 0.2s;">▼</span>
           </div>
 
-          <div id="checkoutAdjustmentsBody" style="margin-top: 8px; display: none;">
+          <div id="checkoutAdjustmentsBody" style="margin-top: 6px; display: none;">
             <!-- Baris Subtotal Awal -->
-            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
-              <span>Subtotal Produk Keranjang:</span>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: #94a3b8; margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px dashed rgba(255,255,255,0.1);">
+              <span>Subtotal Produk:</span>
               <strong id="payModalSubtotalText" style="color: #cbd5e1; font-family: monospace;">Rp 0</strong>
             </div>
 
-            <!-- 1. Nego / Total Manual -->
-            <div style="margin-bottom: 6px;">
+            <!-- Ganti Barang Busuk / Kompensasi Retur -->
+            <div style="margin-bottom: 5px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 5px 8px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <label style="font-size: 11px; font-weight: 700; color: #f59e0b; margin: 0;">✍️ Total Manual / Nego Transaksi:</label>
-                <button type="button" id="btnResetManualNego" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Reset Normal</button>
-              </div>
-              <input type="text" inputmode="numeric" id="inputManualNegoTotal" class="input-modern font-mono" placeholder="Ketik total disepakati (cth: 95.000)" style="width: 100%; height: 32px; background: rgba(0,0,0,0.3); border: 1.5px solid #f59e0b; border-radius: 6px; color: #f59e0b; font-size: 12.5px; font-weight: 700; padding: 0 8px; text-align: right;">
-            </div>
-
-            <!-- 2. Ganti Barang Busuk / Kompensasi Retur -->
-            <div style="margin-bottom: 6px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 6px 8px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-                <label style="font-size: 11px; font-weight: 700; color: #fca5a5; margin: 0;">🥔 Potongan Ganti Barang Rusak / Busuk:</label>
-                <button type="button" id="btnResetRottenRefund" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Hapus</button>
+                <label style="font-size: 10.5px; font-weight: 700; color: #fca5a5; margin: 0;">🥔 Potongan Ganti Barang Rusak / Busuk:</label>
+                <button type="button" id="btnResetRottenRefund" style="background: none; border: none; color: #94a3b8; font-size: 9.5px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Hapus</button>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 6px;">
-                <input type="text" inputmode="numeric" id="inputRottenRefundAmount" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; color: #f87171; font-size: 12px; font-weight: 700; padding: 0 6px; text-align: right;">
-                <input type="text" id="inputRottenRefundNotes" class="input-modern" placeholder="Keterangan (cth: Ubi busuk 2kg)" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 11px; padding: 0 6px;">
+                <input type="text" inputmode="numeric" id="inputRottenRefundAmount" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 28px; background: rgba(0,0,0,0.3); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; color: #f87171; font-size: 11.5px; font-weight: 700; padding: 0 6px; text-align: right;">
+                <input type="text" id="inputRottenRefundNotes" class="input-modern" placeholder="Keterangan (cth: Ubi busuk 2kg)" style="width: 100%; height: 28px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 10.5px; padding: 0 6px;">
               </div>
             </div>
 
-            <!-- 3. Potongan Diskon -->
-            <div style="margin-bottom: 6px;">
+            <!-- Potongan Diskon -->
+            <div style="margin-bottom: 5px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                <label style="font-size: 11px; font-weight: 700; color: #38bdf8; margin: 0;">✂️ Potongan Diskon Tambahan:</label>
-                <button type="button" id="btnResetDiscount" style="background: none; border: none; color: #94a3b8; font-size: 10px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Hapus</button>
+                <label style="font-size: 10.5px; font-weight: 700; color: #38bdf8; margin: 0;">✂️ Potongan Diskon Tambahan:</label>
+                <button type="button" id="btnResetDiscount" style="background: none; border: none; color: #94a3b8; font-size: 9.5px; cursor: pointer; text-decoration: underline; padding: 0;">↺ Hapus</button>
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 6px;">
-                <input type="text" inputmode="numeric" id="inputDiscountAmount" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; color: #38bdf8; font-size: 12px; font-weight: 700; padding: 0 6px; text-align: right;">
-                <input type="text" id="inputDiscountNotes" class="input-modern" placeholder="Alasan (cth: Langganan tetap)" style="width: 100%; height: 30px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 11px; padding: 0 6px;">
+                <input type="text" inputmode="numeric" id="inputDiscountAmount" class="input-modern font-mono" placeholder="Rp 0" style="width: 100%; height: 28px; background: rgba(0,0,0,0.3); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; color: #38bdf8; font-size: 11.5px; font-weight: 700; padding: 0 6px; text-align: right;">
+                <input type="text" id="inputDiscountNotes" class="input-modern" placeholder="Alasan (cth: Langganan tetap)" style="width: 100%; height: 28px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; font-size: 10.5px; padding: 0 6px;">
               </div>
             </div>
 
             <!-- Breakdown Perhitungan Cepat -->
-            <div id="checkoutCalcBreakdown" style="font-size: 10.5px; color: #cbd5e1; background: rgba(0,0,0,0.25); border-radius: 4px; padding: 4px 6px; text-align: right; line-height: 1.4;">
+            <div id="checkoutCalcBreakdown" style="font-size: 10px; color: #cbd5e1; background: rgba(0,0,0,0.25); border-radius: 4px; padding: 4px 6px; text-align: right; line-height: 1.4;">
               <!-- Otomatis diisi oleh JavaScript -->
             </div>
           </div>
@@ -854,9 +859,16 @@
           </div>
         </div>
       </div>
-      <div class="modal-footer" style="padding: 8px 12px; gap: 8px;">
-        <button class="btn-secondary" id="btnCancelPayment" style="height: 36px; font-size: 12px; padding: 0 14px;">Batal</button>
-        <button class="btn-primary" id="btnProcessPayment" style="height: 36px; font-size: 13px; font-weight: 700; padding: 0 16px; border-radius: 8px;">⚡ Konfirmasi & Cetak Struk</button>
+      <div class="modal-footer" style="padding: 8px 12px; gap: 6px; display: flex; align-items: center; justify-content: space-between;">
+        <button type="button" class="btn-secondary" id="btnCancelPayment" style="height: 36px; font-size: 11.5px; padding: 0 10px; border-radius: 6px;">Batal</button>
+        <div style="display: flex; gap: 6px; flex: 1; justify-content: flex-end;">
+          <button type="button" id="btnSaveOrderNoReceipt" class="btn-save-no-receipt" style="height: 36px; font-size: 11.5px; font-weight: 700; padding: 0 10px; border-radius: 6px; background: #0284c7; color: #ffffff; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+            <span>💾</span> Simpan Saja (Tanpa Struk)
+          </button>
+          <button type="button" class="btn-primary" id="btnProcessPayment" style="height: 36px; font-size: 11.5px; font-weight: 700; padding: 0 12px; border-radius: 6px; background: #10b981; color: #ffffff; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+            <span>⚡</span> Konfirmasi & Cetak Struk
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -3531,7 +3543,7 @@
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=46').then((reg) => {
+        navigator.serviceWorker.register('/sw.js?v=62').then((reg) => {
           console.log('[PWA] Service Worker registered:', reg.scope);
           reg.update();
         }).catch((err) => {

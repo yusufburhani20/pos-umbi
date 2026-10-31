@@ -424,6 +424,8 @@ const el = {
   cashPaymentSection: document.getElementById('cashPaymentSection'),
   nonCashPaymentSection: document.getElementById('nonCashPaymentSection'),
   btnProcessPayment: document.getElementById('btnProcessPayment'),
+  btnSaveOrderNoReceipt: document.getElementById('btnSaveOrderNoReceipt'),
+  negoDiffBadge: document.getElementById('negoDiffBadge'),
   btnClosePaymentModal: document.getElementById('btnClosePaymentModal'),
   btnCancelPayment: document.getElementById('btnCancelPayment'),
 
@@ -2595,7 +2597,12 @@ function bindEvents() {
     });
   }
 
-  el.btnProcessPayment.addEventListener('click', handleProcessOrder);
+  if (el.btnProcessPayment) {
+    el.btnProcessPayment.addEventListener('click', () => handleProcessOrder({ printReceipt: true }));
+  }
+  if (el.btnSaveOrderNoReceipt) {
+    el.btnSaveOrderNoReceipt.addEventListener('click', () => handleProcessOrder({ printReceipt: false }));
+  }
 
   // Adjustments Card Toggle & Real-time Inputs
   if (el.btnToggleAdjustmentsSection) {
@@ -4170,16 +4177,27 @@ function syncAdjustmentsUI() {
   if (el.payModalSubtotalText) el.payModalSubtotalText.textContent = formatRupiah(subtotal);
   if (el.payModalTotal) el.payModalTotal.textContent = formatRupiah(total);
 
-  const hasActive = (manual !== null && manual !== subtotal) || rotten > 0 || discount > 0;
+  // Nego difference badge
+  if (el.negoDiffBadge) {
+    if (manual !== null && manual < subtotal) {
+      el.negoDiffBadge.textContent = `Hemat ${formatRupiah(subtotal - manual)}`;
+      el.negoDiffBadge.style.display = 'inline-block';
+    } else {
+      el.negoDiffBadge.style.display = 'none';
+    }
+  }
+
+  // Only badge for additional adjustments in accordion (rotten / discount)
+  const hasAccordionActive = rotten > 0 || discount > 0;
   if (el.badgeAdjustmentActive) {
-    el.badgeAdjustmentActive.style.display = hasActive ? 'inline-block' : 'none';
+    el.badgeAdjustmentActive.style.display = hasAccordionActive ? 'inline-block' : 'none';
   }
 
   // Build breakdown narrative
   if (el.checkoutCalcBreakdown) {
     let parts = [`Subtotal: ${formatRupiah(subtotal)}`];
     if (manual !== null) {
-      parts.push(`Nego: ${formatRupiah(manual)}`);
+      parts.push(`Nego Pas: ${formatRupiah(manual)}`);
     }
     if (rotten > 0) {
       parts.push(`Ganti Busuk: -${formatRupiah(rotten)}`);
@@ -4237,13 +4255,13 @@ function openPaymentModal() {
     el.inputDiscountNotes.value = adj.discountNotes || '';
   }
 
-  // If there are active adjustments, open the accordion so cashier sees it immediately
-  const hasActive = (adj.manualTotalOverride !== null && adj.manualTotalOverride !== subtotal) || (adj.rottenRefundAmount > 0) || (adj.discountAmount > 0);
+  // If there are active adjustments in accordion (rotten or discount), open the accordion
+  const hasAccordionActive = (adj.rottenRefundAmount > 0) || (adj.discountAmount > 0);
   if (el.checkoutAdjustmentsBody) {
-    el.checkoutAdjustmentsBody.style.display = hasActive ? 'block' : 'none';
+    el.checkoutAdjustmentsBody.style.display = hasAccordionActive ? 'block' : 'none';
   }
   if (el.arrowAdjustmentsSection) {
-    el.arrowAdjustmentsSection.textContent = hasActive ? '▲' : '▼';
+    el.arrowAdjustmentsSection.textContent = hasAccordionActive ? '▲' : '▼';
   }
 
   syncAdjustmentsUI();
@@ -4290,7 +4308,11 @@ function calculateChangeDue() {
   el.changeDueText.textContent = formatRupiah(change);
 }
 
-async function handleProcessOrder() {
+async function handleProcessOrder(options = { printReceipt: true }) {
+  const shouldPrint = (typeof options === 'object' && options !== null && 'printReceipt' in options)
+    ? Boolean(options.printReceipt)
+    : true;
+
   if (!state.shift) {
     showToast('Shift kasir belum aktif! Buka shift terlebih dahulu.', 'warning');
     showOpenShiftModal();
@@ -4370,8 +4392,14 @@ async function handleProcessOrder() {
   };
 
   try {
-    el.btnProcessPayment.disabled = true;
-    el.btnProcessPayment.textContent = 'Memproses...';
+    if (el.btnProcessPayment) {
+      el.btnProcessPayment.disabled = true;
+      if (shouldPrint) el.btnProcessPayment.textContent = 'Memproses...';
+    }
+    if (el.btnSaveOrderNoReceipt) {
+      el.btnSaveOrderNoReceipt.disabled = true;
+      if (!shouldPrint) el.btnSaveOrderNoReceipt.textContent = 'Menyimpan...';
+    }
 
     let orderResult = null;
     let isOfflineSaved = false;
@@ -4438,19 +4466,29 @@ async function handleProcessOrder() {
 
     el.paymentModal.style.display = 'none';
 
-    // Show thermal receipt
-    if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Transaksi Berhasil';
-    if (el.btnNextOrder) el.btnNextOrder.textContent = 'Transaksi Baru Berikutnya';
-    if (el.btnPrintReceipt) el.btnPrintReceipt.textContent = '🖨️ Cetak Ulang Struk (Reprint)';
     state.lastCompletedOrder = orderResult;
     state.lastOrderIsReprint = false;
-    renderThermalReceipt(orderResult, false);
-    el.receiptModal.style.display = 'flex';
 
-    // Otomatis cetak struk lengkap + buka laci kasir seketika saat klik Konfirmasi & Cetak Struk!
-    hardwareManager.printOrder(orderResult, state.settings, false).catch(err => {
-      console.warn('[Hardware] Auto print order error:', err);
-    });
+    if (shouldPrint) {
+      // Show thermal receipt
+      if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Transaksi Berhasil';
+      if (el.btnNextOrder) el.btnNextOrder.textContent = 'Transaksi Baru Berikutnya';
+      if (el.btnPrintReceipt) el.btnPrintReceipt.textContent = '🖨️ Cetak Ulang Struk (Reprint)';
+      renderThermalReceipt(orderResult, false);
+      el.receiptModal.style.display = 'flex';
+
+      // Otomatis cetak struk lengkap + buka laci kasir seketika saat klik Konfirmasi & Cetak Struk!
+      hardwareManager.printOrder(orderResult, state.settings, false).catch(err => {
+        console.warn('[Hardware] Auto print order error:', err);
+      });
+    } else {
+      // TANPA STRUK: Buka laci kasir jika pembayaran tunai
+      if (state.paymentMethod === 'cash') {
+        hardwareManager.kickCashDrawer().catch(err => {
+          console.warn('[Hardware] Kick drawer save-only error:', err);
+        });
+      }
+    }
 
     // Reset Cart & adjustments
     state.cart = [];
@@ -4465,15 +4503,25 @@ async function handleProcessOrder() {
     renderProductGrid();
 
     if (isOfflineSaved) {
-      showToast('Transaksi disimpan di tablet (Offline)! Otomatis terkirim saat ada sinyal.', 'success');
+      showToast(shouldPrint 
+        ? 'Transaksi disimpan di tablet (Offline)! Otomatis terkirim saat ada sinyal.' 
+        : '✅ Transaksi berhasil disimpan di tablet (Offline, Tanpa Struk)!', 'success');
     } else {
-      showToast('Transaksi berhasil!', 'success');
+      showToast(shouldPrint 
+        ? 'Transaksi berhasil!' 
+        : '✅ Transaksi berhasil disimpan (Tanpa Struk)!', 'success');
     }
   } catch (err) {
     showToast('Gagal memproses transaksi: ' + err.message, 'error');
   } finally {
-    el.btnProcessPayment.disabled = false;
-    el.btnProcessPayment.textContent = 'Konfirmasi & Cetak Struk (Enter)';
+    if (el.btnProcessPayment) {
+      el.btnProcessPayment.disabled = false;
+      el.btnProcessPayment.innerHTML = '<span>⚡</span> Konfirmasi & Cetak Struk';
+    }
+    if (el.btnSaveOrderNoReceipt) {
+      el.btnSaveOrderNoReceipt.disabled = false;
+      el.btnSaveOrderNoReceipt.innerHTML = '<span>💾</span> Simpan Saja (Tanpa Struk)';
+    }
   }
 }
 
