@@ -1,6 +1,6 @@
 // Offline-First Storage Engine for Toko Umbi POS using browser IndexedDB
 const DB_NAME = 'TokoUmbi_OfflineDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
 
 let dbInstance = null;
 
@@ -15,72 +15,124 @@ function getLocalTimestampStr(d = new Date()) {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
+function setupObjectStores(db) {
+  // 1. Master Products cache
+  if (!db.objectStoreNames.contains('products')) {
+    const prodStore = db.createObjectStore('products', { keyPath: 'id' });
+    prodStore.createIndex('category', 'category', { unique: false });
+    prodStore.createIndex('name', 'name', { unique: false });
+  }
+
+  // 2. Master Customers cache
+  if (!db.objectStoreNames.contains('customers')) {
+    const custStore = db.createObjectStore('customers', { keyPath: 'id' });
+    custStore.createIndex('tier', 'tier', { unique: false });
+  }
+
+  // 3. Store settings (Store name, receipt footer, address)
+  if (!db.objectStoreNames.contains('settings')) {
+    db.createObjectStore('settings', { keyPath: 'key' });
+  }
+
+  // 4. Active Shift cache
+  if (!db.objectStoreNames.contains('active_shift')) {
+    db.createObjectStore('active_shift', { keyPath: 'key' });
+  }
+
+  // 5. Outbox Orders (Offline transactions awaiting sync to cloud)
+  if (!db.objectStoreNames.contains('outbox_orders')) {
+    const orderStore = db.createObjectStore('outbox_orders', { keyPath: 'order_no' });
+    orderStore.createIndex('status', 'status', { unique: false });
+    orderStore.createIndex('created_at', 'created_at', { unique: false });
+  }
+
+  // 6. Outbox Stock Adjustments (Susut / Busuk awaiting sync)
+  if (!db.objectStoreNames.contains('outbox_adjustments')) {
+    const adjStore = db.createObjectStore('outbox_adjustments', { keyPath: 'id', autoIncrement: true });
+    adjStore.createIndex('status', 'status', { unique: false });
+  }
+
+  // 7. Outbox Debt Payments (Kasbon payments awaiting sync)
+  if (!db.objectStoreNames.contains('outbox_debt_payments')) {
+    const debtStore = db.createObjectStore('outbox_debt_payments', { keyPath: 'id', autoIncrement: true });
+    debtStore.createIndex('status', 'status', { unique: false });
+  }
+
+  // 8. Sync Metadata (Device ID, Last Sync timestamp)
+  if (!db.objectStoreNames.contains('sync_meta')) {
+    db.createObjectStore('sync_meta', { keyPath: 'key' });
+  }
+}
+
 export function openOfflineDB() {
   if (dbInstance) return Promise.resolve(dbInstance);
 
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    function tryOpen(targetVer) {
+      const request = targetVer ? indexedDB.open(DB_NAME, targetVer) : indexedDB.open(DB_NAME);
 
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        setupObjectStores(db);
+      };
 
-      // 1. Master Products cache
-      if (!db.objectStoreNames.contains('products')) {
-        const prodStore = db.createObjectStore('products', { keyPath: 'id' });
-        prodStore.createIndex('category', 'category', { unique: false });
-        prodStore.createIndex('name', 'name', { unique: false });
-      }
+      request.onsuccess = (event) => {
+        const db = event.target.result;
 
-      // 2. Master Customers cache
-      if (!db.objectStoreNames.contains('customers')) {
-        const custStore = db.createObjectStore('customers', { keyPath: 'id' });
-        custStore.createIndex('tier', 'tier', { unique: false });
-      }
+        // Check if any required object store is missing
+        const requiredStores = ['products', 'customers', 'settings', 'active_shift', 'outbox_orders', 'outbox_adjustments', 'outbox_debt_payments', 'sync_meta'];
+        const missing = requiredStores.filter(s => !db.objectStoreNames.contains(s));
 
-      // 3. Store settings (Store name, receipt footer, address)
-      if (!db.objectStoreNames.contains('settings')) {
-        db.createObjectStore('settings', { keyPath: 'key' });
-      }
+        if (missing.length > 0) {
+          console.warn('[IndexedDB] Object store missing, upgrading schema to version', (db.version || 1) + 1);
+          const nextVer = (db.version || 1) + 1;
+          db.close();
+          tryOpen(nextVer);
+          return;
+        }
 
-      // 4. Active Shift cache
-      if (!db.objectStoreNames.contains('active_shift')) {
-        db.createObjectStore('active_shift', { keyPath: 'key' });
-      }
+        dbInstance = db;
+        dbInstance.onversionchange = () => {
+          if (dbInstance) {
+            dbInstance.close();
+            dbInstance = null;
+          }
+        };
+        dbInstance.onclose = () => {
+          dbInstance = null;
+        };
 
-      // 5. Outbox Orders (Offline transactions awaiting sync to cloud)
-      if (!db.objectStoreNames.contains('outbox_orders')) {
-        const orderStore = db.createObjectStore('outbox_orders', { keyPath: 'order_no' });
-        orderStore.createIndex('status', 'status', { unique: false });
-        orderStore.createIndex('created_at', 'created_at', { unique: false });
-      }
+        resolve(dbInstance);
+      };
 
-      // 6. Outbox Stock Adjustments (Susut / Busuk awaiting sync)
-      if (!db.objectStoreNames.contains('outbox_adjustments')) {
-        const adjStore = db.createObjectStore('outbox_adjustments', { keyPath: 'id', autoIncrement: true });
-        adjStore.createIndex('status', 'status', { unique: false });
-      }
+      request.onerror = (event) => {
+        const err = event.target.error;
+        console.warn('[IndexedDB] Error saat membuka DB version ' + targetVer + ':', err ? err.message : err);
 
-      // 7. Outbox Debt Payments (Kasbon payments awaiting sync)
-      if (!db.objectStoreNames.contains('outbox_debt_payments')) {
-        const debtStore = db.createObjectStore('outbox_debt_payments', { keyPath: 'id', autoIncrement: true });
-        debtStore.createIndex('status', 'status', { unique: false });
-      }
+        // If error is VersionError (e.g. requested version less than existing version)
+        if (err && (err.name === 'VersionError' || String(err).includes('version') || (err.message && err.message.includes('version')))) {
+          // Open without version parameter to inspect existing version
+          const fallbackReq = indexedDB.open(DB_NAME);
+          fallbackReq.onsuccess = (ev) => {
+            const curDb = ev.target.result;
+            const curVer = curDb.version || 1;
+            curDb.close();
+            console.log('[IndexedDB] Detected existing version ' + curVer + ', re-opening with upgrade to ' + (curVer + 1));
+            tryOpen(curVer + 1);
+          };
+          fallbackReq.onerror = (e) => {
+            console.error('[IndexedDB] Fallback version inspect failed:', e.target.error);
+            reject(e.target.error);
+          };
+          return;
+        }
 
-      // 8. Sync Metadata (Device ID, Last Sync timestamp)
-      if (!db.objectStoreNames.contains('sync_meta')) {
-        db.createObjectStore('sync_meta', { keyPath: 'key' });
-      }
-    };
+        console.error('[IndexedDB] Gagal membuka database:', err);
+        reject(err);
+      };
+    }
 
-    request.onsuccess = (event) => {
-      dbInstance = event.target.result;
-      resolve(dbInstance);
-    };
-
-    request.onerror = (event) => {
-      console.error('[IndexedDB] Gagal membuka database:', event.target.error);
-      reject(event.target.error);
-    };
+    tryOpen(DB_VERSION);
   });
 }
 

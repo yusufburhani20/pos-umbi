@@ -1149,9 +1149,14 @@ async function initApp() {
     updateSplashProgress(45, 'Inisialisasi database offline...');
     await syncEngine.init();
     syncEngine.onStateChange(updateSyncStatusUI);
-    initPwaUpdateManager();
   } catch (e) {
     console.warn('[Sync] Inisialisasi sync engine tertunda:', e);
+  }
+
+  try {
+    initPwaUpdateManager();
+  } catch (e) {
+    console.warn('[PWA] Inisialisasi update manager tertunda:', e);
   }
 
   // Initialize Hardware (Panda Bluetooth Printer & Cash Drawer RJ-11)
@@ -4376,8 +4381,12 @@ async function handleProcessOrder() {
       try {
         const res = await api.createOrder(orderPayload);
         orderResult = res.order;
-        // Save in local outbox with synced status
-        await enqueueOrderLocal({ ...orderResult, status: 'synced' });
+        // Save in local outbox with synced status (non-blocking for online success)
+        try {
+          await enqueueOrderLocal({ ...orderResult, status: 'synced' });
+        } catch (localCacheErr) {
+          console.warn('[Sync] Non-blocking local cache save error:', localCacheErr);
+        }
       } catch (netErr) {
         console.warn('Online order failed, falling back to offline storage:', netErr.message);
         isOfflineSaved = true;
