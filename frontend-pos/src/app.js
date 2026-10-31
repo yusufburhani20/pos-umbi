@@ -515,6 +515,35 @@ const el = {
   btnHistory: document.getElementById('btnHistory'),
   btnCloseHistoryModal: document.getElementById('btnCloseHistoryModal'),
   historyTableBody: document.getElementById('historyTableBody'),
+
+  // Order Detail Modal Elements
+  orderDetailModal: document.getElementById('orderDetailModal'),
+  btnCloseOrderDetailModal: document.getElementById('btnCloseOrderDetailModal'),
+  btnCloseOrderDetailFooter: document.getElementById('btnCloseOrderDetailFooter'),
+  orderDetailOrderNo: document.getElementById('orderDetailOrderNo'),
+  orderDetailStatusBadge: document.getElementById('orderDetailStatusBadge'),
+  orderDetailTime: document.getElementById('orderDetailTime'),
+  orderDetailCashier: document.getElementById('orderDetailCashier'),
+  orderDetailCustomer: document.getElementById('orderDetailCustomer'),
+  orderDetailPaymentMethod: document.getElementById('orderDetailPaymentMethod'),
+  orderDetailVoidBanner: document.getElementById('orderDetailVoidBanner'),
+  orderDetailVoidReason: document.getElementById('orderDetailVoidReason'),
+  orderDetailTotalWeightBadge: document.getElementById('orderDetailTotalWeightBadge'),
+  orderDetailItemsBody: document.getElementById('orderDetailItemsBody'),
+  orderDetailSubtotal: document.getElementById('orderDetailSubtotal'),
+  orderDetailNegoRow: document.getElementById('orderDetailNegoRow'),
+  orderDetailNegoVal: document.getElementById('orderDetailNegoVal'),
+  orderDetailDiscountRow: document.getElementById('orderDetailDiscountRow'),
+  orderDetailDiscountLabel: document.getElementById('orderDetailDiscountLabel'),
+  orderDetailDiscountVal: document.getElementById('orderDetailDiscountVal'),
+  orderDetailRottenRow: document.getElementById('orderDetailRottenRow'),
+  orderDetailRottenLabel: document.getElementById('orderDetailRottenLabel'),
+  orderDetailRottenVal: document.getElementById('orderDetailRottenVal'),
+  orderDetailTotalAmount: document.getElementById('orderDetailTotalAmount'),
+  orderDetailCashReceived: document.getElementById('orderDetailCashReceived'),
+  orderDetailChangeAmount: document.getElementById('orderDetailChangeAmount'),
+  btnOrderDetailPrint: document.getElementById('btnOrderDetailPrint'),
+  btnOrderDetailVoid: document.getElementById('btnOrderDetailVoid'),
   historyDateFilter: document.getElementById('historyDateFilter'),
   historySearchInput: document.getElementById('historySearchInput'),
   historySummaryText: document.getElementById('historySummaryText'),
@@ -2893,6 +2922,7 @@ function bindEvents() {
   // Initialize Lock Screen System (Manual & 10 Min Inactivity Auto-Lock)
   initLockScreenEvents();
   initLockInactivityListeners();
+  initOrderDetailModalEvents();
 
   // Void Auth Modal
   el.btnCancelVoid.addEventListener('click', () => el.voidAuthModal.style.display = 'none');
@@ -5162,9 +5192,11 @@ function renderFilteredHistoryTable() {
     const statusLabel = o.status === 'completed' ? 'Selesai' : (o.status === 'void' ? 'Batal' : o.status);
 
     return `
-      <tr>
+      <tr class="history-order-row" data-id="${o.id}">
         <td>
-          <strong style="color: #0f172a; font-family: monospace; font-size: 13px;">${escapeHtml(o.order_no)}</strong>
+          <a href="javascript:void(0)" class="btn-order-no-detail" data-id="${o.id}" style="font-weight: 800; font-family: monospace; font-size: 13px; color: #2563eb; text-decoration: underline; cursor: pointer;" title="Klik untuk melihat detail transaksi">
+            ${escapeHtml(o.order_no)}
+          </a>
           ${o.manual_total_override ? '<div style="font-size:10px; color:#d97706; font-weight:700;">✍️ Nego Total</div>' : ''}
           ${(o.rotten_refund_amount && Number(o.rotten_refund_amount) > 0) ? `<div style="font-size:10px; color:#dc2626; font-weight:700;" title="${escapeHtml(o.rotten_refund_notes || '')}">🥔 Ganti Busuk: -${formatRupiah(o.rotten_refund_amount)}</div>` : ''}
           ${(o.discount_amount && Number(o.discount_amount) > 0) ? `<div style="font-size:10px; color:#0284c7; font-weight:700;" title="${escapeHtml(o.discount_notes || '')}">✂️ Diskon: -${formatRupiah(o.discount_amount)}</div>` : ''}
@@ -5176,20 +5208,32 @@ function renderFilteredHistoryTable() {
           </div>
         </td>
         <td>${escapeHtml(o.customer_name || 'Umum')}</td>
-        <td>${escapeHtml((o.payment_method || 'cash').toUpperCase())}</td>
+        <td><span class="badge-mini-payment ${(o.payment_method || 'cash').toLowerCase()}">${escapeHtml((o.payment_method || 'cash').toUpperCase())}</span></td>
         <td><strong>${formatRupiah(o.total_amount)}</strong></td>
         <td><span class="status-badge ${o.status}">${statusLabel}</span></td>
         <td>
-          <div style="display:inline-flex; gap:6px; align-items:center;">
-            <button class="btn-table-print" data-id="${o.id}" data-no="${escapeHtml(o.order_no)}" title="Cetak Ulang Struk Thermal">
+          <div style="display:inline-flex; gap:5px; align-items:center;">
+            <button type="button" class="btn-table-detail" data-id="${o.id}" data-no="${escapeHtml(o.order_no)}" title="Lihat Rincian Detail Transaksi" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; background: #0284c7; color: #ffffff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
+              👁️ Detail
+            </button>
+            <button type="button" class="btn-table-print" data-id="${o.id}" data-no="${escapeHtml(o.order_no)}" title="Cetak Ulang Struk Thermal" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;">
               🖨️ Cetak
             </button>
-            ${isCompleted ? `<button class="btn-table-void" data-id="${o.id}" data-no="${escapeHtml(o.order_no)}">Batalkan</button>` : ''}
+            ${isCompleted ? `<button type="button" class="btn-table-void" data-id="${o.id}" data-no="${escapeHtml(o.order_no)}" style="padding: 4px 8px; font-size: 11.5px; font-weight: 700; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer;">Batalkan</button>` : ''}
           </div>
         </td>
       </tr>
     `;
   }).join('');
+
+  // Bind Order Detail buttons & No. Nota clicks
+  el.historyTableBody.querySelectorAll('.btn-table-detail, .btn-order-no-detail').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const orderId = btn.dataset.id;
+      openOrderDetailModal(orderId);
+    });
+  });
 
   // Re-bind Reprint Receipt buttons
   el.historyTableBody.querySelectorAll('.btn-table-print').forEach(btn => {
@@ -5231,6 +5275,276 @@ function renderFilteredHistoryTable() {
       el.voidAuthModal.style.display = 'flex';
     });
   });
+}
+
+
+// -----------------------------------------------------------------------------
+// MODAL DETAIL TRANSAKSI (ORDER DETAIL CONTROLLER)
+// -----------------------------------------------------------------------------
+let currentViewedOrder = null;
+
+async function openOrderDetailModal(orderId) {
+  if (!el.orderDetailModal) return;
+
+  // Tampilkan modal dan state loading awal
+  el.orderDetailModal.style.display = 'flex';
+  if (el.orderDetailOrderNo) el.orderDetailOrderNo.textContent = 'Memuat...';
+  if (el.orderDetailStatusBadge) {
+    el.orderDetailStatusBadge.textContent = '...';
+    el.orderDetailStatusBadge.style.background = '#f1f5f9';
+    el.orderDetailStatusBadge.style.color = '#475569';
+    el.orderDetailStatusBadge.style.border = '1px solid #cbd5e1';
+  }
+  if (el.orderDetailTime) el.orderDetailTime.textContent = '-';
+  if (el.orderDetailCashier) el.orderDetailCashier.textContent = '-';
+  if (el.orderDetailCustomer) el.orderDetailCustomer.textContent = '-';
+  if (el.orderDetailPaymentMethod) el.orderDetailPaymentMethod.textContent = '-';
+  if (el.orderDetailVoidBanner) el.orderDetailVoidBanner.style.display = 'none';
+  if (el.orderDetailTotalWeightBadge) el.orderDetailTotalWeightBadge.textContent = 'Total Berat: -';
+  if (el.orderDetailItemsBody) {
+    el.orderDetailItemsBody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 24px; color: #64748b;">⏳ Memuat rincian transaksi...</td></tr>';
+  }
+  if (el.orderDetailSubtotal) el.orderDetailSubtotal.textContent = 'Rp 0';
+  if (el.orderDetailNegoRow) el.orderDetailNegoRow.style.display = 'none';
+  if (el.orderDetailDiscountRow) el.orderDetailDiscountRow.style.display = 'none';
+  if (el.orderDetailRottenRow) el.orderDetailRottenRow.style.display = 'none';
+  if (el.orderDetailTotalAmount) el.orderDetailTotalAmount.textContent = 'Rp 0';
+  if (el.orderDetailCashReceived) el.orderDetailCashReceived.textContent = 'Rp 0';
+  if (el.orderDetailChangeAmount) el.orderDetailChangeAmount.textContent = 'Rp 0';
+  if (el.btnOrderDetailVoid) el.btnOrderDetailVoid.style.display = 'none';
+
+  try {
+    let order = null;
+    const localOrder = (state.allOrdersHistory || []).find(o => String(o.id) === String(orderId) || String(o.order_no) === String(orderId));
+    if (localOrder && Array.isArray(localOrder.items) && localOrder.items.length > 0) {
+      order = localOrder;
+    }
+
+    if (!order && navigator.onLine) {
+      const res = await api.getOrder(orderId);
+      if (res && res.order) {
+        order = res.order;
+      }
+    }
+
+    if (!order && localOrder) {
+      order = localOrder;
+    }
+
+    if (!order) {
+      throw new Error('Data transaksi tidak ditemukan');
+    }
+
+    currentViewedOrder = order;
+
+    // Render Order Details
+    if (el.orderDetailOrderNo) el.orderDetailOrderNo.textContent = order.order_no || '-';
+    
+    // Status Badge
+    const isCompleted = order.status === 'completed';
+    const isVoid = order.status === 'void';
+    const isTempo = (order.payment_method || '').toLowerCase() === 'tempo';
+    
+    if (isVoid) {
+      if (el.orderDetailStatusBadge) {
+        el.orderDetailStatusBadge.textContent = 'BATAL (VOID)';
+        el.orderDetailStatusBadge.style.background = '#fef2f2';
+        el.orderDetailStatusBadge.style.color = '#dc2626';
+        el.orderDetailStatusBadge.style.border = '1px solid #fecaca';
+      }
+      if (el.orderDetailVoidBanner) {
+        el.orderDetailVoidBanner.style.display = 'block';
+        el.orderDetailVoidReason.textContent = `Alasan: ${order.void_reason || 'Dibatalkan kasir/owner'} • Tanggal: ${order.void_at ? parseSafeDate(order.void_at).toLocaleString('id-ID') : '-'}`;
+      }
+    } else if (isTempo) {
+      if (el.orderDetailStatusBadge) {
+        el.orderDetailStatusBadge.textContent = 'TEMPO / KASBON';
+        el.orderDetailStatusBadge.style.background = '#fffbeb';
+        el.orderDetailStatusBadge.style.color = '#b45309';
+        el.orderDetailStatusBadge.style.border = '1px solid #fde68a';
+      }
+      if (el.orderDetailVoidBanner) el.orderDetailVoidBanner.style.display = 'none';
+    } else {
+      if (el.orderDetailStatusBadge) {
+        el.orderDetailStatusBadge.textContent = 'SELESAI (LUNAS)';
+        el.orderDetailStatusBadge.style.background = '#ecfdf5';
+        el.orderDetailStatusBadge.style.color = '#047857';
+        el.orderDetailStatusBadge.style.border = '1px solid #a7f3d0';
+      }
+      if (el.orderDetailVoidBanner) el.orderDetailVoidBanner.style.display = 'none';
+    }
+
+    // Time WIB
+    const d = parseSafeDate(order.created_at);
+    if (el.orderDetailTime) {
+      el.orderDetailTime.textContent = d.toLocaleString('id-ID', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }) + ' WIB';
+    }
+
+    // Cashier & Customer
+    if (el.orderDetailCashier) {
+      el.orderDetailCashier.textContent = order.cashier_name || (state.user ? state.user.name : 'Kasir');
+    }
+    const custName = order.customer_name || 'Pelanggan Umum';
+    const custPhone = order.customer_phone ? ` (${order.customer_phone})` : '';
+    if (el.orderDetailCustomer) {
+      el.orderDetailCustomer.textContent = custName + custPhone;
+    }
+
+    // Payment Method
+    const payMethod = (order.payment_method || 'cash').toUpperCase();
+    if (el.orderDetailPaymentMethod) {
+      el.orderDetailPaymentMethod.textContent = payMethod === 'CASH' ? 'TUNAI (LACI KASIR)' : payMethod;
+    }
+
+    // Items table & Total Weight
+    const items = order.items || [];
+    let totalWeightKg = 0;
+    let computedSubtotal = 0;
+
+    if (items.length === 0) {
+      if (el.orderDetailItemsBody) {
+        el.orderDetailItemsBody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 16px; color: #94a3b8;">Tidak ada rincian item komoditas tersimpan</td></tr>';
+      }
+    } else {
+      if (el.orderDetailItemsBody) {
+        el.orderDetailItemsBody.innerHTML = items.map((it, idx) => {
+          const qtyNum = Number(it.quantity || it.qty || 0);
+          const unitPrice = Number(it.unit_price || 0);
+          const subtotal = Number(it.subtotal || (qtyNum * unitPrice));
+          totalWeightKg += qtyNum;
+          computedSubtotal += subtotal;
+
+          const formattedQty = qtyNum.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 3 });
+          const unitName = it.unit || 'kg';
+
+          return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 8px 10px; color: #64748b; font-size: 11.5px;">${idx + 1}</td>
+              <td style="padding: 8px 10px;">
+                <strong style="color: #0f172a; font-size: 13px;">${escapeHtml(it.product_name || 'Komoditas')}</strong>
+                ${it.notes ? `<div style="font-size: 11px; color: #64748b;">${escapeHtml(it.notes)}</div>` : ''}
+              </td>
+              <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: #334155;">
+                ${formattedQty} <span style="font-size: 11px; font-weight: 500; color: #64748b;">${unitName}</span>
+              </td>
+              <td style="padding: 8px 10px; text-align: right; color: #475569; font-family: monospace;">
+                ${formatRupiah(unitPrice)}
+              </td>
+              <td style="padding: 8px 10px; text-align: right; font-weight: 800; color: #0f172a; font-family: monospace;">
+                ${formatRupiah(subtotal)}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    if (el.orderDetailTotalWeightBadge) {
+      el.orderDetailTotalWeightBadge.textContent = `Total Berat: ${totalWeightKg.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg`;
+    }
+
+    // Pricing Breakdown
+    const baseSubtotal = computedSubtotal > 0 ? computedSubtotal : Number(order.total_amount || 0);
+    if (el.orderDetailSubtotal) el.orderDetailSubtotal.textContent = formatRupiah(baseSubtotal);
+
+    // Nego Override
+    if (order.manual_total_override && Number(order.manual_total_override) > 0) {
+      if (el.orderDetailNegoRow) {
+        el.orderDetailNegoRow.style.display = 'flex';
+        el.orderDetailNegoVal.textContent = formatRupiah(order.manual_total_override);
+      }
+    } else {
+      if (el.orderDetailNegoRow) el.orderDetailNegoRow.style.display = 'none';
+    }
+
+    // Discount
+    const discAmount = Number(order.discount_amount || 0);
+    if (discAmount > 0) {
+      if (el.orderDetailDiscountRow) {
+        el.orderDetailDiscountRow.style.display = 'flex';
+        el.orderDetailDiscountLabel.textContent = `✂️ Potongan Diskon ${order.discount_notes ? `(${escapeHtml(order.discount_notes)})` : ''}`;
+        el.orderDetailDiscountVal.textContent = `-${formatRupiah(discAmount)}`;
+      }
+    } else {
+      if (el.orderDetailDiscountRow) el.orderDetailDiscountRow.style.display = 'none';
+    }
+
+    // Rotten Refund
+    const rottenAmount = Number(order.rotten_refund_amount || 0);
+    if (rottenAmount > 0) {
+      if (el.orderDetailRottenRow) {
+        el.orderDetailRottenRow.style.display = 'flex';
+        el.orderDetailRottenLabel.textContent = `🥔 Ganti Busuk / Retur ${order.rotten_refund_notes ? `(${escapeHtml(order.rotten_refund_notes)})` : ''}`;
+        el.orderDetailRottenVal.textContent = `-${formatRupiah(rottenAmount)}`;
+      }
+    } else {
+      if (el.orderDetailRottenRow) el.orderDetailRottenRow.style.display = 'none';
+    }
+
+    // Total Amount
+    if (el.orderDetailTotalAmount) el.orderDetailTotalAmount.textContent = formatRupiah(order.total_amount);
+
+    // Cash Paid & Change
+    const cashPaid = Number(order.cash_tendered || order.cash_amount || order.paid_amount || order.total_amount || 0);
+    const change = Number(order.change_due || order.change_amount || 0);
+    if (el.orderDetailCashReceived) el.orderDetailCashReceived.textContent = formatRupiah(cashPaid);
+    if (el.orderDetailChangeAmount) el.orderDetailChangeAmount.textContent = formatRupiah(change);
+
+    // Void button visibility (only for completed orders)
+    if (el.btnOrderDetailVoid) {
+      el.btnOrderDetailVoid.style.display = isCompleted ? 'inline-flex' : 'none';
+    }
+
+  } catch (err) {
+    if (el.orderDetailItemsBody) {
+      el.orderDetailItemsBody.innerHTML = `<tr><td colspan="5" class="text-center" style="padding: 24px; color: #dc2626;">Gagal memuat detail transaksi: ${escapeHtml(err.message)}</td></tr>`;
+    }
+    showToast('Gagal memuat detail transaksi: ' + err.message, 'error');
+  }
+}
+
+function initOrderDetailModalEvents() {
+  if (el.btnCloseOrderDetailModal) {
+    el.btnCloseOrderDetailModal.addEventListener('click', () => {
+      if (el.orderDetailModal) el.orderDetailModal.style.display = 'none';
+    });
+  }
+
+  if (el.btnCloseOrderDetailFooter) {
+    el.btnCloseOrderDetailFooter.addEventListener('click', () => {
+      if (el.orderDetailModal) el.orderDetailModal.style.display = 'none';
+    });
+  }
+
+  if (el.btnOrderDetailPrint) {
+    el.btnOrderDetailPrint.addEventListener('click', () => {
+      if (!currentViewedOrder) return;
+      state.lastCompletedOrder = currentViewedOrder;
+      state.lastOrderIsReprint = true;
+      renderThermalReceipt(currentViewedOrder, true);
+      if (el.receiptModalTitle) el.receiptModalTitle.textContent = 'Cetak Ulang Struk (Salinan)';
+      if (el.btnNextOrder) el.btnNextOrder.textContent = 'Kembali ke Riwayat';
+      el.receiptModal.style.zIndex = '1300';
+      el.receiptModal.style.display = 'flex';
+    });
+  }
+
+  if (el.btnOrderDetailVoid) {
+    el.btnOrderDetailVoid.addEventListener('click', () => {
+      if (!currentViewedOrder || currentViewedOrder.status !== 'completed') return;
+      state.pendingVoidOrder = {
+        id: currentViewedOrder.id,
+        orderNo: currentViewedOrder.order_no
+      };
+      el.voidOrderNo.value = state.pendingVoidOrder.orderNo;
+      el.voidReasonInput.value = '';
+      el.voidOwnerPinInput.value = '';
+      el.voidAuthModal.style.display = 'flex';
+    });
+  }
 }
 
 // -----------------------------------------------------------------------------

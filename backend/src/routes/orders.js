@@ -356,12 +356,15 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const order = await dbQuery.get(
-      `SELECT o.*, u.name as cashier_name
+      `SELECT o.*, 
+              COALESCE(u.name, 'Kasir') as cashier_name,
+              c.phone as customer_phone
        FROM orders o
-       JOIN shifts s ON o.shift_id = s.id
-       JOIN users u ON s.cashier_id = u.id
-       WHERE o.id = ?`,
-      [req.params.id]
+       LEFT JOIN shifts s ON o.shift_id = s.id
+       LEFT JOIN users u ON s.cashier_id = u.id
+       LEFT JOIN customers c ON o.customer_id = c.id
+       WHERE o.id = ? OR o.order_no = ?`,
+      [req.params.id, req.params.id]
     );
 
     if (!order) {

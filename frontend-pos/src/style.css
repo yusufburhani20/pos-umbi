@@ -1890,6 +1890,10 @@ input, select, textarea {
   z-index: 1250 !important;
 }
 
+#orderDetailModal {
+  z-index: 1200 !important;
+}
+
 #restockModal,
 #newProductModal,
 #editProductModal,

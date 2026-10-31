@@ -1,5 +1,5 @@
 // Service Worker for Kassa POS (Offline-First PWA)
-const CACHE_NAME = 'kassa-pos-cache-v63';
+const CACHE_NAME = 'kassa-pos-cache-v64';
 
 const STATIC_ASSETS = [
   '/',
