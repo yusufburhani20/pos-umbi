@@ -9354,6 +9354,28 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
       ${varianceBadge}
     </div>
     ${breakdownHtml}
+    ${(() => {
+      if (Array.isArray(shiftData.commodity_sales) && shiftData.commodity_sales.length > 0) {
+        const totalComKg = shiftData.commodity_sales.reduce((sum, item) => sum + (Number(item.total_qty) || 0), 0);
+        return `
+          <div class="receipt-divider"></div>
+          <div style="font-size: 11px; line-height: 1.45;">
+            <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">PENJUALAN KOMODITAS (SHIFT):</div>
+            ${shiftData.commodity_sales.map(item => `
+              <div style="display:flex; justify-content:space-between;">
+                <span>${escapeHtml(item.product_name)} (${Number(item.total_qty).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${escapeHtml(item.unit || 'kg')})</span>
+                <span style="font-family:monospace;">${formatRupiah(item.total_sales)}</span>
+              </div>
+            `).join('')}
+            <div style="display:flex; justify-content:space-between; font-weight:800; border-top:1px dashed #cbd5e1; margin-top:3px; padding-top:2px;">
+              <span>Total Volume :</span>
+              <span>${totalComKg.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg</span>
+            </div>
+          </div>
+        `;
+      }
+      return '';
+    })()}
     <div class="receipt-divider"></div>
     <div style="font-size: 11.5px; line-height: 1.4;">
       <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">NON-TUNAI & OMSET:</div>

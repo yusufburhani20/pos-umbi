@@ -126,6 +126,24 @@ router.get('/current', optionalAuth, async (req, res) => {
       - Number(cashSupplier)
       - Number(cashDepositedToSafe);
 
+    // Product / commodity sales breakdown in this shift
+    const commoditySales = await dbQuery.all(
+      `SELECT 
+         oi.product_id,
+         oi.product_name,
+         COALESCE(p.unit, 'kg') as unit,
+         COALESCE(SUM(oi.qty), 0) as total_qty,
+         COALESCE(SUM(oi.subtotal), 0) as total_sales,
+         COUNT(DISTINCT oi.order_id) as total_transactions
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE o.shift_id = ? AND o.status = 'completed'
+       GROUP BY oi.product_id, oi.product_name
+       ORDER BY total_sales DESC`,
+      [shift.id]
+    );
+
     return res.json({
       success: true,
       has_active_shift: true,
@@ -142,6 +160,7 @@ router.get('/current', optionalAuth, async (req, res) => {
         cash_debt_collected: cashDebt,
         cash_supplier_payments: cashSupplier,
         current_drawer_cash: currentDrawerCash,
+        commodity_sales: commoditySales || [],
         recent_expenses: recentExpenses || [],
         supplier_payments: recentSupplierPayments || []
       }
@@ -396,6 +415,23 @@ router.post('/close', authenticateToken, async (req, res) => {
       is_anomalous: isAnomalousNegative
     });
 
+    const closedCommoditySales = await dbQuery.all(
+      `SELECT 
+         oi.product_id,
+         oi.product_name,
+         COALESCE(p.unit, 'kg') as unit,
+         COALESCE(SUM(oi.qty), 0) as total_qty,
+         COALESCE(SUM(oi.subtotal), 0) as total_sales,
+         COUNT(DISTINCT oi.order_id) as total_transactions
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE o.shift_id = ? AND o.status = 'completed'
+       GROUP BY oi.product_id, oi.product_name
+       ORDER BY total_sales DESC`,
+      [shift_id]
+    );
+
     return res.json({
       success: true,
       message: 'Shift berhasil ditutup',
@@ -425,7 +461,8 @@ router.post('/close', authenticateToken, async (req, res) => {
           ? 'ANOMALOUS_NEGATIVE_DRAWER' 
           : (cashDifference === 0 ? 'BALANCED' : (cashDifference < 0 ? 'SHORTAGE' : 'SURPLUS')),
         breakdown: breakdown || null,
-        closing_notes: cleanNotes
+        closing_notes: cleanNotes,
+        commodity_sales: closedCommoditySales || []
       }
     });
   } catch (err) {
@@ -577,6 +614,24 @@ router.get('/:id', authenticateToken, async (req, res) => {
       ? 'ANOMALOUS_NEGATIVE_DRAWER'
       : (shift.cash_difference === 0 ? 'BALANCED' : (shift.cash_difference < 0 ? 'SHORTAGE' : 'SURPLUS'));
 
+    // Product / commodity sales breakdown in this shift
+    const commoditySales = await dbQuery.all(
+      `SELECT 
+         oi.product_id,
+         oi.product_name,
+         COALESCE(p.unit, 'kg') as unit,
+         COALESCE(SUM(oi.qty), 0) as total_qty,
+         COALESCE(SUM(oi.subtotal), 0) as total_sales,
+         COUNT(DISTINCT oi.order_id) as total_transactions
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE o.shift_id = ? AND o.status = 'completed'
+       GROUP BY oi.product_id, oi.product_name
+       ORDER BY total_sales DESC`,
+      [shiftId]
+    );
+
     return res.json({
       success: true,
       shift: {
@@ -586,6 +641,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         breakdown: bObj,
         closing_notes: cNotes,
         stats: ordersStats || {},
+        commodity_sales: commoditySales || [],
         expenses: expenses || [],
         supplier_payments: supplierPayments || [],
         debt_payments: debtPayments || [],

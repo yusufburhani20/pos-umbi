@@ -228,6 +228,10 @@ const el = {
   sdModalClosingNotes: document.getElementById('sdModalClosingNotes'),
   sdModalExpensesWrap: document.getElementById('sdModalExpensesWrap'),
   sdModalExpensesList: document.getElementById('sdModalExpensesList'),
+  sdModalCommodityWrap: document.getElementById('sdModalCommodityWrap'),
+  sdModalCommodityTotalKg: document.getElementById('sdModalCommodityTotalKg'),
+  sdModalCommodityTotalSales: document.getElementById('sdModalCommodityTotalSales'),
+  sdModalCommodityList: document.getElementById('sdModalCommodityList'),
   btnPrintShiftDetailSummary: document.getElementById('btnPrintShiftDetailSummary'),
 
   kpiVoidCountBadge: document.getElementById('kpiVoidCountBadge'),
@@ -3184,6 +3188,9 @@ async function openShiftDetailModal(shiftId) {
   if (el.sdModalVoidInfo) el.sdModalVoidInfo.textContent = '...';
   if (el.sdModalTotalOmset) el.sdModalTotalOmset.textContent = '...';
   if (el.sdModalExpensesWrap) el.sdModalExpensesWrap.style.display = 'none';
+  if (el.sdModalCommodityList) el.sdModalCommodityList.innerHTML = '<div style="text-align: center; color: #94a3b8; font-size: 11.5px; padding: 8px;">Memuat rincian komoditas...</div>';
+  if (el.sdModalCommodityTotalKg) el.sdModalCommodityTotalKg.textContent = '0.0 kg';
+  if (el.sdModalCommodityTotalSales) el.sdModalCommodityTotalSales.textContent = 'Rp 0';
 
   // Display modal
   if (el.modalShiftDetail) el.modalShiftDetail.style.display = 'flex';
@@ -3224,6 +3231,51 @@ async function openShiftDetailModal(shiftId) {
       if (el.sdModalTempoSales) el.sdModalTempoSales.textContent = formatRupiah(stats.tempo_sales || 0);
       if (el.sdModalVoidInfo) el.sdModalVoidInfo.textContent = `${stats.void_count || 0} Void (${formatRupiah(stats.void_total || 0)})`;
       if (el.sdModalTotalOmset) el.sdModalTotalOmset.textContent = formatRupiah(stats.total_omset || 0);
+
+      // Commodity Sales breakdown
+      const comList = sd.commodity_sales || [];
+      if (el.sdModalCommodityList) {
+        if (comList.length === 0) {
+          el.sdModalCommodityList.innerHTML = `
+            <div style="text-align: center; color: #94a3b8; font-size: 11.5px; padding: 10px;">
+              Belum ada transaksi penjualan komoditas pada shift ini.
+            </div>
+          `;
+          if (el.sdModalCommodityTotalKg) el.sdModalCommodityTotalKg.textContent = '0.0 kg';
+          if (el.sdModalCommodityTotalSales) el.sdModalCommodityTotalSales.textContent = 'Rp 0';
+        } else {
+          const totalKg = comList.reduce((sum, item) => sum + (Number(item.total_qty) || 0), 0);
+          const totalSales = comList.reduce((sum, item) => sum + (Number(item.total_sales) || 0), 0);
+
+          if (el.sdModalCommodityTotalKg) {
+            el.sdModalCommodityTotalKg.textContent = `${totalKg.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg`;
+          }
+          if (el.sdModalCommodityTotalSales) {
+            el.sdModalCommodityTotalSales.textContent = formatRupiah(totalSales);
+          }
+
+          el.sdModalCommodityList.innerHTML = comList.map(item => {
+            const qtyFormatted = Number(item.total_qty).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+            const unitStr = item.unit || 'kg';
+            const salesFormatted = formatRupiah(item.total_sales);
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 14px;">🥔</span>
+                  <div>
+                    <strong style="color: #0f172a; font-size: 12px; display: block;">${escapeHtml(item.product_name)}</strong>
+                    <span style="color: #64748b; font-size: 10.5px;">${item.total_transactions || 1}x Transaksi Terjual</span>
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <strong style="color: #047857; font-family: var(--font-mono); font-size: 12.5px; display: block;">${salesFormatted}</strong>
+                  <span style="color: #0284c7; font-size: 10.5px; font-weight: 700; background: #f0f9ff; border: 1px solid #bae6fd; padding: 1px 6px; border-radius: 4px; display: inline-block;">${qtyFormatted} ${escapeHtml(unitStr)}</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
 
       // Expenses list
       const expenses = sd.expenses || [];

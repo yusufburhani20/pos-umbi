@@ -170,6 +170,10 @@ const el = {
   salesTempo: document.getElementById('salesTempo'),
   totalOmset: document.getElementById('totalOmset'),
   expensesListContainer: document.getElementById('expensesListContainer'),
+  cardCommoditySalesShift: document.getElementById('cardCommoditySalesShift'),
+  badgeCommodityTotalKg: document.getElementById('badgeCommodityTotalKg'),
+  badgeCommodityTotalSales: document.getElementById('badgeCommodityTotalSales'),
+  commoditySalesListContainer: document.getElementById('commoditySalesListContainer'),
 
   btnPrintReportX: document.getElementById('btnPrintReportX'),
   btnCloseShiftZ: document.getElementById('btnCloseShiftZ'),
@@ -797,6 +801,51 @@ async function loadActiveShiftData() {
     if (el.salesTransfer) el.salesTransfer.textContent = formatRupiah(s.transfer_sales || 0);
     if (el.salesTempo) el.salesTempo.textContent = formatRupiah(s.tempo_sales || 0);
     if (el.totalOmset) el.totalOmset.textContent = formatRupiah(s.total_omset || 0);
+
+    // Render Commodity Sales Breakdown (Shift Ini)
+    if (el.commoditySalesListContainer) {
+      const comList = s.commodity_sales || [];
+      if (comList.length === 0) {
+        el.commoditySalesListContainer.innerHTML = `
+          <div style="text-align: center; color: #94a3b8; font-size: 13px; padding: 20px;">
+            Belum ada transaksi penjualan komoditas pada shift ini.
+          </div>
+        `;
+        if (el.badgeCommodityTotalKg) el.badgeCommodityTotalKg.textContent = '0.0 kg';
+        if (el.badgeCommodityTotalSales) el.badgeCommodityTotalSales.textContent = 'Rp 0';
+      } else {
+        const totalKg = comList.reduce((sum, item) => sum + (Number(item.total_qty) || 0), 0);
+        const totalSales = comList.reduce((sum, item) => sum + (Number(item.total_sales) || 0), 0);
+
+        if (el.badgeCommodityTotalKg) {
+          el.badgeCommodityTotalKg.textContent = `${totalKg.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg`;
+        }
+        if (el.badgeCommodityTotalSales) {
+          el.badgeCommodityTotalSales.textContent = formatRupiah(totalSales);
+        }
+
+        el.commoditySalesListContainer.innerHTML = comList.map(item => {
+          const qtyFormatted = Number(item.total_qty).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+          const unitStr = item.unit || 'kg';
+          const salesFormatted = formatRupiah(item.total_sales);
+          return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 18px;">🥔</span>
+                <div>
+                  <strong style="font-size: 13.5px; color: #0f172a; display: block;">${escapeHtml(item.product_name)}</strong>
+                  <span style="font-size: 11px; color: #64748b;">${item.total_transactions || 1}x Transaksi Terjual</span>
+                </div>
+              </div>
+              <div style="text-align: right;">
+                <strong style="font-size: 14px; font-weight: 800; color: #047857; font-family: 'JetBrains Mono', monospace; display: block;">${salesFormatted}</strong>
+                <span style="font-size: 11.5px; font-weight: 700; color: #0284c7; background: #f0f9ff; border: 1px solid #bae6fd; padding: 1px 6px; border-radius: 4px; display: inline-block;">${qtyFormatted} ${escapeHtml(unitStr)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
 
     // Recent Drawer Cash Flow (Expenses, Income & Supplier Payments)
     if (el.expensesListContainer) {
@@ -1618,6 +1667,28 @@ function renderThermalShiftReceipt(shiftData, type = 'X') {
       ${varianceBadge}
     </div>
     ${breakdownHtml}
+    ${(() => {
+      if (Array.isArray(shiftData.commodity_sales) && shiftData.commodity_sales.length > 0) {
+        const totalComKg = shiftData.commodity_sales.reduce((sum, item) => sum + (Number(item.total_qty) || 0), 0);
+        return `
+          <div class="receipt-divider"></div>
+          <div style="font-size: 11px; line-height: 1.45;">
+            <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">PENJUALAN KOMODITAS (SHIFT):</div>
+            ${shiftData.commodity_sales.map(item => `
+              <div style="display:flex; justify-content:space-between;">
+                <span>${escapeHtml(item.product_name)} (${Number(item.total_qty).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} ${escapeHtml(item.unit || 'kg')})</span>
+                <span style="font-family:monospace;">${formatRupiah(item.total_sales)}</span>
+              </div>
+            `).join('')}
+            <div style="display:flex; justify-content:space-between; font-weight:800; border-top:1px dashed #cbd5e1; margin-top:3px; padding-top:2px;">
+              <span>Total Volume :</span>
+              <span>${totalComKg.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg</span>
+            </div>
+          </div>
+        `;
+      }
+      return '';
+    })()}
     <div class="receipt-divider"></div>
     <div style="font-size: 11.5px; line-height: 1.4;">
       <div style="font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">NON-TUNAI & OMSET:</div>
